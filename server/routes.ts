@@ -1,127 +1,181 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertIncidentSchema } from "@shared/schema";
+import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertIncidentSchema, loginSchema, createEmployeeSchema } from "@shared/schema";
+import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Employee routes
-  app.get("/api/employees", async (req, res) => {
+  // Authentication routes
+  app.post("/api/auth/login", async (req, res) => {
     try {
-      const employees = await storage.getEmployees();
-      res.json(employees);
+      const { email, password } = loginSchema.parse(req.body);
+      const user = await storage.authenticateEmployee(email, password);
+      
+      if (!user) {
+        return res.status(401).json({ message: "Email o contraseña incorrectos" });
+      }
+      
+      req.session.user = user;
+      res.json({ user, message: "Inicio de sesión exitoso" });
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch employees" });
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos de inicio de sesión inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error en el servidor" });
     }
   });
 
-  app.get("/api/employees/:id", async (req, res) => {
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Error al cerrar sesión" });
+      }
+      res.json({ message: "Sesión cerrada exitosamente" });
+    });
+  });
+
+  app.get("/api/auth/me", requireAuth, (req, res) => {
+    res.json({ user: req.user });
+  });
+  // Employee routes (Admin only for list and CRUD operations)
+  app.get("/api/employees", requireAdmin, async (req, res) => {
+    try {
+      const employees = await storage.getEmployees();
+      // Remove password from response
+      const safeEmployees = employees.map(emp => {
+        const { password, ...safeEmployee } = emp;
+        return safeEmployee;
+      });
+      res.json(safeEmployees);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener empleados" });
+    }
+  });
+
+  app.get("/api/employees/:id", requireEmployeeAccess, async (req, res) => {
     try {
       const employee = await storage.getEmployee(req.params.id);
       if (!employee) {
-        return res.status(404).json({ message: "Employee not found" });
+        return res.status(404).json({ message: "Empleado no encontrado" });
       }
-      res.json(employee);
+      // Remove password from response
+      const { password, ...safeEmployee } = employee;
+      res.json(safeEmployee);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch employee" });
+      res.status(500).json({ message: "Error al obtener empleado" });
     }
   });
 
-  app.post("/api/employees", async (req, res) => {
+  app.post("/api/employees", requireAdmin, async (req, res) => {
     try {
-      const employeeData = insertEmployeeSchema.parse(req.body);
-      const employee = await storage.createEmployee(employeeData);
-      res.status(201).json(employee);
+      const employeeData = createEmployeeSchema.parse(req.body);
+      const employee = await storage.createEmployeeWithPassword(employeeData);
+      // Remove password from response
+      const { password, ...safeEmployee } = employee;
+      res.status(201).json(safeEmployee);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid employee data", errors: error.errors });
+        return res.status(400).json({ message: "Datos de empleado inválidos", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create employee" });
+      res.status(500).json({ message: "Error al crear empleado" });
     }
   });
 
-  app.put("/api/employees/:id", async (req, res) => {
+  app.put("/api/employees/:id", requireAdmin, async (req, res) => {
     try {
       const employeeData = insertEmployeeSchema.partial().parse(req.body);
       const employee = await storage.updateEmployee(req.params.id, employeeData);
       if (!employee) {
-        return res.status(404).json({ message: "Employee not found" });
+        return res.status(404).json({ message: "Empleado no encontrado" });
       }
-      res.json(employee);
+      // Remove password from response
+      const { password, ...safeEmployee } = employee;
+      res.json(safeEmployee);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid employee data", errors: error.errors });
+        return res.status(400).json({ message: "Datos de empleado inválidos", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update employee" });
+      res.status(500).json({ message: "Error al actualizar empleado" });
     }
   });
 
-  app.delete("/api/employees/:id", async (req, res) => {
+  app.delete("/api/employees/:id", requireAdmin, async (req, res) => {
     try {
       const success = await storage.deleteEmployee(req.params.id);
       if (!success) {
-        return res.status(404).json({ message: "Employee not found" });
+        return res.status(404).json({ message: "Empleado no encontrado" });
       }
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete employee" });
+      res.status(500).json({ message: "Error al eliminar empleado" });
     }
   });
 
   // Time entry routes
-  app.get("/api/time-entries", async (req, res) => {
+  app.get("/api/time-entries", requireAuth, async (req, res) => {
     try {
       const { employeeId, date } = req.query;
       let timeEntries;
       
-      if (employeeId) {
-        timeEntries = await storage.getTimeEntriesByEmployee(employeeId as string);
-      } else if (date) {
-        timeEntries = await storage.getTimeEntriesByDate(date as string);
+      // Employees can only see their own entries, admins can see all
+      if (req.user!.role === "employee") {
+        timeEntries = await storage.getTimeEntriesByEmployee(req.user!.id);
+        if (date) {
+          timeEntries = timeEntries.filter(entry => entry.date === date);
+        }
       } else {
-        timeEntries = await storage.getTimeEntries();
+        // Admin can filter by employee or date
+        if (employeeId) {
+          timeEntries = await storage.getTimeEntriesByEmployee(employeeId as string);
+        } else if (date) {
+          timeEntries = await storage.getTimeEntriesByDate(date as string);
+        } else {
+          timeEntries = await storage.getTimeEntries();
+        }
       }
       
       res.json(timeEntries);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch time entries" });
+      res.status(500).json({ message: "Error al obtener registros de tiempo" });
     }
   });
 
-  app.post("/api/time-entries", async (req, res) => {
+  app.post("/api/time-entries", requireAdmin, async (req, res) => {
     try {
       const timeEntryData = insertTimeEntrySchema.parse(req.body);
       const timeEntry = await storage.createTimeEntry(timeEntryData);
       res.status(201).json(timeEntry);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid time entry data", errors: error.errors });
+        return res.status(400).json({ message: "Datos de registro de tiempo inválidos", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create time entry" });
+      res.status(500).json({ message: "Error al crear registro de tiempo" });
     }
   });
 
-  app.put("/api/time-entries/:id", async (req, res) => {
+  app.put("/api/time-entries/:id", requireAdmin, async (req, res) => {
     try {
       const timeEntryData = insertTimeEntrySchema.partial().parse(req.body);
       const timeEntry = await storage.updateTimeEntry(req.params.id, timeEntryData);
       if (!timeEntry) {
-        return res.status(404).json({ message: "Time entry not found" });
+        return res.status(404).json({ message: "Registro de tiempo no encontrado" });
       }
       res.json(timeEntry);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid time entry data", errors: error.errors });
+        return res.status(400).json({ message: "Datos de registro de tiempo inválidos", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update time entry" });
+      res.status(500).json({ message: "Error al actualizar registro de tiempo" });
     }
   });
 
-  app.post("/api/time-entries/clock-in", async (req, res) => {
+  app.post("/api/time-entries/clock-in", requireAuth, async (req, res) => {
     try {
-      const { employeeId } = req.body;
-      if (!employeeId) {
-        return res.status(400).json({ message: "Employee ID is required" });
+      // Use current user's ID for employees, allow admin to specify
+      let employeeId = req.user!.id;
+      if (req.user!.role === "admin" && req.body.employeeId) {
+        employeeId = req.body.employeeId;
       }
 
       const today = new Date().toISOString().split('T')[0];
@@ -129,7 +183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const todayEntry = existingEntries.find(entry => entry.date === today && !entry.clockOut);
       
       if (todayEntry) {
-        return res.status(400).json({ message: "Employee is already clocked in" });
+        return res.status(400).json({ message: "El empleado ya ha marcado entrada hoy" });
       }
 
       const timeEntry = await storage.createTimeEntry({
@@ -140,15 +194,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(timeEntry);
     } catch (error) {
-      res.status(500).json({ message: "Failed to clock in" });
+      res.status(500).json({ message: "Error al marcar entrada" });
     }
   });
 
-  app.post("/api/time-entries/clock-out", async (req, res) => {
+  app.post("/api/time-entries/clock-out", requireAuth, async (req, res) => {
     try {
-      const { employeeId } = req.body;
-      if (!employeeId) {
-        return res.status(400).json({ message: "Employee ID is required" });
+      // Use current user's ID for employees, allow admin to specify
+      let employeeId = req.user!.id;
+      if (req.user!.role === "admin" && req.body.employeeId) {
+        employeeId = req.body.employeeId;
       }
 
       const today = new Date().toISOString().split('T')[0];
@@ -156,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const todayEntry = existingEntries.find(entry => entry.date === today && !entry.clockOut);
       
       if (!todayEntry) {
-        return res.status(400).json({ message: "Employee is not clocked in" });
+        return res.status(400).json({ message: "El empleado no ha marcado entrada hoy" });
       }
 
       const updatedEntry = await storage.updateTimeEntry(todayEntry.id, {
@@ -165,113 +220,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(updatedEntry);
     } catch (error) {
-      res.status(500).json({ message: "Failed to clock out" });
+      res.status(500).json({ message: "Error al marcar salida" });
     }
   });
 
   // Schedule routes
-  app.get("/api/schedules", async (req, res) => {
+  app.get("/api/schedules", requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.query;
       let schedules;
       
-      if (employeeId) {
-        schedules = await storage.getSchedulesByEmployee(employeeId as string);
+      // Employees can only see their own schedules, admins can see all
+      if (req.user!.role === "employee") {
+        schedules = await storage.getSchedulesByEmployee(req.user!.id);
       } else {
-        schedules = await storage.getSchedules();
+        // Admin can filter by employee
+        if (employeeId) {
+          schedules = await storage.getSchedulesByEmployee(employeeId as string);
+        } else {
+          schedules = await storage.getSchedules();
+        }
       }
       
       res.json(schedules);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch schedules" });
+      res.status(500).json({ message: "Error al obtener horarios" });
     }
   });
 
-  app.post("/api/schedules", async (req, res) => {
+  app.post("/api/schedules", requireAdmin, async (req, res) => {
     try {
       const scheduleData = insertScheduleSchema.parse(req.body);
       const schedule = await storage.createSchedule(scheduleData);
       res.status(201).json(schedule);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid schedule data", errors: error.errors });
+        return res.status(400).json({ message: "Datos de horario inválidos", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create schedule" });
+      res.status(500).json({ message: "Error al crear horario" });
     }
   });
 
-  app.put("/api/schedules/:id", async (req, res) => {
+  app.put("/api/schedules/:id", requireAdmin, async (req, res) => {
     try {
       const scheduleData = insertScheduleSchema.partial().parse(req.body);
       const schedule = await storage.updateSchedule(req.params.id, scheduleData);
       if (!schedule) {
-        return res.status(404).json({ message: "Schedule not found" });
+        return res.status(404).json({ message: "Horario no encontrado" });
       }
       res.json(schedule);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid schedule data", errors: error.errors });
+        return res.status(400).json({ message: "Datos de horario inválidos", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update schedule" });
+      res.status(500).json({ message: "Error al actualizar horario" });
     }
   });
 
-  app.delete("/api/schedules/:id", async (req, res) => {
+  app.delete("/api/schedules/:id", requireAdmin, async (req, res) => {
     try {
       const success = await storage.deleteSchedule(req.params.id);
       if (!success) {
-        return res.status(404).json({ message: "Schedule not found" });
+        return res.status(404).json({ message: "Horario no encontrado" });
       }
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete schedule" });
+      res.status(500).json({ message: "Error al eliminar horario" });
     }
   });
 
   // Incident routes
-  app.get("/api/incidents", async (req, res) => {
+  app.get("/api/incidents", requireAuth, async (req, res) => {
     try {
       const { employeeId } = req.query;
       let incidents;
       
-      if (employeeId) {
-        incidents = await storage.getIncidentsByEmployee(employeeId as string);
+      // Employees can only see their own incidents, admins can see all
+      if (req.user!.role === "employee") {
+        incidents = await storage.getIncidentsByEmployee(req.user!.id);
       } else {
-        incidents = await storage.getIncidents();
+        // Admin can filter by employee
+        if (employeeId) {
+          incidents = await storage.getIncidentsByEmployee(employeeId as string);
+        } else {
+          incidents = await storage.getIncidents();
+        }
       }
       
       res.json(incidents);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch incidents" });
+      res.status(500).json({ message: "Error al obtener incidencias" });
     }
   });
 
-  app.post("/api/incidents", async (req, res) => {
+  app.post("/api/incidents", requireAuth, async (req, res) => {
     try {
       const incidentData = insertIncidentSchema.parse(req.body);
+      // Employees can only create incidents for themselves
+      if (req.user!.role === "employee") {
+        incidentData.employeeId = req.user!.id;
+      }
       const incident = await storage.createIncident(incidentData);
       res.status(201).json(incident);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid incident data", errors: error.errors });
+        return res.status(400).json({ message: "Datos de incidencia inválidos", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create incident" });
+      res.status(500).json({ message: "Error al crear incidencia" });
     }
   });
 
-  app.put("/api/incidents/:id", async (req, res) => {
+  app.put("/api/incidents/:id", requireAdmin, async (req, res) => {
     try {
       const incidentData = insertIncidentSchema.partial().parse(req.body);
       const incident = await storage.updateIncident(req.params.id, incidentData);
       if (!incident) {
-        return res.status(404).json({ message: "Incident not found" });
+        return res.status(404).json({ message: "Incidencia no encontrada" });
       }
       res.json(incident);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid incident data", errors: error.errors });
+        return res.status(400).json({ message: "Datos de incidencia inválidos", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update incident" });
+      res.status(500).json({ message: "Error al actualizar incidencia" });
     }
   });
 
