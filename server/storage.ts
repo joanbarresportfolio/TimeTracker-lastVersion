@@ -1,5 +1,7 @@
-import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident } from "@shared/schema";
+import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, employees, timeEntries, schedules, incidents } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Employee methods
@@ -134,7 +136,7 @@ export class MemStorage implements IStorage {
 
   async createEmployee(insertEmployee: InsertEmployee): Promise<Employee> {
     const id = randomUUID();
-    const employee: Employee = { ...insertEmployee, id };
+    const employee: Employee = { ...insertEmployee, id, isActive: insertEmployee.isActive ?? true };
     this.employees.set(id, employee);
     return employee;
   }
@@ -183,7 +185,7 @@ export class MemStorage implements IStorage {
       totalHours = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60)); // minutes
     }
 
-    const timeEntry: TimeEntry = { ...insertTimeEntry, id, totalHours };
+    const timeEntry: TimeEntry = { ...insertTimeEntry, id, totalHours, clockOut: insertTimeEntry.clockOut ?? null };
     this.timeEntries.set(id, timeEntry);
     return timeEntry;
   }
@@ -226,7 +228,7 @@ export class MemStorage implements IStorage {
 
   async createSchedule(insertSchedule: InsertSchedule): Promise<Schedule> {
     const id = randomUUID();
-    const schedule: Schedule = { ...insertSchedule, id };
+    const schedule: Schedule = { ...insertSchedule, id, isActive: insertSchedule.isActive ?? true };
     this.schedules.set(id, schedule);
     return schedule;
   }
@@ -265,6 +267,7 @@ export class MemStorage implements IStorage {
       ...insertIncident, 
       id, 
       createdAt: new Date(),
+      status: insertIncident.status ?? "pending",
     };
     this.incidents.set(id, incident);
     return incident;
@@ -284,4 +287,177 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  // Employee methods
+  async getEmployee(id: string): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
+    return employee || undefined;
+  }
+
+  async getEmployees(): Promise<Employee[]> {
+    return await db.select().from(employees);
+  }
+
+  async getEmployeeByNumber(employeeNumber: string): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(eq(employees.employeeNumber, employeeNumber));
+    return employee || undefined;
+  }
+
+  async createEmployee(insertEmployee: InsertEmployee): Promise<Employee> {
+    const [employee] = await db
+      .insert(employees)
+      .values(insertEmployee)
+      .returning();
+    return employee;
+  }
+
+  async updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee | undefined> {
+    const [updatedEmployee] = await db
+      .update(employees)
+      .set(employee)
+      .where(eq(employees.id, id))
+      .returning();
+    return updatedEmployee || undefined;
+  }
+
+  async deleteEmployee(id: string): Promise<boolean> {
+    const result = await db.delete(employees).where(eq(employees.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Time entry methods
+  async getTimeEntry(id: string): Promise<TimeEntry | undefined> {
+    const [timeEntry] = await db.select().from(timeEntries).where(eq(timeEntries.id, id));
+    return timeEntry || undefined;
+  }
+
+  async getTimeEntries(): Promise<TimeEntry[]> {
+    return await db.select().from(timeEntries);
+  }
+
+  async getTimeEntriesByEmployee(employeeId: string): Promise<TimeEntry[]> {
+    return await db.select().from(timeEntries).where(eq(timeEntries.employeeId, employeeId));
+  }
+
+  async getTimeEntriesByDate(date: string): Promise<TimeEntry[]> {
+    return await db.select().from(timeEntries).where(eq(timeEntries.date, date));
+  }
+
+  async createTimeEntry(insertTimeEntry: InsertTimeEntry): Promise<TimeEntry> {
+    let totalHours = null;
+    
+    if (insertTimeEntry.clockOut) {
+      const clockIn = new Date(insertTimeEntry.clockIn);
+      const clockOut = new Date(insertTimeEntry.clockOut);
+      totalHours = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60)); // minutes
+    }
+
+    const [timeEntry] = await db
+      .insert(timeEntries)
+      .values({ ...insertTimeEntry, totalHours })
+      .returning();
+    return timeEntry;
+  }
+
+  async updateTimeEntry(id: string, timeEntry: Partial<InsertTimeEntry>): Promise<TimeEntry | undefined> {
+    // Get existing entry to calculate total hours if needed
+    const existing = await this.getTimeEntry(id);
+    if (!existing) return undefined;
+
+    let totalHours = existing.totalHours;
+    const updatedData = { ...existing, ...timeEntry };
+    
+    // Recalculate total hours if both clockIn and clockOut are present
+    if (updatedData.clockIn && updatedData.clockOut) {
+      const clockIn = new Date(updatedData.clockIn);
+      const clockOut = new Date(updatedData.clockOut);
+      totalHours = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60));
+    }
+
+    const [updatedEntry] = await db
+      .update(timeEntries)
+      .set({ ...timeEntry, totalHours })
+      .where(eq(timeEntries.id, id))
+      .returning();
+    return updatedEntry || undefined;
+  }
+
+  async deleteTimeEntry(id: string): Promise<boolean> {
+    const result = await db.delete(timeEntries).where(eq(timeEntries.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Schedule methods
+  async getSchedule(id: string): Promise<Schedule | undefined> {
+    const [schedule] = await db.select().from(schedules).where(eq(schedules.id, id));
+    return schedule || undefined;
+  }
+
+  async getSchedules(): Promise<Schedule[]> {
+    return await db.select().from(schedules);
+  }
+
+  async getSchedulesByEmployee(employeeId: string): Promise<Schedule[]> {
+    return await db.select().from(schedules).where(eq(schedules.employeeId, employeeId));
+  }
+
+  async createSchedule(insertSchedule: InsertSchedule): Promise<Schedule> {
+    const [schedule] = await db
+      .insert(schedules)
+      .values(insertSchedule)
+      .returning();
+    return schedule;
+  }
+
+  async updateSchedule(id: string, schedule: Partial<InsertSchedule>): Promise<Schedule | undefined> {
+    const [updatedSchedule] = await db
+      .update(schedules)
+      .set(schedule)
+      .where(eq(schedules.id, id))
+      .returning();
+    return updatedSchedule || undefined;
+  }
+
+  async deleteSchedule(id: string): Promise<boolean> {
+    const result = await db.delete(schedules).where(eq(schedules.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Incident methods
+  async getIncident(id: string): Promise<Incident | undefined> {
+    const [incident] = await db.select().from(incidents).where(eq(incidents.id, id));
+    return incident || undefined;
+  }
+
+  async getIncidents(): Promise<Incident[]> {
+    return await db.select().from(incidents);
+  }
+
+  async getIncidentsByEmployee(employeeId: string): Promise<Incident[]> {
+    return await db.select().from(incidents).where(eq(incidents.employeeId, employeeId));
+  }
+
+  async createIncident(insertIncident: InsertIncident): Promise<Incident> {
+    const [incident] = await db
+      .insert(incidents)
+      .values(insertIncident)
+      .returning();
+    return incident;
+  }
+
+  async updateIncident(id: string, incident: Partial<InsertIncident>): Promise<Incident | undefined> {
+    const [updatedIncident] = await db
+      .update(incidents)
+      .set(incident)
+      .where(eq(incidents.id, id))
+      .returning();
+    return updatedIncident || undefined;
+  }
+
+  async deleteIncident(id: string): Promise<boolean> {
+    const result = await db.delete(incidents).where(eq(incidents.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+}
+
+export const storage = new DatabaseStorage();

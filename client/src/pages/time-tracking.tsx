@@ -22,7 +22,6 @@ export default function TimeTracking() {
   });
 
   const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<TimeEntry[]>({
-    queryKey: ["/api/time-entries", selectedDate],
     queryKey: ["/api/time-entries"],
   });
 
