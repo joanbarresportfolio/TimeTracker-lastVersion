@@ -20,7 +20,7 @@
   --border: hsl(214.3 31.8% 91.4%);
   --card: hsl(0 0% 100%);
   --card-foreground: hsl(222.2 84% 4.9%);
-  --card-border: hsl(214.3 31.8% 91.4%);
+  --card-border: hsl(214.3 31.8% 87%);
   --sidebar: hsl(221.2 83.2% 53.3%);
   --sidebar-foreground: hsl(210 40% 98%);
   --sidebar-border: hsl(221.2 83.2% 45%);
@@ -109,9 +109,9 @@
   --background: hsl(222.2 84% 4.9%);
   --foreground: hsl(210 40% 98%);
   --border: hsl(217.2 32.6% 17.5%);
-  --card: hsl(222.2 84% 4.9%);
+  --card: hsl(222.2 84% 6%);
   --card-foreground: hsl(210 40% 98%);
-  --card-border: hsl(217.2 32.6% 17.5%);
+  --card-border: hsl(217.2 32.6% 20%);
   --sidebar: hsl(222.2 84% 4.9%);
   --sidebar-foreground: hsl(210 40% 98%);
   --sidebar-border: hsl(217.2 32.6% 17.5%);
@@ -276,4 +276,24 @@
 /* Custom sidebar gradient */
 .sidebar-gradient {
   background: linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(221.2 83.2% 45%) 100%);
+}
+
+/* Modal/Dialog improvements for better visibility */
+[data-state="open"][data-overlay] {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark [data-state="open"][data-overlay] {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Dialog content improvements */
+[role="dialog"] {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid hsl(var(--card-border)) !important;
+}
+
+.dark [role="dialog"] {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid hsl(var(--card-border)) !important;
 }
