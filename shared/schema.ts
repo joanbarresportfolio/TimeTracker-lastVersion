@@ -47,6 +47,8 @@ export const incidents = pgTable("incidents", {
 
 export const insertEmployeeSchema = createInsertSchema(employees).omit({
   id: true,
+  password: true,
+  role: true,
 });
 
 export const loginSchema = z.object({

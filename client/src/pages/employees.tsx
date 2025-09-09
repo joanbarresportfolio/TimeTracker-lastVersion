@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
-import { insertEmployeeSchema } from "@shared/schema";
+import { insertEmployeeSchema, createEmployeeSchema } from "@shared/schema";
 import type { Employee, InsertEmployee } from "@shared/schema";
+import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -95,8 +96,15 @@ export default function Employees() {
     },
   });
 
-  const form = useForm<InsertEmployee>({
-    resolver: zodResolver(insertEmployeeSchema),
+  // Esquema para el formulario (incluye password y role)
+  const employeeFormSchema = createEmployeeSchema.omit({ role: true }).extend({
+    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").default("password123")
+  });
+  
+  type EmployeeFormData = z.infer<typeof employeeFormSchema>;
+  
+  const form = useForm<EmployeeFormData>({
+    resolver: zodResolver(employeeFormSchema),
     defaultValues: {
       employeeNumber: "",
       firstName: "",
@@ -106,13 +114,20 @@ export default function Employees() {
       position: "",
       hireDate: new Date(),
       isActive: true,
+      password: "password123",
     },
   });
 
-  const onSubmit = (data: InsertEmployee) => {
+  const onSubmit = (data: EmployeeFormData) => {
+    console.log("Datos del formulario:", data);
+    console.log("Errores del formulario:", form.formState.errors);
+    
     if (editingEmployee) {
-      updateEmployeeMutation.mutate({ id: editingEmployee.id, data });
+      // Para actualizar, omitimos el password
+      const { password, ...updateData } = data;
+      updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updateData });
     } else {
+      // Para crear, incluimos todos los datos
       createEmployeeMutation.mutate(data);
     }
   };
@@ -128,6 +143,7 @@ export default function Employees() {
       position: employee.position,
       hireDate: employee.hireDate,
       isActive: employee.isActive,
+      password: "password123", // Password dummy para validación del formulario
     });
     setIsDialogOpen(true);
   };
@@ -138,7 +154,7 @@ export default function Employees() {
     }
   };
 
-  const departments = [...new Set(employees?.map(emp => emp.department) || [])];
+  const departments = Array.from(new Set(employees?.map(emp => emp.department) || []));
   
   const filteredEmployees = employees?.filter(employee => {
     const matchesSearch = 
@@ -311,9 +327,19 @@ export default function Employees() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Departamento</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Desarrollo" {...field} data-testid="input-department" />
-                          </FormControl>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-department">
+                                <SelectValue placeholder="Selecciona un departamento" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Desarrollo">Desarrollo</SelectItem>
+                              <SelectItem value="Administracion">Administración</SelectItem>
+                              <SelectItem value="Ventas">Ventas</SelectItem>
+                              <SelectItem value="Marketing">Marketing</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
