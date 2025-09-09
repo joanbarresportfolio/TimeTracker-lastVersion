@@ -346,48 +346,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/incidents/:id", async (req, res) => {
+  app.delete("/api/incidents/:id", requireAdmin, async (req, res) => {
     try {
       const success = await storage.deleteIncident(req.params.id);
       if (!success) {
-        return res.status(404).json({ message: "Incident not found" });
+        return res.status(404).json({ message: "Incidencia no encontrada" });
       }
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete incident" });
+      res.status(500).json({ message: "Error al eliminar incidencia" });
     }
   });
 
   // Dashboard stats
-  app.get("/api/dashboard/stats", async (req, res) => {
+  app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
-      const employees = await storage.getEmployees();
-      const today = new Date().toISOString().split('T')[0];
-      const todayEntries = await storage.getTimeEntriesByDate(today);
-      const incidents = await storage.getIncidents();
-      
-      const totalEmployees = employees.filter(emp => emp.isActive).length;
-      const presentToday = todayEntries.filter(entry => entry.clockIn && !entry.clockOut).length;
-      
-      // Calculate total hours worked this week
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      const weekStartStr = weekStart.toISOString().split('T')[0];
-      
-      const allEntries = await storage.getTimeEntries();
-      const weekEntries = allEntries.filter(entry => entry.date >= weekStartStr && entry.totalHours);
-      const totalHoursThisWeek = Math.floor(weekEntries.reduce((sum, entry) => sum + (entry.totalHours || 0), 0) / 60);
-      
-      const pendingIncidents = incidents.filter(inc => inc.status === "pending").length;
+      // Employees see limited stats, admins see all
+      if (req.user!.role === "employee") {
+        const userEntries = await storage.getTimeEntriesByEmployee(req.user!.id);
+        const today = new Date().toISOString().split('T')[0];
+        const todayEntry = userEntries.find(entry => entry.date === today);
+        
+        // Calculate user's hours this week
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+        
+        const weekEntries = userEntries.filter(entry => entry.date >= weekStartStr && entry.totalHours);
+        const userHoursThisWeek = Math.floor(weekEntries.reduce((sum, entry) => sum + (entry.totalHours || 0), 0) / 60);
+        
+        const userIncidents = await storage.getIncidentsByEmployee(req.user!.id);
+        const pendingIncidents = userIncidents.filter(inc => inc.status === "pending").length;
+        
+        res.json({
+          isEmployee: true,
+          isClockedIn: todayEntry && !todayEntry.clockOut,
+          hoursWorked: userHoursThisWeek,
+          incidents: pendingIncidents,
+        });
+      } else {
+        // Admin dashboard
+        const employees = await storage.getEmployees();
+        const today = new Date().toISOString().split('T')[0];
+        const todayEntries = await storage.getTimeEntriesByDate(today);
+        const incidents = await storage.getIncidents();
+        
+        const totalEmployees = employees.filter(emp => emp.isActive).length;
+        const presentToday = todayEntries.filter(entry => entry.clockIn && !entry.clockOut).length;
+        
+        // Calculate total hours worked this week
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const weekStartStr = weekStart.toISOString().split('T')[0];
+        
+        const allEntries = await storage.getTimeEntries();
+        const weekEntries = allEntries.filter(entry => entry.date >= weekStartStr && entry.totalHours);
+        const totalHoursThisWeek = Math.floor(weekEntries.reduce((sum, entry) => sum + (entry.totalHours || 0), 0) / 60);
+        
+        const pendingIncidents = incidents.filter(inc => inc.status === "pending").length;
 
-      res.json({
-        totalEmployees,
-        presentToday,
-        hoursWorked: totalHoursThisWeek,
-        incidents: pendingIncidents,
-      });
+        res.json({
+          isEmployee: false,
+          totalEmployees,
+          presentToday,
+          hoursWorked: totalHoursThisWeek,
+          incidents: pendingIncidents,
+        });
+      }
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+      res.status(500).json({ message: "Error al obtener estadísticas del dashboard" });
     }
   });
 
