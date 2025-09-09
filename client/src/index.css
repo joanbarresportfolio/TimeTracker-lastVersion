@@ -278,22 +278,44 @@
   background: linear-gradient(180deg, hsl(var(--sidebar)) 0%, hsl(221.2 83.2% 45%) 100%);
 }
 
-/* Modal/Dialog improvements for better visibility */
+/* Modal/Dialog improvements - Fondo blanco sólido */
 [data-state="open"][data-overlay] {
-  background-color: rgba(0, 0, 0, 0.5) !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
 }
 
 .dark [data-state="open"][data-overlay] {
-  background-color: rgba(0, 0, 0, 0.7) !important;
+  background-color: rgba(0, 0, 0, 0.8) !important;
 }
 
-/* Dialog content improvements */
+/* Dialog content - Fondo completamente blanco */
 [role="dialog"] {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid hsl(var(--card-border)) !important;
+  background-color: hsl(0 0% 100%) !important;
+  color: hsl(222.2 84% 4.9%) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
+  border: 2px solid hsl(214.3 31.8% 85%) !important;
 }
 
 .dark [role="dialog"] {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
-  border: 1px solid hsl(var(--card-border)) !important;
+  background-color: hsl(0 0% 100%) !important;
+  color: hsl(222.2 84% 4.9%) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+  border: 2px solid hsl(214.3 31.8% 85%) !important;
+}
+
+/* Asegurar que los elementos dentro de los diálogos tengan buen contraste */
+[role="dialog"] * {
+  color: inherit !important;
+}
+
+[role="dialog"] input,
+[role="dialog"] select,
+[role="dialog"] textarea {
+  background-color: hsl(0 0% 98%) !important;
+  color: hsl(222.2 84% 4.9%) !important;
+  border: 1px solid hsl(214.3 31.8% 85%) !important;
+}
+
+[role="dialog"] label {
+  color: hsl(222.2 84% 4.9%) !important;
+  font-weight: 500 !important;
 }
