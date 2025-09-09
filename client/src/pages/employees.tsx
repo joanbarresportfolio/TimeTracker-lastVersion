@@ -98,7 +98,8 @@ export default function Employees() {
 
   // Esquema para el formulario (incluye password y role)
   const employeeFormSchema = createEmployeeSchema.omit({ role: true }).extend({
-    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").default("password123")
+    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").default("password123"),
+    position: z.string().min(1, "La posición es requerida")
   });
   
   type EmployeeFormData = z.infer<typeof employeeFormSchema>;

@@ -69,15 +69,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/employees", requireAdmin, async (req, res) => {
     try {
+      console.log("Datos recibidos en backend:", req.body);
       const employeeData = createEmployeeSchema.parse(req.body);
+      console.log("Datos después de validación:", employeeData);
       const employee = await storage.createEmployeeWithPassword(employeeData);
       // Remove password from response
       const { password, ...safeEmployee } = employee;
       res.status(201).json(safeEmployee);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log("Errores de validación Zod:", error.errors);
         return res.status(400).json({ message: "Datos de empleado inválidos", errors: error.errors });
       }
+      console.log("Error al crear empleado:", error);
       res.status(500).json({ message: "Error al crear empleado" });
     }
   });
