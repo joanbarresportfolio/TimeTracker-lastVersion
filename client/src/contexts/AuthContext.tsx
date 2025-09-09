@@ -32,8 +32,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const checkAuth = async () => {
       try {
         const response = await apiRequest("GET", "/api/auth/me");
-        if (response.user) {
-          setUser(response.user);
+        const data = await response.json();
+        if (data.user) {
+          setUser(data.user);
         }
       } catch (error) {
         // User is not logged in

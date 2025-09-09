@@ -29,12 +29,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(true);
     try {
       const response = await apiRequest("POST", "/api/auth/login", data);
+      const result = await response.json();
       
-      if (response.user) {
-        onLogin(response.user);
+      if (result.user) {
+        onLogin(result.user);
         toast({
           title: "Bienvenido",
-          description: response.message || "Has iniciado sesión correctamente",
+          description: result.message || "Has iniciado sesión correctamente",
         });
       }
     } catch (error: any) {
