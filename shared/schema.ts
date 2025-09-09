@@ -9,6 +9,8 @@ export const employees = pgTable("employees", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email").notNull().unique(),
+  password: text("password").notNull(),
+  role: text("role").notNull().default("employee"), // "admin" or "employee"
   department: text("department").notNull(),
   position: text("position").notNull(),
   hireDate: timestamp("hire_date").notNull(),
@@ -47,6 +49,16 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({
   id: true,
 });
 
+export const loginSchema = z.object({
+  email: z.string().email("Email inválido"),
+  password: z.string().min(1, "La contraseña es requerida"),
+});
+
+export const createEmployeeSchema = insertEmployeeSchema.extend({
+  password: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
+  role: z.enum(["admin", "employee"]).default("employee"),
+});
+
 export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   id: true,
   totalHours: true,
@@ -63,9 +75,20 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
 
 export type Employee = typeof employees.$inferSelect;
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
+export type CreateEmployee = z.infer<typeof createEmployeeSchema>;
+export type LoginRequest = z.infer<typeof loginSchema>;
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
 export type Schedule = typeof schedules.$inferSelect;
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
 export type Incident = typeof incidents.$inferSelect;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
+
+export type User = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: "admin" | "employee";
+  employeeNumber: string;
+};
