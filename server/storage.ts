@@ -113,7 +113,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteEmployee(id: string): Promise<boolean> {
     const result = await db.delete(employees).where(eq(employees.id, id));
-    return result.rowCount !== undefined && result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Time entry methods
@@ -181,7 +181,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTimeEntry(id: string): Promise<boolean> {
     const result = await db.delete(timeEntries).where(eq(timeEntries.id, id));
-    return result.rowCount !== undefined && result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Schedule methods
@@ -217,7 +217,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSchedule(id: string): Promise<boolean> {
     const result = await db.delete(schedules).where(eq(schedules.id, id));
-    return result.rowCount !== undefined && result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Incident methods
@@ -253,7 +253,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteIncident(id: string): Promise<boolean> {
     const result = await db.delete(incidents).where(eq(incidents.id, id));
-    return result.rowCount !== undefined && result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 }
 
