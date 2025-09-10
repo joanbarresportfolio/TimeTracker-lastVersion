@@ -88,18 +88,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/employees/:id", requireAdmin, async (req, res) => {
     try {
+      console.log("=== ACTUALIZACIÓN DE EMPLEADO ===");
+      console.log("ID del empleado:", req.params.id);
+      console.log("Datos recibidos para actualización:", req.body);
+      
       const employeeData = insertEmployeeSchema.partial().parse(req.body);
+      console.log("Datos después de validación Zod:", employeeData);
+      
       const employee = await storage.updateEmployee(req.params.id, employeeData);
       if (!employee) {
+        console.log("❌ Error: Empleado no encontrado con ID:", req.params.id);
         return res.status(404).json({ message: "Empleado no encontrado" });
       }
+      
+      console.log("✅ Empleado actualizado exitosamente:", employee.id);
       // Remove password from response
       const { password, ...safeEmployee } = employee;
       res.json(safeEmployee);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log("❌ Errores de validación Zod en actualización:", error.errors);
         return res.status(400).json({ message: "Datos de empleado inválidos", errors: error.errors });
       }
+      console.log("❌ Error al actualizar empleado:", error);
       res.status(500).json({ message: "Error al actualizar empleado" });
     }
   });

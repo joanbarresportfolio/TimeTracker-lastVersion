@@ -83,7 +83,9 @@ export default function Employees() {
         description: "El empleado ha sido actualizado exitosamente.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.log("❌ Error en updateEmployeeMutation:", error);
+      console.log("Detalles del error:", error.message);
       toast({
         title: "Error",
         description: "No se pudo actualizar el empleado.",
@@ -145,11 +147,19 @@ export default function Employees() {
     
     if (editingEmployee) {
       // Para actualizar, omitimos el password y convertimos fecha
+      console.log("🔄 === MODO ACTUALIZACIÓN ===");
+      console.log("ID del empleado a actualizar:", editingEmployee.id);
+      console.log("Datos del formulario para actualización:", data);
+      
       const { password, ...updateData } = data;
       const updatePayload = {
         ...updateData,
         hireDate: updateData.hireDate.toISOString()
       };
+      
+      console.log("Payload final para actualización:", updatePayload);
+      console.log("Enviando actualización...");
+      
       updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updatePayload });
     } else {
       // Para crear, incluimos todos los datos y convertimos fecha
