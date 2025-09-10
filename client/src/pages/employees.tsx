@@ -14,6 +14,22 @@ import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { insertEmployeeSchema, createEmployeeSchema } from "@shared/schema";
 import type { Employee, InsertEmployee } from "@shared/schema";
 import { z } from "zod";
+
+// Tipos específicos para las llamadas a la API (con fechas como strings)
+type CreateEmployeePayload = {
+  employeeNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  department: string;
+  position: string;
+  hireDate: string; // String para el backend
+  isActive?: boolean;
+  password: string;
+};
+
+type UpdateEmployeePayload = Omit<CreateEmployeePayload, 'password'>;
+
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +46,7 @@ export default function Employees() {
   });
 
   const createEmployeeMutation = useMutation({
-    mutationFn: async (data: InsertEmployee) => {
+    mutationFn: async (data: CreateEmployeePayload) => {
       const response = await apiRequest("POST", "/api/employees", data);
       return response.json();
     },
@@ -53,7 +69,7 @@ export default function Employees() {
   });
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertEmployee> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: UpdateEmployeePayload }) => {
       const response = await apiRequest("PUT", `/api/employees/${id}`, data);
       return response.json();
     },
@@ -124,21 +140,24 @@ export default function Employees() {
     console.log("Datos del formulario:", data);
     console.log("Errores del formulario:", form.formState.errors);
     
-    // Convertir Date a string para el backend
-    const dataForBackend = {
-      ...data,
-      hireDate: data.hireDate.toISOString()
-    };
-    
-    console.log("Datos para backend:", dataForBackend);
+    // Convertir Date a string para el backend manualmente en las mutaciones
+    console.log("Datos originales:", data);
     
     if (editingEmployee) {
-      // Para actualizar, omitimos el password
-      const { password, ...updateData } = dataForBackend;
-      updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updateData });
+      // Para actualizar, omitimos el password y convertimos fecha
+      const { password, ...updateData } = data;
+      const updatePayload = {
+        ...updateData,
+        hireDate: updateData.hireDate.toISOString()
+      };
+      updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updatePayload });
     } else {
-      // Para crear, incluimos todos los datos
-      createEmployeeMutation.mutate(dataForBackend);
+      // Para crear, incluimos todos los datos y convertimos fecha
+      const createPayload = {
+        ...data,
+        hireDate: data.hireDate.toISOString()
+      };
+      createEmployeeMutation.mutate(createPayload);
     }
   };
 
