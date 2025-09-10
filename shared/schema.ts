@@ -59,6 +59,7 @@ export const loginSchema = z.object({
 export const createEmployeeSchema = insertEmployeeSchema.extend({
   password: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
   role: z.enum(["admin", "employee"]).default("employee"),
+  hireDate: z.string().transform((str) => new Date(str)), // Acepta string y convierte a Date
 });
 
 export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
