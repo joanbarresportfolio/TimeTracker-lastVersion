@@ -14,6 +14,17 @@ import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { insertEmployeeSchema, createEmployeeSchema } from "@shared/schema";
 import type { Employee, InsertEmployee } from "@shared/schema";
 import { z } from "zod";
+
+// Tipo para datos que se envían al backend (con fecha como string)
+type BackendEmployeeData = Omit<InsertEmployee, 'hireDate'> & { 
+  hireDate: string; 
+  password: string;
+};
+
+// Tipo para datos de actualización que se envían al backend
+type BackendUpdateData = Partial<Omit<InsertEmployee, 'hireDate'>> & { 
+  hireDate?: string;
+};
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -135,10 +146,10 @@ export default function Employees() {
     if (editingEmployee) {
       // Para actualizar, omitimos el password
       const { password, ...updateData } = dataForBackend;
-      updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updateData });
+      updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updateData as any });
     } else {
       // Para crear, incluimos todos los datos
-      createEmployeeMutation.mutate(dataForBackend);
+      createEmployeeMutation.mutate(dataForBackend as any);
     }
   };
 

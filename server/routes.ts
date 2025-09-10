@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertIncidentSchema, loginSchema, createEmployeeSchema } from "@shared/schema";
+import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
 import { z } from "zod";
 
@@ -88,7 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/employees/:id", requireAdmin, async (req, res) => {
     try {
-      const employeeData = insertEmployeeSchema.partial().parse(req.body);
+      console.log("Datos recibidos para actualizar:", req.body);
+      const employeeData = updateEmployeeSchema.parse(req.body);
+      console.log("Datos después de validación (actualizar):", employeeData);
       const employee = await storage.updateEmployee(req.params.id, employeeData);
       if (!employee) {
         return res.status(404).json({ message: "Empleado no encontrado" });
@@ -98,8 +100,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(safeEmployee);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log("Errores de validación Zod (actualizar):", error.errors);
         return res.status(400).json({ message: "Datos de empleado inválidos", errors: error.errors });
       }
+      console.log("Error al actualizar empleado:", error);
       res.status(500).json({ message: "Error al actualizar empleado" });
     }
   });
