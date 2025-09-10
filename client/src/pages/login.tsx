@@ -71,7 +71,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                       <Input
                         {...field}
                         type="email"
-                        placeholder="correo@empresa.com"
                         data-testid="input-email"
                       />
                     </FormControl>
@@ -89,7 +88,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                       <Input
                         {...field}
                         type="password"
-                        placeholder="••••••••"
                         data-testid="input-password"
                       />
                     </FormControl>

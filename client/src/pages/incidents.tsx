@@ -359,7 +359,7 @@ export default function Incidents() {
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-employee">
-                                <SelectValue placeholder="Seleccionar empleado" />
+                                <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -383,7 +383,7 @@ export default function Incidents() {
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-incident-type">
-                                <SelectValue placeholder="Seleccionar tipo" />
+                                <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -406,7 +406,6 @@ export default function Incidents() {
                           <FormLabel>Descripción</FormLabel>
                           <FormControl>
                             <Textarea 
-                              placeholder="Describe la incidencia..."
                               {...field} 
                               data-testid="textarea-description"
                             />
@@ -443,7 +442,7 @@ export default function Incidents() {
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-incident-status">
-                                <SelectValue placeholder="Seleccionar estado" />
+                                <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>

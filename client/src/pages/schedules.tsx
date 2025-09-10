@@ -282,7 +282,7 @@ export default function Schedules() {
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-employee">
-                                <SelectValue placeholder="Seleccionar empleado" />
+                                <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -306,7 +306,7 @@ export default function Schedules() {
                           <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value.toString()}>
                             <FormControl>
                               <SelectTrigger data-testid="select-day-of-week">
-                                <SelectValue placeholder="Seleccionar día" />
+                                <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>

@@ -313,7 +313,7 @@ export default function Employees() {
                         <FormItem>
                           <FormLabel>Número de Empleado</FormLabel>
                           <FormControl>
-                            <Input placeholder="EMP001" {...field} data-testid="input-employee-number" />
+                            <Input {...field} data-testid="input-employee-number" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -327,7 +327,7 @@ export default function Employees() {
                           <FormItem>
                             <FormLabel>Nombre</FormLabel>
                             <FormControl>
-                              <Input placeholder="Juan" {...field} data-testid="input-first-name" />
+                              <Input {...field} data-testid="input-first-name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -340,7 +340,7 @@ export default function Employees() {
                           <FormItem>
                             <FormLabel>Apellido</FormLabel>
                             <FormControl>
-                              <Input placeholder="Pérez" {...field} data-testid="input-last-name" />
+                              <Input {...field} data-testid="input-last-name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -354,7 +354,7 @@ export default function Employees() {
                         <FormItem>
                           <FormLabel>Email</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="juan.perez@company.com" {...field} data-testid="input-email" />
+                            <Input type="email" {...field} data-testid="input-email" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -369,7 +369,7 @@ export default function Employees() {
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-department">
-                                <SelectValue placeholder="Selecciona un departamento" />
+                                <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -390,7 +390,7 @@ export default function Employees() {
                         <FormItem>
                           <FormLabel>Posición</FormLabel>
                           <FormControl>
-                            <Input placeholder="Desarrollador Senior" {...field} data-testid="input-position" />
+                            <Input {...field} data-testid="input-position" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

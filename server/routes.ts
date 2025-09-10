@@ -5,6 +5,83 @@ import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, inse
 import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
 import { z } from "zod";
 
+// Helper function to validate clocking time
+async function validateClockingTime(employeeId: string, currentTime: Date, action: "clock-in" | "clock-out"): Promise<{isValid: boolean, message: string}> {
+  try {
+    // Get employee schedules
+    const schedules = await storage.getSchedulesByEmployee(employeeId);
+    
+    if (schedules.length === 0) {
+      return {
+        isValid: false,
+        message: "No tienes horarios asignados. Contacta con tu supervisor para configurar tus horarios de trabajo."
+      };
+    }
+
+    // Get current day of week (0 = Sunday, 1 = Monday, etc.)
+    const currentDayOfWeek = currentTime.getDay();
+    
+    // Find schedule for today
+    const todaySchedules = schedules.filter(schedule => 
+      schedule.dayOfWeek === currentDayOfWeek && schedule.isActive
+    );
+    
+    if (todaySchedules.length === 0) {
+      return {
+        isValid: false,
+        message: "No tienes horarios asignados para hoy. Contacta con tu supervisor."
+      };
+    }
+
+    // Check if current time is within any of today's schedules (with 20-minute window)
+    const currentHour = currentTime.getHours();
+    const currentMinute = currentTime.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+
+    for (const schedule of todaySchedules) {
+      const [startHour, startMinute] = schedule.startTime.split(':').map(Number);
+      const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
+      
+      const startTimeInMinutes = startHour * 60 + startMinute;
+      const endTimeInMinutes = endHour * 60 + endMinute;
+
+      // 20-minute window (before and after)
+      const windowMinutes = 20;
+      
+      if (action === "clock-in") {
+        const earliestTime = startTimeInMinutes - windowMinutes;
+        const latestTime = startTimeInMinutes + windowMinutes;
+        
+        if (currentTimeInMinutes >= earliestTime && currentTimeInMinutes <= latestTime) {
+          return { isValid: true, message: "" };
+        }
+      } else { // clock-out
+        const earliestTime = endTimeInMinutes - windowMinutes;
+        const latestTime = endTimeInMinutes + windowMinutes;
+        
+        if (currentTimeInMinutes >= earliestTime && currentTimeInMinutes <= latestTime) {
+          return { isValid: true, message: "" };
+        }
+      }
+    }
+
+    // If we get here, current time is not within any valid window
+    const scheduleInfo = todaySchedules.map(s => `${s.startTime} - ${s.endTime}`).join(", ");
+    const actionText = action === "clock-in" ? "entrada" : "salida";
+    
+    return {
+      isValid: false,
+      message: `Solo puedes fichar ${actionText} dentro de los 20 minutos antes o después de tu horario asignado (${scheduleInfo}).`
+    };
+
+  } catch (error) {
+    return {
+      isValid: false,
+      message: "Error al validar horarios. Contacta con tu supervisor."
+    };
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
   app.post("/api/auth/login", async (req, res) => {
@@ -201,6 +278,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "El empleado ya ha marcado entrada hoy" });
       }
 
+      // Validar horarios para empleados (no para admins)
+      if (req.user!.role === "employee") {
+        const validationResult = await validateClockingTime(employeeId, new Date(), "clock-in");
+        if (!validationResult.isValid) {
+          return res.status(400).json({ message: validationResult.message });
+        }
+      }
+
       const timeEntry = await storage.createTimeEntry({
         employeeId,
         clockIn: new Date(),
@@ -227,6 +312,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!todayEntry) {
         return res.status(400).json({ message: "El empleado no ha marcado entrada hoy" });
+      }
+
+      // Validar horarios para empleados (no para admins)
+      if (req.user!.role === "employee") {
+        const validationResult = await validateClockingTime(employeeId, new Date(), "clock-out");
+        if (!validationResult.isValid) {
+          return res.status(400).json({ message: validationResult.message });
+        }
       }
 
       const updatedEntry = await storage.updateTimeEntry(todayEntry.id, {
