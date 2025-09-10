@@ -62,11 +62,6 @@ export const createEmployeeSchema = insertEmployeeSchema.extend({
   hireDate: z.string().transform((str) => new Date(str)), // Acepta string y convierte a Date
 });
 
-// Schema para actualizar empleados que también maneja fechas como strings
-export const updateEmployeeSchema = insertEmployeeSchema.partial().extend({
-  hireDate: z.string().transform((str) => new Date(str)).optional(),
-});
-
 export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   id: true,
   totalHours: true,
