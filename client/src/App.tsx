@@ -27,7 +27,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       {user?.role === "admin" && <Route path="/employees" component={Employees} />}
       <Route path="/time-tracking" component={TimeTracking} />
-      <Route path="/schedules" component={Schedules} />
+      {user?.role === "admin" && <Route path="/schedules" component={Schedules} />}
       <Route path="/incidents" component={Incidents} />
       <Route path="/reports" component={Reports} />
       <Route path="/settings" component={Settings} />

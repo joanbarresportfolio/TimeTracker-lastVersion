@@ -35,7 +35,7 @@ const allItems = [
     title: "Horarios y Turnos",
     url: "/schedules",
     icon: Calendar,
-    adminOnly: false,
+    adminOnly: true,
   },
   {
     title: "Incidencias",
