@@ -5,21 +5,29 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Users, TrendingUp, AlertTriangle, Eye, Calendar, Plus } from "lucide-react";
 import type { Employee, TimeEntry } from "@shared/schema";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardStats {
-  totalEmployees: number;
-  presentToday: number;
+  totalEmployees?: number;
+  presentToday?: number;
   hoursWorked: number;
   incidents: number;
+  isEmployee?: boolean;
+  isClockedIn?: boolean;
 }
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isEmployee = user?.role === "employee";
+
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
   });
 
+  // Solo cargar empleados si es admin
   const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
+    enabled: !isEmployee, // Solo cargar si no es empleado
   });
 
   const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<TimeEntry[]>({
@@ -28,6 +36,18 @@ export default function Dashboard() {
 
   const today = new Date().toISOString().split('T')[0];
   const todayEntries = timeEntries?.filter(entry => entry.date === today) || [];
+
+  // Para empleados, filtrar solo sus entradas de tiempo
+  const userTimeEntries = isEmployee 
+    ? timeEntries?.filter(entry => entry.employeeId === user?.id) || []
+    : timeEntries || [];
+
+  // Últimas 7 entradas para empleados
+  const recentUserEntries = isEmployee 
+    ? userTimeEntries
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        .slice(0, 7)
+    : [];
 
   const getEmployeeStatus = (employee: Employee) => {
     const entry = todayEntries.find(e => e.employeeId === employee.id);
@@ -121,7 +141,7 @@ export default function Dashboard() {
             <div className="mt-4 flex items-center text-sm">
               <span className="text-muted-foreground">Asistencia:</span>
               <span className="font-medium ml-1 text-foreground">
-                {stats?.totalEmployees ? 
+                {stats?.totalEmployees && stats.presentToday ? 
                   Math.round((stats.presentToday / stats.totalEmployees) * 100) : 0}%
               </span>
             </div>
@@ -169,17 +189,19 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Control de Fichaje Rápido */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Control de Fichaje Rápido</CardTitle>
-            <Button data-testid="button-add-employee">
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Empleado
-            </Button>
-          </div>
-        </CardHeader>
+      {/* Contenido específico por rol */}
+      {!isEmployee ? (
+        // Vista de Admin: Control de Fichaje Rápido
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Control de Fichaje Rápido</CardTitle>
+              <Button data-testid="button-add-employee">
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Empleado
+              </Button>
+            </div>
+          </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -270,7 +292,65 @@ export default function Dashboard() {
             </div>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      ) : (
+        // Vista de Empleado: Mis Turnos Trabajados
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Mis Turnos Trabajados</CardTitle>
+              <Badge variant="outline" className="px-3 py-1">
+                {stats?.isClockedIn ? "Presente" : "No Presente"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Entrada</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Salida</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Horas Trabajadas</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentUserEntries.map((entry) => (
+                    <tr key={entry.id} className="border-b border-border hover:bg-muted/50">
+                      <td className="py-3 px-4 text-foreground">
+                        {new Date(entry.date).toLocaleDateString('es-ES')}
+                      </td>
+                      <td className="py-3 px-4 text-foreground">
+                        {entry.clockIn ? formatTime(entry.clockIn) : "--:--"}
+                      </td>
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {entry.clockOut ? formatTime(entry.clockOut) : "--:--"}
+                      </td>
+                      <td className="py-3 px-4 text-foreground">
+                        {formatHours(entry.totalHours || 0)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge className={entry.clockOut ? "bg-green-500/10 text-green-700" : "bg-blue-500/10 text-blue-700"}>
+                          {entry.clockOut ? "Completado" : "En progreso"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                  {recentUserEntries.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                        No hay turnos trabajados registrados
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Acciones Rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -109,6 +109,35 @@ function EmployeeTimeTracking() {
     ) || [];
   };
 
+  const getWeekSchedules = () => {
+    const weekSchedules = schedules?.filter(schedule => schedule.isActive) || [];
+    // Agrupar por día de la semana y ordenar
+    return weekSchedules.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+  };
+
+  const getScheduleStatus = (dayOfWeek: number) => {
+    const today = getCurrentDayOfWeek();
+    const targetDate = getDateForDayOfWeek(dayOfWeek);
+    const entry = timeEntries?.find(entry => entry.date === targetDate);
+    
+    if (dayOfWeek < today) return { status: "completed", color: "bg-blue-500/10 text-blue-700" };
+    if (dayOfWeek === today) {
+      if (!entry) return { status: "pending", color: "bg-yellow-500/10 text-yellow-700" };
+      if (entry.clockIn && !entry.clockOut) return { status: "in_progress", color: "bg-green-500/10 text-green-700" };
+      if (entry.clockOut) return { status: "completed", color: "bg-blue-500/10 text-blue-700" };
+    }
+    return { status: "upcoming", color: "bg-gray-500/10 text-gray-700" };
+  };
+
+  const getDateForDayOfWeek = (dayOfWeek: number) => {
+    const today = new Date();
+    const todayDayOfWeek = today.getDay();
+    const diff = dayOfWeek - todayDayOfWeek;
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + diff);
+    return targetDate.toISOString().split('T')[0];
+  };
+
   const formatTime = (time: string) => {
     return time;
   };
@@ -317,6 +346,64 @@ function EmployeeTimeTracking() {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Turnos de la Semana */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Mis Turnos de la Semana</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Estado de todos tus turnos programados
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Día</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Horario</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getWeekSchedules().map((schedule) => {
+                  const scheduleStatus = getScheduleStatus(schedule.dayOfWeek);
+                  const scheduleDate = getDateForDayOfWeek(schedule.dayOfWeek);
+                  const dayLabel = daysOfWeek[schedule.dayOfWeek].label;
+                  
+                  return (
+                    <tr key={schedule.id} className="border-b border-border hover:bg-muted/50">
+                      <td className="py-3 px-4 text-foreground font-medium">{dayLabel}</td>
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {new Date(scheduleDate).toLocaleDateString('es-ES')}
+                      </td>
+                      <td className="py-3 px-4 text-foreground">
+                        {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge className={scheduleStatus.color}>
+                          {scheduleStatus.status === "completed" ? "Completado" :
+                           scheduleStatus.status === "in_progress" ? "En Progreso" :
+                           scheduleStatus.status === "pending" ? "Pendiente" :
+                           "Próximo"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {getWeekSchedules().length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-muted-foreground">
+                      No tienes turnos programados para esta semana
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>
