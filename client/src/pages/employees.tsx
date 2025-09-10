@@ -96,10 +96,11 @@ export default function Employees() {
     },
   });
 
-  // Esquema para el formulario (incluye password y role)
-  const employeeFormSchema = createEmployeeSchema.omit({ role: true }).extend({
+  // Esquema para el formulario (frontend - usa Date objects)
+  const employeeFormSchema = insertEmployeeSchema.extend({
     password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").default("password123"),
-    position: z.string().min(1, "La posición es requerida")
+    position: z.string().min(1, "La posición es requerida"),
+    hireDate: z.date() // El formulario usa Date objects
   });
   
   type EmployeeFormData = z.infer<typeof employeeFormSchema>;
@@ -123,13 +124,21 @@ export default function Employees() {
     console.log("Datos del formulario:", data);
     console.log("Errores del formulario:", form.formState.errors);
     
+    // Convertir Date a string para el backend
+    const dataForBackend = {
+      ...data,
+      hireDate: data.hireDate.toISOString()
+    };
+    
+    console.log("Datos para backend:", dataForBackend);
+    
     if (editingEmployee) {
       // Para actualizar, omitimos el password
-      const { password, ...updateData } = data;
+      const { password, ...updateData } = dataForBackend;
       updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updateData });
     } else {
       // Para crear, incluimos todos los datos
-      createEmployeeMutation.mutate(data);
+      createEmployeeMutation.mutate(dataForBackend);
     }
   };
 
