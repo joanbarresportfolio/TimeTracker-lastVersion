@@ -62,6 +62,10 @@ export const createEmployeeSchema = insertEmployeeSchema.extend({
   hireDate: z.string().transform((str) => new Date(str)), // Acepta string y convierte a Date
 });
 
+export const updateEmployeeSchema = insertEmployeeSchema.partial().extend({
+  hireDate: z.string().transform((str) => new Date(str)).optional(), // Acepta string y convierte a Date para actualizaciones
+});
+
 export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   id: true,
   totalHours: true,
@@ -79,6 +83,7 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
 export type Employee = typeof employees.$inferSelect;
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
 export type CreateEmployee = z.infer<typeof createEmployeeSchema>;
+export type UpdateEmployee = z.infer<typeof updateEmployeeSchema>;
 export type LoginRequest = z.infer<typeof loginSchema>;
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertIncidentSchema, loginSchema, createEmployeeSchema } from "@shared/schema";
+import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
 import { z } from "zod";
 
@@ -92,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("ID del empleado:", req.params.id);
       console.log("Datos recibidos para actualización:", req.body);
       
-      const employeeData = insertEmployeeSchema.partial().parse(req.body);
+      const employeeData = updateEmployeeSchema.parse(req.body);
       console.log("Datos después de validación Zod:", employeeData);
       
       const employee = await storage.updateEmployee(req.params.id, employeeData);
