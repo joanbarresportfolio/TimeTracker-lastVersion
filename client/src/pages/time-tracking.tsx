@@ -110,7 +110,10 @@ function EmployeeTimeTracking() {
   };
 
   const getWeekSchedules = () => {
-    const weekSchedules = schedules?.filter(schedule => schedule.isActive) || [];
+    // Solo mostrar horarios del empleado actual que están activos
+    const weekSchedules = schedules?.filter(schedule => 
+      schedule.isActive && schedule.employeeId === user?.id
+    ) || [];
     // Agrupar por día de la semana y ordenar
     return weekSchedules.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
   };
@@ -120,7 +123,11 @@ function EmployeeTimeTracking() {
     const targetDate = getDateForDayOfWeek(dayOfWeek);
     const entry = timeEntries?.find(entry => entry.date === targetDate);
     
-    if (dayOfWeek < today) return { status: "completed", color: "bg-blue-500/10 text-blue-700" };
+    // Lógica corregida: solo marcar como completado si hay entrada real
+    if (dayOfWeek < today) {
+      if (entry?.clockOut) return { status: "completed", color: "bg-blue-500/10 text-blue-700" };
+      return { status: "missed", color: "bg-red-500/10 text-red-700" };
+    }
     if (dayOfWeek === today) {
       if (!entry) return { status: "pending", color: "bg-yellow-500/10 text-yellow-700" };
       if (entry.clockIn && !entry.clockOut) return { status: "in_progress", color: "bg-green-500/10 text-green-700" };
@@ -388,6 +395,7 @@ function EmployeeTimeTracking() {
                           {scheduleStatus.status === "completed" ? "Completado" :
                            scheduleStatus.status === "in_progress" ? "En Progreso" :
                            scheduleStatus.status === "pending" ? "Pendiente" :
+                           scheduleStatus.status === "missed" ? "Perdido" :
                            "Próximo"}
                         </Badge>
                       </td>
