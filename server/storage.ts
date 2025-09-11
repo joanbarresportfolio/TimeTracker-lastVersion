@@ -1,4 +1,4 @@
-import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type BulkScheduleCreate, type Break, type InsertBreak, employees, timeEntries, schedules, incidents, breaks } from "@shared/schema";
+import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type BulkScheduleCreate, employees, timeEntries, schedules, incidents } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -42,12 +42,6 @@ export interface IStorage {
   createIncident(incident: InsertIncident): Promise<Incident>;
   updateIncident(id: string, incident: Partial<InsertIncident>): Promise<Incident | undefined>;
   deleteIncident(id: string): Promise<boolean>;
-
-  // Break methods
-  getBreak(id: string): Promise<Break | undefined>;
-  getActiveBreaksByTimeEntry(timeEntryId: string): Promise<Break[]>;
-  createBreak(breakData: InsertBreak): Promise<Break>;
-  updateBreak(id: string, breakData: Partial<InsertBreak>): Promise<Break | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -78,10 +72,10 @@ export class DatabaseStorage implements IStorage {
     const hashedPassword = await bcrypt.hash(employeeData.password, 10);
     const [employee] = await db
       .insert(employees)
-      .values([{
+      .values({
         ...employeeData,
         password: hashedPassword,
-      }])
+      })
       .returning();
     return employee;
   }
@@ -148,9 +142,6 @@ export class DatabaseStorage implements IStorage {
       const clockIn = new Date(insertTimeEntry.clockIn);
       const clockOut = new Date(insertTimeEntry.clockOut);
       totalHours = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60)); // minutes
-      
-      // Note: For new time entries, breaks are added after creation,
-      // so totalHours will be recalculated when breaks are added/updated
     }
 
     const [timeEntry] = await db
@@ -175,15 +166,7 @@ export class DatabaseStorage implements IStorage {
     if (updatedData.clockIn && updatedData.clockOut) {
       const clockIn = new Date(updatedData.clockIn);
       const clockOut = new Date(updatedData.clockOut);
-      const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60));
-      
-      // Get all breaks for this time entry and subtract their duration
-      const timeEntryBreaks = await db.select().from(breaks).where(eq(breaks.timeEntryId, id));
-      const breakMinutes = timeEntryBreaks.reduce((sum, breakEntry) => {
-        return sum + (breakEntry.totalMinutes || 0);
-      }, 0);
-      
-      totalHours = totalMinutes - breakMinutes;
+      totalHours = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60));
     }
 
     const [updatedTimeEntry] = await db
@@ -311,92 +294,6 @@ export class DatabaseStorage implements IStorage {
   async deleteIncident(id: string): Promise<boolean> {
     const result = await db.delete(incidents).where(eq(incidents.id, id));
     return (result.rowCount ?? 0) > 0;
-  }
-
-  // Break methods
-  async getBreak(id: string): Promise<Break | undefined> {
-    const [breakEntry] = await db.select().from(breaks).where(eq(breaks.id, id));
-    return breakEntry || undefined;
-  }
-
-  async getActiveBreaksByTimeEntry(timeEntryId: string): Promise<Break[]> {
-    return await db.select().from(breaks).where(
-      eq(breaks.timeEntryId, timeEntryId)
-    ).then(results => results.filter(b => !b.endTime));
-  }
-
-  async createBreak(breakData: InsertBreak): Promise<Break> {
-    let totalMinutes = null;
-    
-    if (breakData.endTime) {
-      const startTime = new Date(breakData.startTime);
-      const endTime = new Date(breakData.endTime);
-      totalMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-    }
-
-    const [breakEntry] = await db
-      .insert(breaks)
-      .values({
-        ...breakData,
-        totalMinutes,
-      })
-      .returning();
-    return breakEntry;
-  }
-
-  async updateBreak(id: string, breakData: Partial<InsertBreak>): Promise<Break | undefined> {
-    // Get existing break first to calculate total minutes
-    const existingBreak = await this.getBreak(id);
-    if (!existingBreak) return undefined;
-
-    const updatedData = { ...existingBreak, ...breakData };
-    
-    // Recalculate total minutes if both startTime and endTime are present
-    let totalMinutes = null;
-    if (updatedData.startTime && updatedData.endTime) {
-      const startTime = new Date(updatedData.startTime);
-      const endTime = new Date(updatedData.endTime);
-      totalMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-    }
-
-    const [updatedBreak] = await db
-      .update(breaks)
-      .set({
-        ...breakData,
-        totalMinutes,
-      })
-      .where(eq(breaks.id, id))
-      .returning();
-    
-    // If the break was completed (endTime added), recalculate the time entry totalHours
-    if (updatedBreak && breakData.endTime) {
-      await this.recalculateTimeEntryHours(existingBreak.timeEntryId);
-    }
-    
-    return updatedBreak || undefined;
-  }
-
-  // Helper method to recalculate time entry hours including break deductions
-  private async recalculateTimeEntryHours(timeEntryId: string): Promise<void> {
-    const timeEntry = await this.getTimeEntry(timeEntryId);
-    if (!timeEntry || !timeEntry.clockOut) return;
-
-    const clockIn = new Date(timeEntry.clockIn);
-    const clockOut = new Date(timeEntry.clockOut);
-    const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60));
-    
-    // Get all breaks for this time entry and subtract their duration
-    const timeEntryBreaks = await db.select().from(breaks).where(eq(breaks.timeEntryId, timeEntryId));
-    const breakMinutes = timeEntryBreaks.reduce((sum, breakEntry) => {
-      return sum + (breakEntry.totalMinutes || 0);
-    }, 0);
-    
-    const totalHours = totalMinutes - breakMinutes;
-
-    await db
-      .update(timeEntries)
-      .set({ totalHours })
-      .where(eq(timeEntries.id, timeEntryId));
   }
 }
 

@@ -26,15 +26,6 @@ export const timeEntries = pgTable("time_entries", {
   date: text("date").notNull(), // YYYY-MM-DD format
 });
 
-export const breaks = pgTable("breaks", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  timeEntryId: varchar("time_entry_id").notNull().references(() => timeEntries.id),
-  type: text("type").notNull(), // "coffee", "lunch", "bathroom", "other"
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time"),
-  totalMinutes: integer("total_minutes"), // in minutes
-});
-
 export const schedules = pgTable("schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   employeeId: varchar("employee_id").notNull().references(() => employees.id),
@@ -130,14 +121,6 @@ export const bulkScheduleCreateSchema = z.object({
   message: "La hora de inicio debe ser anterior a la hora de fin",
   path: ["endTime"],
 });
-
-export const insertBreakSchema = createInsertSchema(breaks).omit({
-  id: true,
-  totalMinutes: true,
-});
-
-export type Break = typeof breaks.$inferSelect;
-export type InsertBreak = z.infer<typeof insertBreakSchema>;
 
 export const insertIncidentSchema = createInsertSchema(incidents).omit({
   id: true,
