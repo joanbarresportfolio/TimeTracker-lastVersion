@@ -23,10 +23,6 @@
         "backgroundColor": "#ffffff"
       }
     },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
-    },
     "extra": {
       "apiUrl": "https://workspace--joanbarresportf.replit.app"
     }
