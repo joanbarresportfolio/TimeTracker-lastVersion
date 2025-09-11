@@ -44,7 +44,7 @@ export default function HomeScreen({ user, onLogout }: HomeScreenProps) {
   const handleClockIn = async () => {
     setLoading(true);
     try {
-      await apiService.clockIn(user.id);
+      await apiService.clockIn();
       Alert.alert('Éxito', 'Entrada registrada correctamente');
       loadTodayData();
     } catch (error) {
@@ -55,14 +55,9 @@ export default function HomeScreen({ user, onLogout }: HomeScreenProps) {
   };
 
   const handleClockOut = async () => {
-    if (!currentTimeEntry?.id) {
-      Alert.alert('Error', 'No hay entrada registrada para hoy');
-      return;
-    }
-
     setLoading(true);
     try {
-      await apiService.clockOut(currentTimeEntry.id);
+      await apiService.clockOut();
       Alert.alert('Éxito', 'Salida registrada correctamente');
       loadTodayData();
     } catch (error) {

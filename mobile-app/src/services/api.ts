@@ -63,22 +63,20 @@ class ApiService {
     return this.request('/api/time-entries/my');
   }
 
-  async clockIn(employeeId: string) {
-    return this.request('/api/time-entries', {
+  async clockIn() {
+    return this.request('/api/time-entries/clock-in', {
       method: 'POST',
       body: JSON.stringify({
-        employeeId,
-        date: new Date().toISOString().split('T')[0],
-        clockIn: new Date().toISOString(),
+        // No need to send employeeId - backend derives it from JWT
       }),
     });
   }
 
-  async clockOut(timeEntryId: string) {
-    return this.request(`/api/time-entries/${timeEntryId}`, {
-      method: 'PUT',
+  async clockOut() {
+    return this.request('/api/time-entries/clock-out', {
+      method: 'POST',
       body: JSON.stringify({
-        clockOut: new Date().toISOString(),
+        // No need to send timeEntryId - backend finds today's entry automatically
       }),
     });
   }
