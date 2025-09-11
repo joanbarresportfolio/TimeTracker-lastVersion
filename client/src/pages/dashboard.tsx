@@ -206,7 +206,7 @@ export default function Dashboard() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="bg-secondary/30">
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Empleado</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Departamento</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado</th>
@@ -216,13 +216,13 @@ export default function Dashboard() {
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Acciones</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border">
                 {employees?.slice(0, 5).map((employee) => {
                   const entry = todayEntries.find(e => e.employeeId === employee.id);
                   const status = getEmployeeStatus(employee);
                   
                   return (
-                    <tr key={employee.id} className="border-b border-border hover:bg-muted/50" data-testid={`employee-row-${employee.id}`}>
+                    <tr key={employee.id} className="hover:bg-muted/50" data-testid={`employee-row-${employee.id}`}>
                       <td className="py-3 px-4">
                         <div className="flex items-center space-x-3">
                           <Avatar className="w-8 h-8">
@@ -275,7 +275,7 @@ export default function Dashboard() {
             </table>
           </div>
           
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+          <div className="flex items-center justify-between mt-4 pt-4">
             <p className="text-sm text-muted-foreground">
               Mostrando {Math.min(5, employees?.length || 0)} de {employees?.length || 0} empleados
             </p>
@@ -308,7 +308,7 @@ export default function Dashboard() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="bg-secondary/30">
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Entrada</th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Salida</th>
@@ -316,9 +316,9 @@ export default function Dashboard() {
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {recentUserEntries.map((entry) => (
-                    <tr key={entry.id} className="border-b border-border hover:bg-muted/50">
+                    <tr key={entry.id} className="hover:bg-muted/50">
                       <td className="py-3 px-4 text-foreground">
                         {new Date(entry.date).toLocaleDateString('es-ES')}
                       </td>

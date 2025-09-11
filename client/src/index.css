@@ -12,15 +12,15 @@
   --opaque-button-border-intensity: -8; /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(0,0,0, .02);
+  --elevate-2: rgba(0,0,0, .06);
 
   --background: hsl(210 40% 98%);
   --foreground: hsl(222.2 84% 4.9%);
-  --border: hsl(214.3 31.8% 91.4%);
+  --border: hsl(220 14% 92%);
   --card: hsl(0 0% 100%);
   --card-foreground: hsl(222.2 84% 4.9%);
-  --card-border: hsl(214.3 31.8% 87%);
+  --card-border: hsl(220 14% 90%);
   --sidebar: hsl(221.2 83.2% 53.3%);
   --sidebar-foreground: hsl(210 40% 98%);
   --sidebar-border: hsl(221.2 83.2% 45%);
@@ -34,11 +34,11 @@
   --popover-border: hsl(214.3 31.8% 91.4%);
   --primary: hsl(221.2 83.2% 53.3%);
   --primary-foreground: hsl(210 40% 98%);
-  --secondary: hsl(210 40% 96%);
+  --secondary: hsl(220 14% 96%);
   --secondary-foreground: hsl(222.2 84% 4.9%);
-  --muted: hsl(210 40% 96%);
+  --muted: hsl(220 14% 96%);
   --muted-foreground: hsl(215.4 16.3% 46.9%);
-  --accent: hsl(210 40% 96%);
+  --accent: hsl(220 14% 96%);
   --accent-foreground: hsl(222.2 84% 4.9%);
   --destructive: hsl(0 84.2% 60.2%);
   --destructive-foreground: hsl(210 40% 98%);
@@ -103,15 +103,15 @@
   --opaque-button-border-intensity: 9;  /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --elevate-1: rgba(255,255,255, .03);
+  --elevate-2: rgba(255,255,255, .07);
 
   --background: hsl(222.2 84% 4.9%);
   --foreground: hsl(210 40% 98%);
-  --border: hsl(217.2 32.6% 17.5%);
+  --border: hsl(217 22% 20%);
   --card: hsl(222.2 84% 6%);
   --card-foreground: hsl(210 40% 98%);
-  --card-border: hsl(217.2 32.6% 20%);
+  --card-border: hsl(217 19% 22%);
   --sidebar: hsl(222.2 84% 4.9%);
   --sidebar-foreground: hsl(210 40% 98%);
   --sidebar-border: hsl(217.2 32.6% 17.5%);
@@ -125,11 +125,11 @@
   --popover-border: hsl(217.2 32.6% 17.5%);
   --primary: hsl(210 40% 98%);
   --primary-foreground: hsl(222.2 84% 4.9%);
-  --secondary: hsl(217.2 32.6% 17.5%);
+  --secondary: hsl(217 20% 16%);
   --secondary-foreground: hsl(210 40% 98%);
-  --muted: hsl(217.2 32.6% 17.5%);
+  --muted: hsl(217 20% 17%);
   --muted-foreground: hsl(215 20.2% 65.1%);
-  --accent: hsl(217.2 32.6% 17.5%);
+  --accent: hsl(217 20% 18%);
   --accent-foreground: hsl(210 40% 98%);
   --destructive: hsl(0 62.8% 30.6%);
   --destructive-foreground: hsl(210 40% 98%);
@@ -287,19 +287,13 @@
   background-color: rgba(0, 0, 0, 0.8) !important;
 }
 
-/* Dialog content - Fondo completamente blanco */
+/* Dialog content - Subtle professional styling */
 [role="dialog"] {
-  background-color: hsl(0 0% 100%) !important;
-  color: hsl(222.2 84% 4.9%) !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
-  border: 2px solid hsl(214.3 31.8% 85%) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
 }
 
 .dark [role="dialog"] {
-  background-color: hsl(0 0% 100%) !important;
-  color: hsl(222.2 84% 4.9%) !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
-  border: 2px solid hsl(214.3 31.8% 85%) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
 }
 
 /* Asegurar que los elementos dentro de los diálogos tengan buen contraste */
