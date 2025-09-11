@@ -1,4 +1,4 @@
-import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, employees, timeEntries, schedules, incidents } from "@shared/schema";
+import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type BulkScheduleCreate, employees, timeEntries, schedules, incidents } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -31,6 +31,7 @@ export interface IStorage {
   getSchedules(): Promise<Schedule[]>;
   getSchedulesByEmployee(employeeId: string): Promise<Schedule[]>;
   createSchedule(schedule: InsertSchedule): Promise<Schedule>;
+  createBulkSchedules(bulkData: BulkScheduleCreate): Promise<Schedule[]>;
   updateSchedule(id: string, schedule: Partial<InsertSchedule>): Promise<Schedule | undefined>;
   deleteSchedule(id: string): Promise<boolean>;
 
@@ -218,6 +219,23 @@ export class DatabaseStorage implements IStorage {
   async deleteSchedule(id: string): Promise<boolean> {
     const result = await db.delete(schedules).where(eq(schedules.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async createBulkSchedules(bulkData: BulkScheduleCreate): Promise<Schedule[]> {
+    const scheduleInserts: InsertSchedule[] = bulkData.daysOfWeek.map(dayOfWeek => ({
+      employeeId: bulkData.employeeId,
+      dayOfWeek: dayOfWeek,
+      startTime: bulkData.startTime,
+      endTime: bulkData.endTime,
+      isActive: bulkData.isActive ?? true,
+    }));
+
+    const createdSchedules = await db
+      .insert(schedules)
+      .values(scheduleInserts)
+      .returning();
+    
+    return createdSchedules;
   }
 
   // Incident methods

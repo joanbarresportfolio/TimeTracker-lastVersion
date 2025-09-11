@@ -8,11 +8,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Edit, Trash2, Search, Calendar, Clock } from "lucide-react";
-import { insertScheduleSchema } from "@shared/schema";
-import type { Employee, Schedule, InsertSchedule } from "@shared/schema";
+import { Plus, Edit, Trash2, Search, Calendar, Clock, CalendarDays } from "lucide-react";
+import { insertScheduleSchema, bulkScheduleCreateSchema } from "@shared/schema";
+import type { Employee, Schedule, InsertSchedule, BulkScheduleCreate } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +35,8 @@ export default function Schedules() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [creationMode, setCreationMode] = useState<"single" | "bulk">("single");
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const { toast } = useToast();
 
   const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>({
@@ -51,6 +56,7 @@ export default function Schedules() {
       queryClient.invalidateQueries({ queryKey: ["/api/schedules"] });
       setIsDialogOpen(false);
       form.reset();
+      resetFormState();
       toast({
         title: "Horario creado",
         description: "El horario ha sido creado exitosamente.",
@@ -60,6 +66,31 @@ export default function Schedules() {
       toast({
         title: "Error",
         description: "No se pudo crear el horario.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createBulkScheduleMutation = useMutation({
+    mutationFn: async (data: BulkScheduleCreate) => {
+      const response = await apiRequest("POST", "/api/schedules/bulk", data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/schedules"] });
+      setIsDialogOpen(false);
+      form.reset();
+      resetFormState();
+      const scheduleCount = Array.isArray(data) ? data.length : selectedDays.length;
+      toast({
+        title: "Horarios creados",
+        description: `Se han creado ${scheduleCount} horarios exitosamente.`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudieron crear los horarios.",
         variant: "destructive",
       });
     },
@@ -120,11 +151,39 @@ export default function Schedules() {
     },
   });
 
+  const resetFormState = () => {
+    setCreationMode("single");
+    setSelectedDays([]);
+  };
+
   const onSubmit = (data: InsertSchedule) => {
     if (editingSchedule) {
       updateScheduleMutation.mutate({ id: editingSchedule.id, data });
     } else {
-      createScheduleMutation.mutate(data);
+      // Modo de creación individual
+      if (creationMode === "single") {
+        createScheduleMutation.mutate(data);
+      } 
+      // Modo de creación masiva
+      else {
+        if (selectedDays.length === 0) {
+          toast({
+            title: "Error",
+            description: "Debe seleccionar al menos un día de la semana.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const bulkData: BulkScheduleCreate = {
+          employeeId: data.employeeId,
+          startTime: data.startTime,
+          endTime: data.endTime,
+          daysOfWeek: selectedDays,
+          isActive: data.isActive ?? true,
+        };
+        createBulkScheduleMutation.mutate(bulkData);
+      }
     }
   };
 
@@ -251,6 +310,7 @@ export default function Schedules() {
                 <Button 
                   onClick={() => {
                     setEditingSchedule(null);
+                    resetFormState();
                     form.reset({
                       employeeId: "",
                       dayOfWeek: 1,
@@ -265,7 +325,7 @@ export default function Schedules() {
                   Nuevo Horario
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                   <DialogTitle>
                     {editingSchedule ? "Editar Horario" : "Nuevo Horario"}
@@ -273,6 +333,33 @@ export default function Schedules() {
                 </DialogHeader>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    
+                    {/* Modo de creación - solo mostrar cuando NO esté editando */}
+                    {!editingSchedule && (
+                      <div className="space-y-3">
+                        <FormLabel>Tipo de Creación</FormLabel>
+                        <RadioGroup 
+                          value={creationMode} 
+                          onValueChange={(value) => setCreationMode(value as "single" | "bulk")}
+                          className="flex flex-col space-y-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="single" id="single" />
+                            <Label htmlFor="single" className="flex items-center space-x-2 cursor-pointer">
+                              <Calendar className="w-4 h-4" />
+                              <span>Horario individual</span>
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="bulk" id="bulk" />
+                            <Label htmlFor="bulk" className="flex items-center space-x-2 cursor-pointer">
+                              <CalendarDays className="w-4 h-4" />
+                              <span>Múltiples días</span>
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    )}
                     <FormField
                       control={form.control}
                       name="employeeId"
@@ -297,30 +384,66 @@ export default function Schedules() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="dayOfWeek"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Día de la Semana</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value.toString()}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-day-of-week">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {daysOfWeek.map(day => (
-                                <SelectItem key={day.value} value={day.value.toString()}>
-                                  {day.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {/* Campo día de la semana - solo mostrar en modo individual o cuando esté editando */}
+                    {(creationMode === "single" || editingSchedule) && (
+                      <FormField
+                        control={form.control}
+                        name="dayOfWeek"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Día de la Semana</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value.toString()}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-day-of-week">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {daysOfWeek.map(day => (
+                                  <SelectItem key={day.value} value={day.value.toString()}>
+                                    {day.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {/* Selección múltiple de días - solo mostrar en modo masivo y NO esté editando */}
+                    {creationMode === "bulk" && !editingSchedule && (
+                      <div className="space-y-3">
+                        <FormLabel>Seleccionar Días de la Semana</FormLabel>
+                        <div className="grid grid-cols-2 gap-3">
+                          {daysOfWeek.map(day => (
+                            <div key={day.value} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`day-${day.value}`}
+                                checked={selectedDays.includes(day.value)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedDays([...selectedDays, day.value]);
+                                  } else {
+                                    setSelectedDays(selectedDays.filter(d => d !== day.value));
+                                  }
+                                }}
+                                data-testid={`checkbox-day-${day.value}`}
+                              />
+                              <Label htmlFor={`day-${day.value}`} className="cursor-pointer">
+                                {day.label}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedDays.length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            Selecciona al menos un día de la semana
+                          </p>
+                        )}
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -360,10 +483,11 @@ export default function Schedules() {
                       </Button>
                       <Button 
                         type="submit" 
-                        disabled={createScheduleMutation.isPending || updateScheduleMutation.isPending}
+                        disabled={createScheduleMutation.isPending || updateScheduleMutation.isPending || createBulkScheduleMutation.isPending}
                         data-testid="button-save-schedule"
                       >
-                        {editingSchedule ? "Actualizar" : "Crear"}
+                        {editingSchedule ? "Actualizar" : 
+                         creationMode === "bulk" ? "Crear Horarios" : "Crear Horario"}
                       </Button>
                     </div>
                   </form>

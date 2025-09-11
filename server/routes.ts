@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema } from "@shared/schema";
+import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkScheduleCreateSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
 import { z } from "zod";
 
@@ -366,6 +366,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Datos de horario inválidos", errors: error.errors });
       }
       res.status(500).json({ message: "Error al crear horario" });
+    }
+  });
+
+  app.post("/api/schedules/bulk", requireAdmin, async (req, res) => {
+    try {
+      const bulkData = bulkScheduleCreateSchema.parse(req.body);
+      const schedules = await storage.createBulkSchedules(bulkData);
+      res.status(201).json(schedules);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos de horarios inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al crear horarios masivos" });
     }
   });
 

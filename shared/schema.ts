@@ -75,6 +75,15 @@ export const insertScheduleSchema = createInsertSchema(schedules).omit({
   id: true,
 });
 
+// Schema para creación masiva de horarios
+export const bulkScheduleCreateSchema = z.object({
+  employeeId: z.string().min(1),
+  startTime: z.string().min(1),
+  endTime: z.string().min(1),
+  daysOfWeek: z.array(z.number().min(0).max(6)).min(1), // Array de días de la semana (0-6)
+  isActive: z.boolean().optional().default(true),
+});
+
 export const insertIncidentSchema = createInsertSchema(incidents).omit({
   id: true,
   createdAt: true,
@@ -89,6 +98,7 @@ export type TimeEntry = typeof timeEntries.$inferSelect;
 export type InsertTimeEntry = z.infer<typeof insertTimeEntrySchema>;
 export type Schedule = typeof schedules.$inferSelect;
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
+export type BulkScheduleCreate = z.infer<typeof bulkScheduleCreateSchema>;
 export type Incident = typeof incidents.$inferSelect;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 
