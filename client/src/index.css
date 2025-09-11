@@ -287,13 +287,19 @@
   background-color: rgba(0, 0, 0, 0.8) !important;
 }
 
-/* Dialog content - Subtle professional styling */
+/* Dialog content - Subtle professional styling with solid background */
 [role="dialog"] {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2);
+  background-color: hsl(0 0% 100%) !important;
+  color: hsl(222.2 84% 4.9%) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid hsl(220 14% 90%) !important;
 }
 
 .dark [role="dialog"] {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  background-color: hsl(222.2 84% 6%) !important;
+  color: hsl(210 40% 98%) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
+  border: 1px solid hsl(217 19% 22%) !important;
 }
 
 /* Asegurar que los elementos dentro de los diálogos tengan buen contraste */
