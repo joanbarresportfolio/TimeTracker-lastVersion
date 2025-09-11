@@ -162,6 +162,17 @@ export default function Dashboard() {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      "from-blue-500 to-purple-600",
+      "from-green-500 to-teal-600", 
+      "from-orange-500 to-red-600",
+      "from-purple-500 to-pink-600",
+      "from-yellow-500 to-orange-600",
+    ];
+    return colors[name.length % colors.length];
+  };
+
   const handleViewDetails = (employee: Employee) => {
     setSelectedEmployeeDetails(employee);
     setIsDetailsDialogOpen(true);
@@ -350,7 +361,7 @@ export default function Dashboard() {
                       <td className="py-3 px-4">
                         <div className="flex items-center space-x-3">
                           <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-sm font-semibold">
+                            <AvatarFallback className={`bg-gradient-to-r ${getAvatarColor(employee.firstName)} text-white text-sm font-semibold`}>
                               {getInitials(employee.firstName, employee.lastName)}
                             </AvatarFallback>
                           </Avatar>
@@ -555,7 +566,7 @@ export default function Dashboard() {
             <div className="space-y-6">
               <div className="flex items-center space-x-4">
                 <Avatar className="w-16 h-16">
-                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-lg font-semibold">
+                  <AvatarFallback className={`bg-gradient-to-r ${getAvatarColor(selectedEmployeeDetails.firstName)} text-white text-lg font-semibold`}>
                     {getInitials(selectedEmployeeDetails.firstName, selectedEmployeeDetails.lastName)}
                   </AvatarFallback>
                 </Avatar>
