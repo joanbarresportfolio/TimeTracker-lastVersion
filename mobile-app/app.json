@@ -28,7 +28,7 @@
       "bundler": "metro"
     },
     "extra": {
-      "apiUrl": "http://localhost:5000"
+      "apiUrl": "https://workspace--joanbarresportf.replit.app"
     }
   }
 }
