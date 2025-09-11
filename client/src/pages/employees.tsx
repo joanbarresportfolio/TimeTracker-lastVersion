@@ -180,7 +180,7 @@ export default function Employees() {
       email: employee.email,
       department: employee.department,
       position: employee.position,
-      hireDate: employee.hireDate,
+      hireDate: new Date(employee.hireDate), // Convertir string a Date object
       isActive: employee.isActive,
       password: "password123", // Password dummy para validación del formulario
     });
