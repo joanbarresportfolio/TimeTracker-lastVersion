@@ -125,6 +125,8 @@ export const bulkScheduleCreateSchema = z.object({
 export const insertIncidentSchema = createInsertSchema(incidents).omit({
   id: true,
   createdAt: true,
+}).extend({
+  date: z.coerce.date(), // Accept both string and Date, coerce to Date
 });
 
 export type Employee = typeof employees.$inferSelect;

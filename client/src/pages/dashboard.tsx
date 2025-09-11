@@ -1,11 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Clock, Users, TrendingUp, AlertTriangle, Eye, Calendar, Plus } from "lucide-react";
-import type { Employee, TimeEntry } from "@shared/schema";
+import type { Employee, TimeEntry, InsertIncident, InsertSchedule } from "@shared/schema";
+import { insertIncidentSchema, insertScheduleSchema } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardStats {
   totalEmployees?: number;
@@ -18,7 +30,14 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const isEmployee = user?.role === "employee";
+  const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<Employee | null>(null);
+  const [selectedEmployeeSchedule, setSelectedEmployeeSchedule] = useState<Employee | null>(null);
+  const [selectedEmployeeIncident, setSelectedEmployeeIncident] = useState<Employee | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+  const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
@@ -32,6 +51,74 @@ export default function Dashboard() {
 
   const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries"],
+  });
+
+  // Forms for dialogs
+  const incidentForm = useForm<InsertIncident>({
+    resolver: zodResolver(insertIncidentSchema),
+    defaultValues: {
+      employeeId: "",
+      type: "",
+      description: "",
+      date: new Date().toISOString().split('T')[0] as any, // Use string date for form
+      status: "pending",
+    },
+  });
+
+  const scheduleForm = useForm<InsertSchedule>({
+    resolver: zodResolver(insertScheduleSchema),
+    defaultValues: {
+      employeeId: "",
+      dayOfWeek: 1,
+      startTime: "09:00",
+      endTime: "17:00",
+      isActive: true,
+    },
+  });
+
+  // Mutations
+  const createIncidentMutation = useMutation({
+    mutationFn: (data: InsertIncident) => apiRequest("/api/incidents", "POST", data),
+    onSuccess: () => {
+      toast({
+        title: "Incidencia reportada",
+        description: "La incidencia ha sido reportada exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/incidents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      setIsIncidentDialogOpen(false);
+      incidentForm.reset();
+      setSelectedEmployeeIncident(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Error al reportar la incidencia.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createScheduleMutation = useMutation({
+    mutationFn: (data: InsertSchedule) => apiRequest("/api/schedules", "POST", data),
+    onSuccess: () => {
+      toast({
+        title: "Horario creado",
+        description: "El horario ha sido creado exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/schedules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      setIsScheduleDialogOpen(false);
+      scheduleForm.reset();
+      setSelectedEmployeeSchedule(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Error al crear el horario.",
+        variant: "destructive",
+      });
+    },
   });
 
   const today = new Date().toISOString().split('T')[0];
@@ -73,6 +160,43 @@ export default function Dashboard() {
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
+  const handleViewDetails = (employee: Employee) => {
+    setSelectedEmployeeDetails(employee);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const handleEditSchedule = (employee: Employee) => {
+    setSelectedEmployeeSchedule(employee);
+    scheduleForm.reset({
+      employeeId: employee.id,
+      dayOfWeek: 1,
+      startTime: "09:00",
+      endTime: "17:00",
+      isActive: true,
+    });
+    setIsScheduleDialogOpen(true);
+  };
+
+  const handleReportIncident = (employee: Employee) => {
+    setSelectedEmployeeIncident(employee);
+    incidentForm.reset({
+      employeeId: employee.id,
+      type: "",
+      description: "",
+      date: new Date().toISOString().split('T')[0] as any, // Use string date for form
+      status: "pending",
+    });
+    setIsIncidentDialogOpen(true);
+  };
+
+  const onIncidentSubmit = (data: InsertIncident) => {
+    createIncidentMutation.mutate(data);
+  };
+
+  const onScheduleSubmit = (data: InsertSchedule) => {
+    createScheduleMutation.mutate(data);
   };
 
   if (statsLoading || employeesLoading || timeEntriesLoading) {
@@ -257,13 +381,31 @@ export default function Dashboard() {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="icon" title="Ver detalles" data-testid={`button-view-${employee.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Ver detalles" 
+                            onClick={() => handleViewDetails(employee)}
+                            data-testid={`button-view-${employee.id}`}
+                          >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Editar horario" data-testid={`button-schedule-${employee.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Crear horario" 
+                            onClick={() => handleEditSchedule(employee)}
+                            data-testid={`button-schedule-${employee.id}`}
+                          >
                             <Calendar className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" title="Reportar incidencia" data-testid={`button-incident-${employee.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            title="Reportar incidencia" 
+                            onClick={() => handleReportIncident(employee)}
+                            data-testid={`button-incident-${employee.id}`}
+                          >
                             <AlertTriangle className="w-4 h-4" />
                           </Button>
                         </div>
@@ -402,6 +544,311 @@ export default function Dashboard() {
           </div>
         </Button>
       </div>
+
+      {/* Diálogo de detalles del empleado */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalles del Empleado</DialogTitle>
+          </DialogHeader>
+          {selectedEmployeeDetails && (
+            <div className="space-y-6">
+              <div className="flex items-center space-x-4">
+                <Avatar className="w-16 h-16">
+                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-lg font-semibold">
+                    {getInitials(selectedEmployeeDetails.firstName, selectedEmployeeDetails.lastName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-xl font-semibold">
+                    {selectedEmployeeDetails.firstName} {selectedEmployeeDetails.lastName}
+                  </h3>
+                  <p className="text-muted-foreground">{selectedEmployeeDetails.employeeNumber}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="font-medium">Email</Label>
+                  <p className="text-sm text-muted-foreground">{selectedEmployeeDetails.email}</p>
+                </div>
+                <div>
+                  <Label className="font-medium">Departamento</Label>
+                  <p className="text-sm text-muted-foreground">{selectedEmployeeDetails.department}</p>
+                </div>
+                <div>
+                  <Label className="font-medium">Posición</Label>
+                  <p className="text-sm text-muted-foreground">{selectedEmployeeDetails.position}</p>
+                </div>
+                <div>
+                  <Label className="font-medium">Fecha de Contratación</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {new Date(selectedEmployeeDetails.hireDate).toLocaleDateString('es-ES')}
+                  </p>
+                </div>
+                <div>
+                  <Label className="font-medium">Estado</Label>
+                  <Badge className={selectedEmployeeDetails.isActive ? "bg-green-500/10 text-green-700" : "bg-red-500/10 text-red-700"}>
+                    {selectedEmployeeDetails.isActive ? "Activo" : "Inactivo"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label className="font-medium">Registros de Tiempo de Hoy</Label>
+                <div className="bg-secondary/30 p-4 rounded-lg">
+                  {(() => {
+                    const todayEntry = todayEntries.find(e => e.employeeId === selectedEmployeeDetails.id);
+                    if (!todayEntry) {
+                      return <p className="text-sm text-muted-foreground">No hay registros para hoy</p>;
+                    }
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium">Entrada:</span>
+                          <span className="text-sm">{todayEntry.clockIn ? formatTime(todayEntry.clockIn) : "--:--"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium">Salida:</span>
+                          <span className="text-sm">{todayEntry.clockOut ? formatTime(todayEntry.clockOut) : "--:--"}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm font-medium">Horas Trabajadas:</span>
+                          <span className="text-sm">{formatHours(todayEntry.totalHours || 0)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()
+                  }
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de editar horario */}
+      <Dialog open={isScheduleDialogOpen} onOpenChange={(open) => {
+        setIsScheduleDialogOpen(open);
+        if (!open) {
+          setSelectedEmployeeSchedule(null);
+          scheduleForm.reset();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Horario</DialogTitle>
+          </DialogHeader>
+          {selectedEmployeeSchedule && (
+            <div className="space-y-4">
+              <div>
+                <Label>Empleado</Label>
+                <p className="text-sm font-medium">
+                  {selectedEmployeeSchedule.firstName} {selectedEmployeeSchedule.lastName}
+                </p>
+              </div>
+              
+              <Form {...scheduleForm}>
+                <form onSubmit={scheduleForm.handleSubmit(onScheduleSubmit)} className="space-y-4">
+                  <FormField
+                    control={scheduleForm.control}
+                    name="dayOfWeek"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Día de la semana</FormLabel>
+                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-day-of-week">
+                              <SelectValue placeholder="Seleccionar día" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="0">Domingo</SelectItem>
+                            <SelectItem value="1">Lunes</SelectItem>
+                            <SelectItem value="2">Martes</SelectItem>
+                            <SelectItem value="3">Miércoles</SelectItem>
+                            <SelectItem value="4">Jueves</SelectItem>
+                            <SelectItem value="5">Viernes</SelectItem>
+                            <SelectItem value="6">Sábado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={scheduleForm.control}
+                      name="startTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Hora de inicio</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="time" 
+                              {...field}
+                              data-testid="input-start-time"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={scheduleForm.control}
+                      name="endTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Hora de fin</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="time" 
+                              {...field}
+                              data-testid="input-end-time"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      onClick={() => setIsScheduleDialogOpen(false)}
+                      data-testid="button-cancel-schedule"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit"
+                      disabled={createScheduleMutation.isPending}
+                      data-testid="button-save-schedule"
+                    >
+                      {createScheduleMutation.isPending ? "Guardando..." : "Guardar Horario"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de reportar incidencia */}
+      <Dialog open={isIncidentDialogOpen} onOpenChange={(open) => {
+        setIsIncidentDialogOpen(open);
+        if (!open) {
+          setSelectedEmployeeIncident(null);
+          incidentForm.reset();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reportar Incidencia</DialogTitle>
+          </DialogHeader>
+          {selectedEmployeeIncident && (
+            <div className="space-y-4">
+              <div>
+                <Label>Empleado</Label>
+                <p className="text-sm font-medium">
+                  {selectedEmployeeIncident.firstName} {selectedEmployeeIncident.lastName}
+                </p>
+              </div>
+              
+              <Form {...incidentForm}>
+                <form onSubmit={incidentForm.handleSubmit(onIncidentSubmit)} className="space-y-4">
+                  <FormField
+                    control={incidentForm.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de incidencia</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-incident-type">
+                              <SelectValue placeholder="Seleccionar tipo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="late">Tardanza</SelectItem>
+                            <SelectItem value="absence">Ausencia</SelectItem>
+                            <SelectItem value="early_departure">Salida temprana</SelectItem>
+                            <SelectItem value="forgot_clock_in">Olvido fichar entrada</SelectItem>
+                            <SelectItem value="forgot_clock_out">Olvido fichar salida</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={incidentForm.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fecha de la incidencia</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field}
+                            value={typeof field.value === 'string' ? field.value : field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            data-testid="input-incident-date"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={incidentForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descripción</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            {...field}
+                            placeholder="Describe la incidencia..." 
+                            className="min-h-[100px]"
+                            data-testid="textarea-incident-description"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      onClick={() => setIsIncidentDialogOpen(false)}
+                      data-testid="button-cancel-incident"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit"
+                      disabled={createIncidentMutation.isPending}
+                      data-testid="button-save-incident"
+                    >
+                      {createIncidentMutation.isPending ? "Reportando..." : "Reportar Incidencia"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
