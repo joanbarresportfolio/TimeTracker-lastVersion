@@ -21,19 +21,17 @@ app.use(cors({
     // Allow requests with no origin (e.g., mobile apps, Postman)
     if (!origin) return callback(null, true);
     
+    // In development mode, allow all origins for mobile testing
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    
+    // Production CORS - be more restrictive
     const allowedOrigins = [
       'http://localhost:19006', // Expo web
       'http://localhost:8081',  // Metro bundler web
       'http://localhost:3000',  // Development web
     ];
-    
-    // In development, also allow local network IPs for testing
-    if (process.env.NODE_ENV !== 'production') {
-      // Allow localhost and local network patterns
-      if (origin.match(/^https?:\/\/(localhost|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):\d+$/)) {
-        return callback(null, true);
-      }
-    }
     
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
