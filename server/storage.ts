@@ -230,9 +230,31 @@ export class DatabaseStorage implements IStorage {
       isActive: bulkData.isActive ?? true,
     }));
 
+    // Verificar duplicados existentes
+    const existingSchedules = await db
+      .select()
+      .from(schedules)
+      .where(eq(schedules.employeeId, bulkData.employeeId));
+
+    // Filtrar solo los horarios que no existen ya
+    const uniqueSchedules = scheduleInserts.filter(newSchedule => {
+      return !existingSchedules.some(existing => 
+        existing.dayOfWeek === newSchedule.dayOfWeek &&
+        existing.startTime === newSchedule.startTime &&
+        existing.endTime === newSchedule.endTime &&
+        existing.isActive
+      );
+    });
+
+    // Si no hay horarios únicos que crear, retornar array vacío
+    if (uniqueSchedules.length === 0) {
+      return [];
+    }
+
+    // Crear solo los horarios únicos
     const createdSchedules = await db
       .insert(schedules)
-      .values(scheduleInserts)
+      .values(uniqueSchedules)
       .returning();
     
     return createdSchedules;

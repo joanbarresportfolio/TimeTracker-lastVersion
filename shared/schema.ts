@@ -71,8 +71,29 @@ export const insertTimeEntrySchema = createInsertSchema(timeEntries).omit({
   totalHours: true,
 });
 
-export const insertScheduleSchema = createInsertSchema(schedules).omit({
+// Schema base sin validación de tiempo (para formularios)
+export const insertScheduleSchemaBase = createInsertSchema(schedules).omit({
   id: true,
+});
+
+// Schema con validación de tiempo (para endpoints)
+export const insertScheduleSchema = insertScheduleSchemaBase.refine((data) => {
+  // Validar que la hora de inicio sea anterior a la hora de fin
+  const startTime = data.startTime;
+  const endTime = data.endTime;
+  
+  if (!startTime || !endTime) return true; // Si falta alguna hora, dejar que Zod la valide
+  
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  
+  const startTotalMinutes = startHour * 60 + startMinute;
+  const endTotalMinutes = endHour * 60 + endMinute;
+  
+  return startTotalMinutes < endTotalMinutes;
+}, {
+  message: "La hora de inicio debe ser anterior a la hora de fin",
+  path: ["endTime"],
 });
 
 // Schema para creación masiva de horarios
@@ -82,6 +103,23 @@ export const bulkScheduleCreateSchema = z.object({
   endTime: z.string().min(1),
   daysOfWeek: z.array(z.number().min(0).max(6)).min(1), // Array de días de la semana (0-6)
   isActive: z.boolean().optional().default(true),
+}).refine((data) => {
+  // Validar que la hora de inicio sea anterior a la hora de fin
+  const startTime = data.startTime;
+  const endTime = data.endTime;
+  
+  if (!startTime || !endTime) return true; // Si falta alguna hora, dejar que Zod la valide
+  
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  
+  const startTotalMinutes = startHour * 60 + startMinute;
+  const endTotalMinutes = endHour * 60 + endMinute;
+  
+  return startTotalMinutes < endTotalMinutes;
+}, {
+  message: "La hora de inicio debe ser anterior a la hora de fin",
+  path: ["endTime"],
 });
 
 export const insertIncidentSchema = createInsertSchema(incidents).omit({

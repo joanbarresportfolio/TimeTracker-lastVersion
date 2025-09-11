@@ -14,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search, Calendar, Clock, CalendarDays } from "lucide-react";
-import { insertScheduleSchema, bulkScheduleCreateSchema } from "@shared/schema";
+import { insertScheduleSchemaBase, bulkScheduleCreateSchema } from "@shared/schema";
+import { z } from "zod";
 import type { Employee, Schedule, InsertSchedule, BulkScheduleCreate } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -140,8 +141,13 @@ export default function Schedules() {
     },
   });
 
-  const form = useForm<InsertSchedule>({
-    resolver: zodResolver(insertScheduleSchema),
+  // Schema personalizado para el formulario que funciona en ambos modos
+  const formSchema = insertScheduleSchemaBase.extend({
+    dayOfWeek: insertScheduleSchemaBase.shape.dayOfWeek.optional().default(1),
+  });
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       employeeId: "",
       dayOfWeek: 1,

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkScheduleCreateSchema } from "@shared/schema";
+import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertScheduleSchemaBase, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkScheduleCreateSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
 import { z } from "zod";
 
@@ -384,7 +384,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/schedules/:id", requireAdmin, async (req, res) => {
     try {
-      const scheduleData = insertScheduleSchema.partial().parse(req.body);
+      const updateSchema = insertScheduleSchemaBase.partial().superRefine((data, ctx) => {
+        // Solo validar tiempo si ambos campos están presentes
+        if (data.startTime && data.endTime) {
+          const [startHour, startMinute] = data.startTime.split(':').map(Number);
+          const [endHour, endMinute] = data.endTime.split(':').map(Number);
+          
+          const startTotalMinutes = startHour * 60 + startMinute;
+          const endTotalMinutes = endHour * 60 + endMinute;
+          
+          if (startTotalMinutes >= endTotalMinutes) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "La hora de inicio debe ser anterior a la hora de fin",
+              path: ["endTime"],
+            });
+          }
+        }
+      });
+
+      const scheduleData = updateSchema.parse(req.body);
       const schedule = await storage.updateSchedule(req.params.id, scheduleData);
       if (!schedule) {
         return res.status(404).json({ message: "Horario no encontrado" });
