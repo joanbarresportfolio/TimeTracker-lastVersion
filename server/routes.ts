@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertScheduleSchemaBase, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkScheduleCreateSchema } from "@shared/schema";
-import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
+import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertScheduleSchemaBase, insertIncidentSchema, insertBreakSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkScheduleCreateSchema } from "@shared/schema";
+import { requireAuth, requireAdmin, requireEmployeeAccess, generateJWTToken } from "./middleware/auth";
 import { z } from "zod";
 
 // Helper function to validate clocking time
@@ -103,6 +103,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mobile JWT login endpoint
+  app.post("/api/auth/mobile/login", async (req, res) => {
+    try {
+      const { email, password } = loginSchema.parse(req.body);
+      const user = await storage.authenticateEmployee(email, password);
+      
+      if (!user) {
+        return res.status(401).json({ message: "Email o contraseña incorrectos" });
+      }
+      
+      // Generate JWT token for mobile
+      const token = generateJWTToken(user);
+      
+      res.json({ 
+        user, 
+        token, 
+        message: "Inicio de sesión exitoso"
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos de inicio de sesión inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error en el servidor" });
+    }
+  });
+
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) {
@@ -114,6 +140,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/auth/me", requireAuth, (req, res) => {
     res.json({ user: req.user });
+  });
+
+  // Mobile-specific endpoints
+  app.get("/api/time-entries/my", requireAuth, async (req, res) => {
+    try {
+      const timeEntries = await storage.getTimeEntriesByEmployee(req.user!.id);
+      res.json(timeEntries);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener entradas de tiempo" });
+    }
+  });
+
+  app.get("/api/schedules/my", requireAuth, async (req, res) => {
+    try {
+      const schedules = await storage.getSchedulesByEmployee(req.user!.id);
+      res.json(schedules);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener horarios" });
+    }
+  });
+
+  app.get("/api/incidents/my", requireAuth, async (req, res) => {
+    try {
+      const incidents = await storage.getIncidentsByEmployee(req.user!.id);
+      res.json(incidents);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener incidencias" });
+    }
   });
   // Employee routes (Admin only for list and CRUD operations)
   app.get("/api/employees", requireAdmin, async (req, res) => {
@@ -329,6 +383,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedEntry);
     } catch (error) {
       res.status(500).json({ message: "Error al marcar salida" });
+    }
+  });
+
+  // Break endpoints for mobile
+  app.post("/api/breaks/start", requireAuth, async (req, res) => {
+    try {
+      const { type } = insertBreakSchema.pick({ type: true }).parse(req.body);
+      
+      // Find current time entry for today
+      const today = new Date().toISOString().split('T')[0];
+      const timeEntries = await storage.getTimeEntriesByEmployee(req.user!.id);
+      const todayEntry = timeEntries.find(entry => entry.date === today && !entry.clockOut);
+      
+      if (!todayEntry) {
+        return res.status(400).json({ message: "Debes fichar entrada antes de tomar una pausa" });
+      }
+
+      // Check if there's already an active break
+      const activeBreaks = await storage.getActiveBreaksByTimeEntry(todayEntry.id);
+      if (activeBreaks.length > 0) {
+        return res.status(400).json({ message: "Ya tienes una pausa activa" });
+      }
+
+      const breakEntry = await storage.createBreak({
+        timeEntryId: todayEntry.id,
+        type,
+        startTime: new Date(),
+      });
+
+      res.status(201).json(breakEntry);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos de pausa inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al iniciar pausa" });
+    }
+  });
+
+  app.put("/api/breaks/:id/end", requireAuth, async (req, res) => {
+    try {
+      const breakId = req.params.id;
+      const breakEntry = await storage.getBreak(breakId);
+      
+      if (!breakEntry) {
+        return res.status(404).json({ message: "Pausa no encontrada" });
+      }
+
+      if (breakEntry.endTime) {
+        return res.status(400).json({ message: "Esta pausa ya ha sido finalizada" });
+      }
+
+      // Verify the break belongs to the current user's time entry
+      const timeEntry = await storage.getTimeEntry(breakEntry.timeEntryId);
+      if (!timeEntry || timeEntry.employeeId !== req.user!.id) {
+        return res.status(403).json({ message: "No puedes finalizar esta pausa" });
+      }
+
+      const updatedBreak = await storage.updateBreak(breakId, {
+        endTime: new Date(),
+      });
+
+      res.json(updatedBreak);
+    } catch (error) {
+      res.status(500).json({ message: "Error al finalizar pausa" });
     }
   });
 

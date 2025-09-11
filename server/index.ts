@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
@@ -13,16 +14,56 @@ declare module "express-session" {
 }
 
 const app = express();
+
+// Configure CORS for mobile app
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g., mobile apps, Postman)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:19006', // Expo web
+      'http://localhost:8081',  // Metro bundler web
+      'http://localhost:3000',  // Development web
+    ];
+    
+    // In development, also allow local network IPs for testing
+    if (process.env.NODE_ENV !== 'production') {
+      // Allow localhost and local network patterns
+      if (origin.match(/^https?:\/\/(localhost|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):\d+$/)) {
+        return callback(null, true);
+      }
+    }
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: false, // JWT doesn't need credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Configure sessions
+const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET environment variable is required in production");
+  }
+  console.warn("Warning: Using default SESSION_SECRET for development. Set SESSION_SECRET environment variable.");
+  return "dev-session-secret-change-in-production";
+})();
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || "employee-tracking-secret-key",
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true in production with HTTPS
+    secure: process.env.NODE_ENV === "production", // HTTPS only in production
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
   },
 }));
@@ -67,8 +108,17 @@ app.use((req, res, next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
+    // Don't re-throw CORS errors to prevent server crash
+    if (message.includes('Not allowed by CORS')) {
+      return res.status(403).json({ message: 'CORS policy violation' });
+    }
+
     res.status(status).json({ message });
-    throw err;
+    
+    // Only log the error, don't re-throw to prevent server crash
+    if (status >= 500) {
+      console.error('Server error:', err);
+    }
   });
 
   // importantly only setup vite in development and after
