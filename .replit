@@ -59,5 +59,18 @@ task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
 
+[[workflows.workflow]]
+name = "Start Mobile"
+mode = "sequential"
+author = 42196734
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd mobile-app"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --tunnel"
+
 [agent]
 integrations = ["javascript_database:1.0.0"]
