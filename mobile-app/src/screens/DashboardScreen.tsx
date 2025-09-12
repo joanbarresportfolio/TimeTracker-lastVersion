@@ -18,6 +18,9 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../App';
 import {
   getCurrentTimeEntry,
   clockIn,
@@ -31,12 +34,19 @@ import {
   TimeStats 
 } from '../types/schema';
 
+type DashboardNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
+
 interface DashboardScreenProps {
-  user: User;
-  onLogout: () => void;
+  route: {
+    params: {
+      user: User;
+    };
+  };
 }
 
-export default function DashboardScreen({ user, onLogout }: DashboardScreenProps) {
+export default function DashboardScreen({ route }: DashboardScreenProps) {
+  const navigation = useNavigation<DashboardNavigationProp>();
+  const { user } = route.params;
   const [currentEntry, setCurrentEntry] = useState<TimeEntry | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -136,11 +146,11 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
           onPress: async () => {
             try {
               await logoutUser();
-              onLogout();
+              (global as any).handleLogout?.();
             } catch (error) {
               console.warn('Error en logout:', error);
               // Hacer logout local aunque falle el servidor
-              onLogout();
+              (global as any).handleLogout?.();
             }
           },
         },
@@ -289,7 +299,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
 
         {/* Botones de navegación */}
         <View style={styles.navigationButtons}>
-          <TouchableOpacity style={styles.navButton}>
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={() => navigation.navigate('Schedules', { user })}
+          >
             <Text style={styles.navButtonText}>Ver Horarios</Text>
           </TouchableOpacity>
           
@@ -297,7 +310,10 @@ export default function DashboardScreen({ user, onLogout }: DashboardScreenProps
             <Text style={styles.navButtonText}>Historial</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.navButton}>
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={() => navigation.navigate('Incidents', { user })}
+          >
             <Text style={styles.navButtonText}>Incidencias</Text>
           </TouchableOpacity>
         </View>

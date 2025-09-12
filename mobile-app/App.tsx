@@ -9,10 +9,25 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import SchedulesScreen from './src/screens/SchedulesScreen';
+import IncidentsScreen from './src/screens/IncidentsScreen';
 import { User } from './src/types/schema';
 import { setAuthToken } from './src/services/api';
+
+export type RootStackParamList = {
+  Login: undefined;
+  Dashboard: { user: User };
+  Schedules: { user: User };
+  Incidents: { user: User };
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -61,6 +76,14 @@ export default function App() {
     });
   };
 
+  // Hacer handleLogout accesible globalmente para el DashboardScreen
+  React.useEffect(() => {
+    (global as any).handleLogout = handleLogout;
+    return () => {
+      delete (global as any).handleLogout;
+    };
+  }, []);
+
   // Mostrar loading si está cargando
   if (authState.loading) {
     return (
@@ -72,19 +95,47 @@ export default function App() {
     );
   }
 
-  // Mostrar pantalla según estado de autenticación
+  // Mostrar navegación según estado de autenticación
   return (
-    <>
-      {authState.isAuthenticated && authState.user ? (
-        <DashboardScreen
-          user={authState.user}
-          onLogout={handleLogout}
-        />
-      ) : (
-        <LoginScreen onLoginSuccess={handleLoginSuccess} />
-      )}
+    <SafeAreaProvider>
+      <NavigationContainer>
+        {authState.isAuthenticated && authState.user ? (
+          // Usuario autenticado - Mostrar stack de navegación principal
+          <Stack.Navigator 
+            screenOptions={{ 
+              headerShown: false,
+              animation: 'slide_from_right' 
+            }}
+          >
+            <Stack.Screen 
+              name="Dashboard" 
+              component={DashboardScreen}
+              initialParams={{ user: authState.user }}
+            />
+            <Stack.Screen 
+              name="Schedules" 
+              component={SchedulesScreen}
+            />
+            <Stack.Screen 
+              name="Incidents" 
+              component={IncidentsScreen}
+            />
+          </Stack.Navigator>
+        ) : (
+          // Usuario no autenticado - Solo pantalla de login
+          <Stack.Navigator 
+            screenOptions={{ 
+              headerShown: false 
+            }}
+          >
+            <Stack.Screen name="Login">
+              {() => <LoginScreen onLoginSuccess={handleLoginSuccess} />}
+            </Stack.Screen>
+          </Stack.Navigator>
+        )}
+      </NavigationContainer>
       <StatusBar style="auto" />
-    </>
+    </SafeAreaProvider>
   );
 }
 
