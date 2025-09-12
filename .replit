@@ -59,13 +59,5 @@ task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
 
-[[workflows.workflow]]
-name = "Start Mobile(Expo)"
-mode = "sequential"
-author = 42196734
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
 [agent]
 integrations = ["javascript_database:1.0.0"]
