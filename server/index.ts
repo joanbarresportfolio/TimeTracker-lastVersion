@@ -13,6 +13,30 @@ declare module "express-session" {
 }
 
 const app = express();
+
+// CORS configuration for mobile app access
+app.use((req, res, next) => {
+  // Allow requests from any origin for development
+  res.header('Access-Control-Allow-Origin', '*');
+  // Alternative: specify exact origins for production
+  // const allowedOrigins = ['http://localhost:8081', 'exp://192.168.1.100:8081', 'http://192.168.1.100:8081'];
+  // const origin = req.headers.origin;
+  // if (allowedOrigins.includes(origin)) {
+  //   res.header('Access-Control-Allow-Origin', origin);
+  // }
+  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
