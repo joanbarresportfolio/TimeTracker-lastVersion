@@ -27,9 +27,19 @@ import { Platform } from 'react-native';
 
 // Configurar URL base según la plataforma
 const getApiBaseUrl = (): string => {
-  // CONFIGURADO PARA CONECTAR AL SERVIDOR DE REPLIT
-  // El servidor está corriendo en Replit y disponible públicamente
-  return 'https://bb9a7a48-b6b7-466e-96e7-6d93eed0b84a-00-30hztcgbmh1s6.kirk.replit.dev/api';
+  if (__DEV__) {
+    // En desarrollo, conectar al servidor local en puerto 5000
+    if (Platform.OS === 'android') {
+      // Android emulator necesita 10.0.2.2 para acceder al host
+      return 'http://10.0.2.2:5000/api';
+    } else {
+      // iOS simulator puede usar localhost
+      return 'http://localhost:5000/api';
+    }
+  } else {
+    // En producción, usar URL del servidor local
+    return 'http://localhost:5000/api';
+  }
 };
 
 const API_BASE_URL = getApiBaseUrl();
