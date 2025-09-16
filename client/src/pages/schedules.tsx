@@ -62,6 +62,58 @@ export default function Schedules() {
     enabled: !!selectedEmployee && viewMode === "calendar",
   });
 
+  // ⚠️ HOOKS DE MUTACIÓN - DEBEN estar SIEMPRE antes de returns condicionales
+  const createDateScheduleMutation = useMutation({
+    mutationFn: (data: { employeeId: string; date: string; startTime: string; endTime: string }) => 
+      apiRequest("POST", "/api/date-schedules", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
+      refetchDateSchedules();
+      toast({ title: "Éxito", description: "Horario creado correctamente" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.message || "Error al crear el horario",
+        variant: "destructive"
+      });
+    },
+  });
+
+  const deleteDateScheduleMutation = useMutation({
+    mutationFn: (id: string) => 
+      apiRequest("DELETE", `/api/date-schedules/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
+      refetchDateSchedules();
+      toast({ title: "Éxito", description: "Horario eliminado correctamente" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.message || "Error al eliminar el horario",
+        variant: "destructive"
+      });
+    },
+  });
+
+  const createBulkDateScheduleMutation = useMutation({
+    mutationFn: (data: { schedules: Array<{ employeeId: string; date: string; startTime: string; endTime: string }> }) => 
+      apiRequest("POST", "/api/date-schedules/bulk", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
+      refetchDateSchedules();
+      toast({ title: "Éxito", description: "Horarios creados correctamente" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error?.message || "Error al crear los horarios",
+        variant: "destructive"
+      });
+    },
+  });
+
   // Calcular resumen de empleados con horas trabajadas vs horas de convenio
   const employeeSummaries = useMemo((): EmployeeSummary[] => {
     if (!employees || !timeEntries) return [];
@@ -327,57 +379,6 @@ export default function Schedules() {
     );
   }
 
-  // Mutaciones para dateSchedules
-  const createDateScheduleMutation = useMutation({
-    mutationFn: (data: { employeeId: string; date: string; startTime: string; endTime: string }) => 
-      apiRequest("/api/date-schedules", { method: "POST", body: data }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
-      refetchDateSchedules();
-      toast({ title: "Éxito", description: "Horario creado correctamente" });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: "Error", 
-        description: error?.message || "Error al crear el horario",
-        variant: "destructive"
-      });
-    },
-  });
-
-  const deleteDateScheduleMutation = useMutation({
-    mutationFn: (id: string) => 
-      apiRequest(`/api/date-schedules/${id}`, { method: "DELETE" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
-      refetchDateSchedules();
-      toast({ title: "Éxito", description: "Horario eliminado correctamente" });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: "Error", 
-        description: error?.message || "Error al eliminar el horario",
-        variant: "destructive"
-      });
-    },
-  });
-
-  const createBulkDateScheduleMutation = useMutation({
-    mutationFn: (data: { schedules: Array<{ employeeId: string; date: string; startTime: string; endTime: string }> }) => 
-      apiRequest("/api/date-schedules/bulk", { method: "POST", body: data }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
-      refetchDateSchedules();
-      toast({ title: "Éxito", description: "Horarios creados correctamente" });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: "Error", 
-        description: error?.message || "Error al crear los horarios",
-        variant: "destructive"
-      });
-    },
-  });
 
   // Calcular días del calendario anual
   const calendarData = useMemo(() => {
