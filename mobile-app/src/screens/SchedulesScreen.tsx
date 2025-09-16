@@ -21,8 +21,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { User, Schedule } from '../types/schema';
-import { getMySchedules } from '../services/api';
+import { User, Schedule, DateSchedule } from '../types/schema';
+import { getMySchedules, getMyDateSchedules } from '../services/api';
 
 type SchedulesNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Schedules'>;
 
@@ -42,6 +42,14 @@ interface SchedulesByDay {
   }[];
 }
 
+interface SchedulesByDate {
+  [dateStr: string]: {
+    startTime: string;
+    endTime: string;
+    isActive: boolean;
+  }[];
+}
+
 /**
  * Días de la semana en español
  */
@@ -55,36 +63,110 @@ const DAYS_OF_WEEK = [
   'Sábado',
 ];
 
+// Timezone-safe YYYY-MM-DD formatter using local time
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper function to get week start (Monday) for a given date
+const getWeekStart = (date: Date): string => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+  d.setDate(diff);
+  return formatLocalDate(d);
+};
+
 export default function SchedulesScreen({ route }: SchedulesScreenProps) {
   const navigation = useNavigation<SchedulesNavigationProp>();
   const { user } = route.params;
+  
+  // New state for date-specific schedules
+  const [selectedWeekStart, setSelectedWeekStart] = useState<string>(getWeekStart(new Date()));
+  const [schedulesByDate, setSchedulesByDate] = useState<SchedulesByDate>({});
+  
+  // Legacy state (kept for fallback compatibility)
   const [schedules, setSchedules] = useState<SchedulesByDay>({});
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   /**
-   * Carga los horarios del empleado
+   * Carga los horarios del empleado con date-first fetch + legacy fallback
    */
   const loadSchedules = async () => {
     try {
       setLoading(true);
-      const userSchedules = await getMySchedules();
       
-      // Agrupar horarios por día de la semana
-      const schedulesByDay: SchedulesByDay = {};
+      // Calculate week range from selectedWeekStart
+      const weekStart = selectedWeekStart;
+      const weekEndDate = new Date(weekStart);
+      weekEndDate.setDate(weekEndDate.getDate() + 6);
+      const weekEnd = formatLocalDate(weekEndDate);
       
-      userSchedules.forEach((schedule: Schedule) => {
-        if (!schedulesByDay[schedule.dayOfWeek]) {
-          schedulesByDay[schedule.dayOfWeek] = [];
-        }
-        schedulesByDay[schedule.dayOfWeek].push({
-          startTime: schedule.startTime,
-          endTime: schedule.endTime,
-          isActive: schedule.isActive,
+      // STEP 1: Try date-specific schedules first (with resilient fallback)
+      let dateSchedules: DateSchedule[] = [];
+      let usedFallback = false;
+      
+      try {
+        dateSchedules = await getMyDateSchedules(weekStart, weekEnd);
+      } catch (error) {
+        console.warn('Date-specific schedules failed, falling back to legacy:', error);
+        usedFallback = true;
+      }
+      
+      if (dateSchedules.length > 0) {
+        // Date-specific schedules found, group by date
+        const newSchedulesByDate: SchedulesByDate = {};
+        
+        dateSchedules.forEach((schedule: DateSchedule) => {
+          if (!newSchedulesByDate[schedule.date]) {
+            newSchedulesByDate[schedule.date] = [];
+          }
+          newSchedulesByDate[schedule.date].push({
+            startTime: schedule.startTime,
+            endTime: schedule.endTime,
+            isActive: schedule.isActive,
+          });
         });
-      });
-      
-      setSchedules(schedulesByDay);
+        
+        setSchedulesByDate(newSchedulesByDate);
+        setSchedules({}); // Clear legacy state
+      } else {
+        // STEP 2: Fallback to legacy weekly schedules (on error OR empty result)
+        const legacySchedules = await getMySchedules();
+        
+        if (legacySchedules.length > 0) {
+          // Synthesize schedulesByDate for selected week using dayOfWeek mapping
+          const synthesizedByDate: SchedulesByDate = {};
+          
+          for (let i = 0; i < 7; i++) {
+            const currentDate = new Date(weekStart);
+            currentDate.setDate(currentDate.getDate() + i);
+            const dateStr = formatLocalDate(currentDate);
+            const dayOfWeek = currentDate.getDay();
+            
+            const daySchedules = legacySchedules.filter(s => s.dayOfWeek === dayOfWeek && s.isActive);
+            if (daySchedules.length > 0) {
+              synthesizedByDate[dateStr] = daySchedules.map(s => ({
+                startTime: s.startTime,
+                endTime: s.endTime,
+                isActive: s.isActive,
+              }));
+            }
+          }
+          
+          setSchedulesByDate(synthesizedByDate);
+          setSchedules({}); // Clear legacy state
+        } else {
+          // No schedules found at all
+          setSchedulesByDate({});
+          setSchedules({});
+        }
+      }
     } catch (error) {
       console.error('Error loading schedules:', error);
       Alert.alert(
@@ -108,7 +190,7 @@ export default function SchedulesScreen({ route }: SchedulesScreenProps) {
 
   useEffect(() => {
     loadSchedules();
-  }, [user.id]);
+  }, [user.id, selectedWeekStart]);
 
   /**
    * Formatea el tiempo en formato 24h a 12h
@@ -126,15 +208,47 @@ export default function SchedulesScreen({ route }: SchedulesScreenProps) {
   };
 
   /**
-   * Renderiza una fila de día de la semana
+   * Formatea una fecha como "Lun 16/09" usando locale español
    */
-  const renderDaySchedule = (dayOfWeek: number) => {
-    const daySchedules = schedules[dayOfWeek] || [];
-    const activeSchedules = daySchedules.filter(s => s.isActive);
+  const formatDateLabel = (dateStr: string): string => {
+    try {
+      const date = new Date(dateStr);
+      const dayName = date.toLocaleDateString('es-ES', { weekday: 'short' });
+      const dayMonth = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+      return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${dayMonth}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  /**
+   * Navegación a semana anterior
+   */
+  const goToPreviousWeek = () => {
+    const prevWeekDate = new Date(selectedWeekStart);
+    prevWeekDate.setDate(prevWeekDate.getDate() - 7);
+    setSelectedWeekStart(getWeekStart(prevWeekDate));
+  };
+
+  /**
+   * Navegación a semana siguiente
+   */
+  const goToNextWeek = () => {
+    const nextWeekDate = new Date(selectedWeekStart);
+    nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+    setSelectedWeekStart(getWeekStart(nextWeekDate));
+  };
+
+  /**
+   * Renderiza una fila de fecha específica
+   */
+  const renderDateSchedule = (dateStr: string) => {
+    const dateSchedules = schedulesByDate[dateStr] || [];
+    const activeSchedules = dateSchedules.filter(s => s.isActive);
     
     return (
-      <View key={dayOfWeek} style={styles.dayRow}>
-        <Text style={styles.dayName}>{DAYS_OF_WEEK[dayOfWeek]}</Text>
+      <View key={dateStr} style={styles.dayRow}>
+        <Text style={styles.dayName}>{formatDateLabel(dateStr)}</Text>
         <View style={styles.timeContainer}>
           {activeSchedules.length > 0 ? (
             activeSchedules.map((sched, index) => (
@@ -151,20 +265,53 @@ export default function SchedulesScreen({ route }: SchedulesScreenProps) {
   };
 
   /**
-   * Renderiza la tarjeta de horarios semanal
+   * Genera array de fechas de la semana seleccionada
    */
-  const renderWeeklySchedule = () => (
-    <View style={styles.scheduleCard}>
-      <View style={styles.scheduleHeader}>
-        <Text style={styles.scheduleTitle}>Horario Semanal</Text>
-        <Text style={styles.scheduleDescription}>Tu horario de trabajo asignado</Text>
+  const getWeekDates = (): string[] => {
+    const dates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(selectedWeekStart);
+      date.setDate(date.getDate() + i);
+      dates.push(formatLocalDate(date));
+    }
+    return dates;
+  };
+
+  /**
+   * Renderiza la tarjeta de horarios por semana (date-based)
+   */
+  const renderWeeklyScheduleByDate = () => {
+    const weekDates = getWeekDates();
+    const weekStartDate = new Date(selectedWeekStart);
+    const weekEndDate = new Date(selectedWeekStart);
+    weekEndDate.setDate(weekEndDate.getDate() + 6);
+    
+    const weekLabel = `${weekStartDate.getDate()}/${weekStartDate.getMonth() + 1} - ${weekEndDate.getDate()}/${weekEndDate.getMonth() + 1}`;
+    
+    return (
+      <View style={styles.scheduleCard}>
+        {/* Week Navigation Header */}
+        <View style={styles.weekNavigation}>
+          <TouchableOpacity style={styles.navButton} onPress={goToPreviousWeek}>
+            <Text style={styles.navButtonText}>← Anterior</Text>
+          </TouchableOpacity>
+          <Text style={styles.weekLabel}>{weekLabel}</Text>
+          <TouchableOpacity style={styles.navButton} onPress={goToNextWeek}>
+            <Text style={styles.navButtonText}>Siguiente →</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.scheduleHeader}>
+          <Text style={styles.scheduleTitle}>Horario Semanal</Text>
+          <Text style={styles.scheduleDescription}>Tu horario de trabajo asignado</Text>
+        </View>
+        
+        <View style={styles.scheduleBody}>
+          {weekDates.map(dateStr => renderDateSchedule(dateStr))}
+        </View>
       </View>
-      
-      <View style={styles.scheduleBody}>
-        {[0, 1, 2, 3, 4, 5, 6].map(dayOfWeek => renderDaySchedule(dayOfWeek))}
-      </View>
-    </View>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -203,7 +350,7 @@ export default function SchedulesScreen({ route }: SchedulesScreenProps) {
           Horarios asignados para {user.firstName} {user.lastName}
         </Text>
 
-        {Object.keys(schedules).length === 0 ? (
+        {Object.keys(schedulesByDate).length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No tienes horarios asignados</Text>
             <Text style={styles.emptySubtext}>
@@ -212,7 +359,7 @@ export default function SchedulesScreen({ route }: SchedulesScreenProps) {
           </View>
         ) : (
           <View style={styles.schedulesContainer}>
-            {renderWeeklySchedule()}
+            {renderWeeklyScheduleByDate()}
           </View>
         )}
       </ScrollView>
@@ -346,5 +493,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9ca3af',
     fontStyle: 'italic',
+  },
+  // Week navigation styles
+  weekNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  navButton: {
+    padding: 8,
+  },
+  navButtonText: {
+    fontSize: 14,
+    color: '#3b82f6',
+    fontWeight: '500',
+  },
+  weekLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
   },
 });
