@@ -14,6 +14,7 @@ import {
   TimeEntry, 
   InsertTimeEntry, 
   Schedule,
+  DateSchedule,
   Incident,
   InsertIncident,
   TimeStats 
@@ -255,10 +256,27 @@ export async function getTimeEntries(
  */
 
 /**
- * Obtiene horarios del empleado actual
+ * Obtiene horarios del empleado actual (legacy - weekly recurring)
  */
 export async function getMySchedules(): Promise<Schedule[]> {
   return apiRequest<Schedule[]>('/schedules/my');
+}
+
+/**
+ * Obtiene horarios por fecha específica del empleado actual
+ */
+export async function getMyDateSchedules(startDate?: string, endDate?: string): Promise<DateSchedule[]> {
+  let endpoint = '/date-schedules/my';
+  const params = new URLSearchParams();
+  
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+  
+  if (params.toString()) {
+    endpoint += `?${params.toString()}`;
+  }
+  
+  return apiRequest<DateSchedule[]>(endpoint);
 }
 
 /**

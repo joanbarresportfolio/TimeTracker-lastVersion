@@ -70,11 +70,21 @@ export interface InsertTimeEntry {
  * =================
  */
 
-/** Tipo completo de horario */
+/** Tipo completo de horario (legacy - weekly recurring) */
 export interface Schedule {
   id: string;
   employeeId: string;
   dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+}
+
+/** Tipo completo de horario por fecha específica */
+export interface DateSchedule {
+  id: string;
+  employeeId: string;
+  date: string; // YYYY-MM-DD format
   startTime: string;
   endTime: string;
   isActive: boolean;
