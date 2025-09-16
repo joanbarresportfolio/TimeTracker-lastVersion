@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, Search, LogIn, LogOut, Timer, Calendar } from "lucide-react";
-import type { Employee, TimeEntry, Schedule } from "@shared/schema";
+import type { Employee, TimeEntry, DateSchedule } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -44,8 +44,8 @@ function EmployeeTimeTracking() {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const { data: schedules, isLoading: schedulesLoading } = useQuery<Schedule[]>({
-    queryKey: ["/api/schedules"],
+  const { data: schedules, isLoading: schedulesLoading } = useQuery<DateSchedule[]>({
+    queryKey: ["/api/date-schedules", user?.id, new Date().getFullYear()],
   });
 
   const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<TimeEntry[]>({
@@ -103,32 +103,46 @@ function EmployeeTimeTracking() {
   };
 
   const getTodaySchedules = () => {
-    const today = getCurrentDayOfWeek();
+    const today = selectedDate; // Using selectedDate from state
     return schedules?.filter(schedule => 
-      schedule.dayOfWeek === today && schedule.isActive
+      schedule.employeeId === user?.id && schedule.date === today && schedule.isActive
     ) || [];
   };
 
   const getWeekSchedules = () => {
-    // Solo mostrar horarios del empleado actual que están activos
+    // Calcular inicio y fin de la semana del selectedDate
+    const currentDate = new Date(selectedDate);
+    const currentDay = currentDate.getDay();
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - currentDay + 1); // Lunes
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // Domingo
+    
+    const startDateStr = startOfWeek.toISOString().split('T')[0];
+    const endDateStr = endOfWeek.toISOString().split('T')[0];
+    
+    // Filtrar horarios del empleado actual en el rango de la semana
     const weekSchedules = schedules?.filter(schedule => 
-      schedule.isActive && schedule.employeeId === user?.id
+      schedule.isActive && 
+      schedule.employeeId === user?.id &&
+      schedule.date >= startDateStr && 
+      schedule.date <= endDateStr
     ) || [];
-    // Agrupar por día de la semana y ordenar
-    return weekSchedules.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+    
+    // Ordenar por fecha
+    return weekSchedules.sort((a, b) => a.date.localeCompare(b.date));
   };
 
-  const getScheduleStatus = (dayOfWeek: number) => {
-    const today = getCurrentDayOfWeek();
-    const targetDate = getDateForDayOfWeek(dayOfWeek);
-    const entry = timeEntries?.find(entry => entry.date === targetDate);
+  const getScheduleStatusByDate = (scheduleDate: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    const entry = timeEntries?.find(entry => entry.date === scheduleDate);
     
-    // Lógica corregida: solo marcar como completado si hay entrada real
-    if (dayOfWeek < today) {
+    // Comparar fechas directamente
+    if (scheduleDate < today) {
       if (entry?.clockOut) return { status: "completed", color: "bg-blue-500/10 text-blue-700" };
       return { status: "missed", color: "bg-red-500/10 text-red-700" };
     }
-    if (dayOfWeek === today) {
+    if (scheduleDate === today) {
       if (!entry) return { status: "pending", color: "bg-yellow-500/10 text-yellow-700" };
       if (entry.clockIn && !entry.clockOut) return { status: "in_progress", color: "bg-green-500/10 text-green-700" };
       if (entry.clockOut) return { status: "completed", color: "bg-blue-500/10 text-blue-700" };
@@ -377,9 +391,9 @@ function EmployeeTimeTracking() {
               </thead>
               <tbody>
                 {getWeekSchedules().map((schedule) => {
-                  const scheduleStatus = getScheduleStatus(schedule.dayOfWeek);
-                  const scheduleDate = getDateForDayOfWeek(schedule.dayOfWeek);
-                  const dayLabel = daysOfWeek[schedule.dayOfWeek].label;
+                  const scheduleStatus = getScheduleStatusByDate(schedule.date);
+                  const scheduleDate = schedule.date;
+                  const dayLabel = new Date(schedule.date).toLocaleDateString('es-ES', { weekday: 'long' });
                   
                   return (
                     <tr key={schedule.id} className="border-b border-border hover:bg-muted/50">

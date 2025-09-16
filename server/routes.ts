@@ -1694,9 +1694,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/date-schedules/bulk", requireAdmin, async (req, res) => {
     try {
-      // 🔍 LOG TEMPORAL: Ver qué datos llegan del frontend
-      console.log("🔍 DATOS RECIBIDOS EN BULK ENDPOINT:", JSON.stringify(req.body, null, 2));
-      
       const bulkData = bulkDateScheduleCreateSchema.parse(req.body);
       const createdSchedules = await storage.createBulkDateSchedules(bulkData);
       res.json({ 
@@ -1706,11 +1703,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        // 🔍 LOG TEMPORAL: Ver errores específicos de validación
-        console.log("❌ ERRORES DE VALIDACIÓN ZOD:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Datos de horarios masivos inválidos", errors: error.errors });
       }
-      console.log("❌ ERROR NO ZOD:", error);
       res.status(500).json({ message: "Error al crear horarios masivos por fecha" });
     }
   });

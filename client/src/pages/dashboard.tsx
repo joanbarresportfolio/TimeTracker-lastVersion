@@ -13,8 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Clock, Users, TrendingUp, AlertTriangle, Eye, Calendar, Plus } from "lucide-react";
-import type { Employee, TimeEntry, InsertIncident, InsertSchedule } from "@shared/schema";
-import { insertIncidentSchema, insertScheduleSchema } from "@shared/schema";
+import type { Employee, TimeEntry, InsertIncident, InsertDateSchedule } from "@shared/schema";
+import { insertIncidentSchema, insertDateScheduleSchema } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -65,11 +65,11 @@ export default function Dashboard() {
     },
   });
 
-  const scheduleForm = useForm<InsertSchedule>({
-    resolver: zodResolver(insertScheduleSchema),
+  const scheduleForm = useForm<InsertDateSchedule>({
+    resolver: zodResolver(insertDateScheduleSchema),
     defaultValues: {
       employeeId: "",
-      dayOfWeek: 1,
+      date: new Date().toISOString().split('T')[0], // today
       startTime: "09:00",
       endTime: "17:00",
       isActive: true,
@@ -100,13 +100,13 @@ export default function Dashboard() {
   });
 
   const createScheduleMutation = useMutation({
-    mutationFn: (data: InsertSchedule) => apiRequest("/api/schedules", "POST", data),
+    mutationFn: (data: InsertDateSchedule) => apiRequest("/api/date-schedules", "POST", data),
     onSuccess: () => {
       toast({
         title: "Horario creado",
         description: "El horario ha sido creado exitosamente.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/schedules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       setIsScheduleDialogOpen(false);
       scheduleForm.reset();
