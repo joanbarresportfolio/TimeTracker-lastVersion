@@ -89,82 +89,98 @@ import { z } from "zod";
  */
 async function validateClockingTime(employeeId: string, currentTime: Date, action: "clock-in" | "clock-out"): Promise<{isValid: boolean, message: string}> {
   try {
-    // PASO 1: Obtener horarios asignados al empleado
-    const schedules = await storage.getSchedulesByEmployee(employeeId);
+    // PASO 1: Priorizar dateSchedules para fecha específica
+    const todayStr = currentTime.toISOString().split('T')[0];
+    const dateSchedules = await storage.getDateSchedulesByEmployeeAndRange(employeeId, todayStr, todayStr);
     
-    if (schedules.length === 0) {
+    // Filtrar solo horarios activos
+    const activeDateSchedules = dateSchedules.filter(schedule => schedule.isActive);
+    
+    if (activeDateSchedules.length > 0) {
+      // Usar dateSchedules para validación
+      return validateTimeWindow(activeDateSchedules, currentTime, action);
+    }
+    
+    // PASO 2: FALLBACK - Si no hay dateSchedules, usar schedules tradicionales
+    const legacySchedules = await storage.getSchedulesByEmployee(employeeId);
+    
+    if (legacySchedules.length === 0) {
       return {
         isValid: false,
         message: "No tienes horarios asignados. Contacta con tu supervisor para configurar tus horarios de trabajo."
       };
     }
 
-    // PASO 2: Determinar día actual y filtrar horarios
+    // Determinar día actual y filtrar horarios legacy
     const currentDayOfWeek = currentTime.getDay(); // 0=Domingo, 1=Lunes, etc.
     
     // Filtrar solo horarios activos para hoy
-    const todaySchedules = schedules.filter(schedule => 
+    const todayLegacySchedules = legacySchedules.filter(schedule => 
       schedule.dayOfWeek === currentDayOfWeek && schedule.isActive
     );
     
-    if (todaySchedules.length === 0) {
+    if (todayLegacySchedules.length === 0) {
       return {
         isValid: false,
         message: "No tienes horarios asignados para hoy. Contacta con tu supervisor."
       };
     }
-
-    // PASO 3: Validar hora actual contra horarios con ventana de tolerancia
-    const currentHour = currentTime.getHours();
-    const currentMinute = currentTime.getMinutes();
-    const currentTimeInMinutes = currentHour * 60 + currentMinute;
-
-    // PASO 4: Verificar cada horario del día para encontrar uno válido
-    for (const schedule of todaySchedules) {
-      const [startHour, startMinute] = schedule.startTime.split(':').map(Number);
-      const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
-      
-      const startTimeInMinutes = startHour * 60 + startMinute;
-      const endTimeInMinutes = endHour * 60 + endMinute;
-
-      // VENTANA DE TOLERANCIA: ±20 minutos
-      const windowMinutes = 20;
-      
-      if (action === "clock-in") {
-        // Para entrada: 20 min antes y después de hora inicio
-        const earliestTime = startTimeInMinutes - windowMinutes;
-        const latestTime = startTimeInMinutes + windowMinutes;
-        
-        if (currentTimeInMinutes >= earliestTime && currentTimeInMinutes <= latestTime) {
-          return { isValid: true, message: "" };
-        }
-      } else { // clock-out
-        // Para salida: 20 min antes y después de hora fin
-        const earliestTime = endTimeInMinutes - windowMinutes;
-        const latestTime = endTimeInMinutes + windowMinutes;
-        
-        if (currentTimeInMinutes >= earliestTime && currentTimeInMinutes <= latestTime) {
-          return { isValid: true, message: "" };
-        }
-      }
-    }
-
-    // PASO 5: Si llegamos aquí, no hay horarios válidos para la hora actual
-    const scheduleInfo = todaySchedules.map(s => `${s.startTime} - ${s.endTime}`).join(", ");
-    const actionText = action === "clock-in" ? "entrada" : "salida";
     
-    return {
-      isValid: false,
-      message: `Solo puedes fichar ${actionText} dentro de los 20 minutos antes o después de tu horario asignado (${scheduleInfo}).`
-    };
-
+    // Usar schedules legacy para validación
+    return validateTimeWindow(todayLegacySchedules, currentTime, action);
   } catch (error) {
-    // MANEJO DE ERRORES: Error genérico para no exponer detalles técnicos
     return {
       isValid: false,
-      message: "Error al validar horarios. Contacta con tu supervisor."
+      message: "Error al validar horario. Inténtalo de nuevo o contacta con tu supervisor."
     };
   }
+}
+
+// Helper function para validar ventana de tiempo (funciona con dateSchedules y schedules)
+function validateTimeWindow(schedules: any[], currentTime: Date, action: "clock-in" | "clock-out"): {isValid: boolean, message: string} {
+  // PASO 1: Calcular hora actual en minutos
+  const currentHour = currentTime.getHours();
+  const currentMinute = currentTime.getMinutes();
+  const currentTimeInMinutes = currentHour * 60 + currentMinute;
+
+  // PASO 2: Verificar cada horario para encontrar uno válido
+  for (const schedule of schedules) {
+    const [startHour, startMinute] = schedule.startTime.split(':').map(Number);
+    const [endHour, endMinute] = schedule.endTime.split(':').map(Number);
+    
+    const startTimeInMinutes = startHour * 60 + startMinute;
+    const endTimeInMinutes = endHour * 60 + endMinute;
+
+    // VENTANA DE TOLERANCIA: ±20 minutos
+    const windowMinutes = 20;
+    
+    if (action === "clock-in") {
+      // Para entrada: 20 min antes y después de hora inicio
+      const earliestTime = startTimeInMinutes - windowMinutes;
+      const latestTime = startTimeInMinutes + windowMinutes;
+      
+      if (currentTimeInMinutes >= earliestTime && currentTimeInMinutes <= latestTime) {
+        return { isValid: true, message: "" };
+      }
+    } else { // clock-out
+      // Para salida: 20 min antes y después de hora fin
+      const earliestTime = endTimeInMinutes - windowMinutes;
+      const latestTime = endTimeInMinutes + windowMinutes;
+      
+      if (currentTimeInMinutes >= earliestTime && currentTimeInMinutes <= latestTime) {
+        return { isValid: true, message: "" };
+      }
+    }
+  }
+
+  // PASO 3: Si llegamos aquí, no hay horarios válidos para la hora actual
+  const scheduleInfo = schedules.map(s => `${s.startTime} - ${s.endTime}`).join(", ");
+  const actionText = action === "clock-in" ? "entrada" : "salida";
+  
+  return {
+    isValid: false,
+    message: `Solo puedes fichar ${actionText} dentro de los 20 minutos antes o después de tu horario asignado (${scheduleInfo}).`
+  };
 }
 
 /**

@@ -182,7 +182,7 @@ export default function Dashboard() {
     setSelectedEmployeeSchedule(employee);
     scheduleForm.reset({
       employeeId: employee.id,
-      dayOfWeek: 1,
+      date: new Date().toISOString().split('T')[0], // today
       startTime: "09:00",
       endTime: "17:00",
       isActive: true,
@@ -663,26 +663,17 @@ export default function Dashboard() {
                 <form onSubmit={scheduleForm.handleSubmit(onScheduleSubmit)} className="space-y-4">
                   <FormField
                     control={scheduleForm.control}
-                    name="dayOfWeek"
+                    name="date"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Día de la semana</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-day-of-week">
-                              <SelectValue placeholder="Seleccionar día" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="0">Domingo</SelectItem>
-                            <SelectItem value="1">Lunes</SelectItem>
-                            <SelectItem value="2">Martes</SelectItem>
-                            <SelectItem value="3">Miércoles</SelectItem>
-                            <SelectItem value="4">Jueves</SelectItem>
-                            <SelectItem value="5">Viernes</SelectItem>
-                            <SelectItem value="6">Sábado</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormLabel>Fecha</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="date" 
+                            {...field}
+                            data-testid="input-schedule-date"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
