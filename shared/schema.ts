@@ -359,39 +359,17 @@ export const insertDateScheduleSchema = insertDateScheduleSchemaBase.refine((dat
 });
 
 /**
- * Schema para creación masiva de horarios por fecha
+ * Schema para creación masiva de horarios por fecha - VALIDACIÓN SIMPLIFICADA
  * FORMATO: { schedules: Array<{ employeeId, date, startTime, endTime }> }
  */
 export const bulkDateScheduleCreateSchema = z.object({
   schedules: z.array(z.object({
-    employeeId: z.string().min(1),
-    date: z.string().min(1), // Fecha en formato YYYY-MM-DD
-    startTime: z.string().min(1),
-    endTime: z.string().min(1),
+    employeeId: z.string().min(1, "Employee ID is required"),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+    startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Start time must be in HH:MM format"),
+    endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "End time must be in HH:MM format"),
     isActive: z.boolean().optional().default(true),
-  }).refine((data) => {
-    const { startTime, endTime } = data;
-    
-    if (!startTime || !endTime) return true;
-    
-    // Validar formato HH:MM
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
-      return false;
-    }
-    
-    // Validar que startTime < endTime
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
-    
-    const startTotalMinutes = startHour * 60 + startMinute;
-    const endTotalMinutes = endHour * 60 + endMinute;
-    
-    return startTotalMinutes < endTotalMinutes;
-  }, {
-    message: "La hora de inicio debe ser anterior a la hora de fin y ambas deben estar en formato HH:MM válido",
-    path: ["endTime"],
-  })).min(1, "Debe incluir al menos un horario"),
+  })).min(1, "At least one schedule is required"),
 });
 
 /**
