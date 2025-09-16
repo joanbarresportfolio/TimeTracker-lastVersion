@@ -48,7 +48,7 @@
 
 import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type BulkScheduleCreate, type DateSchedule, type InsertDateSchedule, type BulkDateScheduleCreate, employees, timeEntries, schedules, incidents, dateSchedules } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql, and, gte, lte } from "drizzle-orm";
+import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 /**
@@ -1461,27 +1461,32 @@ export class DatabaseStorage implements IStorage {
    * @returns Array de horarios por fecha creados (solo los nuevos)
    */
   async createBulkDateSchedules(bulkData: BulkDateScheduleCreate): Promise<DateSchedule[]> {
-    if (!bulkData.dates || bulkData.dates.length === 0) {
+    if (!bulkData.schedules || bulkData.schedules.length === 0) {
       return [];
     }
 
-    // PASO 1: Transformar datos bulk en array de horarios individuales
-    const workHours = this.calculateWorkHours(bulkData.startTime, bulkData.endTime);
-    const schedulesToCreate = bulkData.dates.map(date => ({
-      employeeId: bulkData.employeeId,
-      date: date,
-      startTime: bulkData.startTime,
-      endTime: bulkData.endTime,
-      workHours: workHours,
-      isActive: bulkData.isActive ?? true
-    }));
+    // PASO 1: Transformar datos bulk en array de horarios individuales con horas calculadas
+    const schedulesToCreate = bulkData.schedules.map(schedule => {
+      const workHours = this.calculateWorkHours(schedule.startTime, schedule.endTime);
+      return {
+        employeeId: schedule.employeeId,
+        date: schedule.date,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+        workHours: workHours,
+        isActive: schedule.isActive ?? true
+      };
+    });
 
-    // PASO 2: Obtener horarios existentes para evitar duplicados
+    // PASO 2: Obtener todos los empleados únicos de los horarios a crear
+    const employeeIds = Array.from(new Set(schedulesToCreate.map(s => s.employeeId)));
+    
+    // PASO 3: Obtener horarios existentes para todos los empleados
     const existingSchedules = await db.select()
       .from(dateSchedules)
-      .where(eq(dateSchedules.employeeId, bulkData.employeeId));
+      .where(inArray(dateSchedules.employeeId, employeeIds));
 
-    // PASO 3: Filtrar horarios que NO existen (evitar duplicados)
+    // PASO 4: Filtrar horarios que NO existen (evitar duplicados)
     const uniqueSchedules = schedulesToCreate.filter(newSchedule => {
       return !existingSchedules.some(existing => 
         existing.employeeId === newSchedule.employeeId &&
@@ -1492,12 +1497,12 @@ export class DatabaseStorage implements IStorage {
       );
     });
 
-    // PASO 4: Si no hay horarios únicos que crear, retornar array vacío
+    // PASO 5: Si no hay horarios únicos que crear, retornar array vacío
     if (uniqueSchedules.length === 0) {
       return [];
     }
 
-    // PASO 5: Inserción masiva de horarios únicos
+    // PASO 6: Inserción masiva de horarios únicos
     const createdSchedules = await db
       .insert(dateSchedules)
       .values(uniqueSchedules)

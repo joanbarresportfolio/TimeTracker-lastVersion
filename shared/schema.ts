@@ -360,29 +360,38 @@ export const insertDateScheduleSchema = insertDateScheduleSchemaBase.refine((dat
 
 /**
  * Schema para creación masiva de horarios por fecha
+ * FORMATO: { schedules: Array<{ employeeId, date, startTime, endTime }> }
  */
 export const bulkDateScheduleCreateSchema = z.object({
-  employeeId: z.string().min(1),
-  startTime: z.string().min(1),
-  endTime: z.string().min(1),
-  dates: z.array(z.string().min(1)).min(1), // Array de fechas en formato YYYY-MM-DD
-  isActive: z.boolean().optional().default(true),
-}).refine((data) => {
-  const startTime = data.startTime;
-  const endTime = data.endTime;
-  
-  if (!startTime || !endTime) return true;
-  
-  const [startHour, startMinute] = startTime.split(':').map(Number);
-  const [endHour, endMinute] = endTime.split(':').map(Number);
-  
-  const startTotalMinutes = startHour * 60 + startMinute;
-  const endTotalMinutes = endHour * 60 + endMinute;
-  
-  return startTotalMinutes < endTotalMinutes;
-}, {
-  message: "La hora de inicio debe ser anterior a la hora de fin",
-  path: ["endTime"],
+  schedules: z.array(z.object({
+    employeeId: z.string().min(1),
+    date: z.string().min(1), // Fecha en formato YYYY-MM-DD
+    startTime: z.string().min(1),
+    endTime: z.string().min(1),
+    isActive: z.boolean().optional().default(true),
+  }).refine((data) => {
+    const { startTime, endTime } = data;
+    
+    if (!startTime || !endTime) return true;
+    
+    // Validar formato HH:MM
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+      return false;
+    }
+    
+    // Validar que startTime < endTime
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+    
+    const startTotalMinutes = startHour * 60 + startMinute;
+    const endTotalMinutes = endHour * 60 + endMinute;
+    
+    return startTotalMinutes < endTotalMinutes;
+  }, {
+    message: "La hora de inicio debe ser anterior a la hora de fin y ambas deben estar en formato HH:MM válido",
+    path: ["endTime"],
+  })).min(1, "Debe incluir al menos un horario"),
 });
 
 /**
