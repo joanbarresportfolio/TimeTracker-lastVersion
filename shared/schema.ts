@@ -48,6 +48,7 @@ export const employees = pgTable("employees", {
   department: text("department").notNull(),
   position: text("position").notNull(),
   hireDate: timestamp("hire_date").notNull(),
+  conventionHours: integer("convention_hours").notNull().default(1752), // Horas de convenio anuales
   isActive: boolean("is_active").notNull().default(true),
 });
 
@@ -147,6 +148,39 @@ export const incidents = pgTable("incidents", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
+/**
+ * TABLA: dateSchedules
+ * ====================
+ * 
+ * Define horarios específicos para fechas concretas de empleados.
+ * Esta tabla permite asignar horarios específicos para días individuales,
+ * complementando o sobrescribiendo los horarios recurrentes de la tabla schedules.
+ * 
+ * FUNCIONAMIENTO:
+ * - Se crean horarios para fechas específicas (YYYY-MM-DD)
+ * - Tiene prioridad sobre los horarios recurrentes de la tabla schedules
+ * - Permite asignación masiva de horarios para múltiples fechas
+ * - Usado para horarios especiales, vacaciones, turnos extras, etc.
+ * 
+ * CAMPOS:
+ * - id: Identificador único del horario específico
+ * - employeeId: Referencia al empleado (FK a employees.id)
+ * - date: Fecha específica en formato YYYY-MM-DD
+ * - startTime: Hora de inicio en formato HH:MM (ej: "09:00")
+ * - endTime: Hora de fin en formato HH:MM (ej: "17:00")
+ * - workHours: Horas de trabajo calculadas en minutos
+ * - isActive: Permite activar/desactivar horarios sin eliminarlos
+ */
+export const dateSchedules = pgTable("date_schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  date: text("date").notNull(), // formato YYYY-MM-DD
+  startTime: text("start_time").notNull(), // formato HH:MM (ej: "09:00")
+  endTime: text("end_time").notNull(), // formato HH:MM (ej: "17:00")
+  workHours: integer("work_hours").notNull(), // Horas de trabajo en minutos
+  isActive: boolean("is_active").notNull().default(true),
+});
+
 // ============================================================================
 // ESQUEMAS DE VALIDACIÓN CON ZOD
 // ============================================================================
@@ -196,6 +230,7 @@ export const createEmployeeSchema = insertEmployeeSchema.extend({
  */
 export const updateEmployeeSchema = insertEmployeeSchema.partial().extend({
   hireDate: z.string().transform((str) => new Date(str)).optional(),
+  conventionHours: z.number().int().positive().optional(),
 });
 
 /**
@@ -290,6 +325,67 @@ export const bulkScheduleCreateSchema = z.object({
 });
 
 /**
+ * ESQUEMAS PARA HORARIOS ESPECÍFICOS POR FECHA
+ * =============================================
+ */
+
+/**
+ * Schema base para horarios por fecha específica
+ */
+export const insertDateScheduleSchemaBase = createInsertSchema(dateSchedules).omit({
+  id: true,
+  workHours: true, // Se calcula automáticamente
+});
+
+/**
+ * Schema completo para horarios por fecha específica con validación de tiempo
+ */
+export const insertDateScheduleSchema = insertDateScheduleSchemaBase.refine((data) => {
+  const startTime = data.startTime;
+  const endTime = data.endTime;
+  
+  if (!startTime || !endTime) return true;
+  
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  
+  const startTotalMinutes = startHour * 60 + startMinute;
+  const endTotalMinutes = endHour * 60 + endMinute;
+  
+  return startTotalMinutes < endTotalMinutes;
+}, {
+  message: "La hora de inicio debe ser anterior a la hora de fin",
+  path: ["endTime"],
+});
+
+/**
+ * Schema para creación masiva de horarios por fecha
+ */
+export const bulkDateScheduleCreateSchema = z.object({
+  employeeId: z.string().min(1),
+  startTime: z.string().min(1),
+  endTime: z.string().min(1),
+  dates: z.array(z.string().min(1)).min(1), // Array de fechas en formato YYYY-MM-DD
+  isActive: z.boolean().optional().default(true),
+}).refine((data) => {
+  const startTime = data.startTime;
+  const endTime = data.endTime;
+  
+  if (!startTime || !endTime) return true;
+  
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+  
+  const startTotalMinutes = startHour * 60 + startMinute;
+  const endTotalMinutes = endHour * 60 + endMinute;
+  
+  return startTotalMinutes < endTotalMinutes;
+}, {
+  message: "La hora de inicio debe ser anterior a la hora de fin",
+  path: ["endTime"],
+});
+
+/**
  * ESQUEMAS PARA INCIDENCIAS
  * =========================
  */
@@ -364,6 +460,20 @@ export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
 
 /** Tipo para crear múltiples horarios en una operación */
 export type BulkScheduleCreate = z.infer<typeof bulkScheduleCreateSchema>;
+
+/**
+ * TIPOS PARA HORARIOS ESPECÍFICOS POR FECHA
+ * ==========================================
+ */
+
+/** Tipo completo de horario por fecha como se almacena en la base de datos */
+export type DateSchedule = typeof dateSchedules.$inferSelect;
+
+/** Tipo para crear horario por fecha específica */
+export type InsertDateSchedule = z.infer<typeof insertDateScheduleSchema>;
+
+/** Tipo para crear múltiples horarios por fechas específicas */
+export type BulkDateScheduleCreate = z.infer<typeof bulkDateScheduleCreateSchema>;
 
 /**
  * TIPOS PARA INCIDENCIAS
