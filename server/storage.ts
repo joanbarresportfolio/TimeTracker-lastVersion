@@ -46,9 +46,9 @@
  * PROPÓSITO: Refactorización con buenas prácticas y documentación exhaustiva
  */
 
-import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type BulkScheduleCreate, employees, timeEntries, schedules, incidents } from "@shared/schema";
+import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type BulkScheduleCreate, type DateSchedule, type InsertDateSchedule, type BulkDateScheduleCreate, employees, timeEntries, schedules, incidents, dateSchedules } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, sql, and, gte, lte } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 /**
@@ -1172,6 +1172,338 @@ export class DatabaseStorage implements IStorage {
   async deleteIncident(id: string): Promise<boolean> {
     const result = await db.delete(incidents).where(eq(incidents.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // ==========================================
+  // MÉTODOS UTILITARIOS
+  // ==========================================
+  
+  /**
+   * CALCULAR HORAS DE TRABAJO EN MINUTOS
+   * ===================================
+   * 
+   * Calcula la diferencia entre hora de inicio y fin en minutos.
+   * 
+   * @param startTime - Hora de inicio en formato HH:MM
+   * @param endTime - Hora de fin en formato HH:MM
+   * @returns Diferencia en minutos
+   */
+  private calculateWorkHours(startTime: string, endTime: string): number {
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    
+    // Validar que la hora de fin sea posterior a la de inicio
+    const workMinutes = endMinutes - startMinutes;
+    if (workMinutes < 0) {
+      throw new Error(`Hora de fin (${endTime}) debe ser posterior a hora de inicio (${startTime})`);
+    }
+    
+    return workMinutes;
+  }
+
+  // ==========================================
+  // MÉTODOS DE HORARIOS ESPECÍFICOS POR FECHA (dateSchedules)
+  // ==========================================
+  
+  /**
+   * OBTENER TODOS LOS HORARIOS POR FECHA
+   * ===================================
+   * 
+   * Recupera todos los horarios específicos por fecha del sistema.
+   * Estos horarios sobrescriben los horarios semanales normales.
+   * 
+   * CONSULTA SQL EQUIVALENTE:
+   * SELECT * FROM date_schedules ORDER BY employeeId, date;
+   * 
+   * USO TÍPICO:
+   * - Vista global de excepciones de horarios
+   * - Reportes de cobertura por fecha
+   * - Dashboard administrativo de calendario
+   * 
+   * @returns Array con todos los horarios por fecha del sistema
+   */
+  async getDateSchedules(): Promise<DateSchedule[]> {
+    return await db.select().from(dateSchedules);
+  }
+
+  /**
+   * OBTENER HORARIOS POR FECHA DE EMPLEADO
+   * =====================================
+   * 
+   * Recupera horarios específicos por fecha de un empleado.
+   * Útil para mostrar calendario personalizado del empleado.
+   * 
+   * CONSULTA SQL EQUIVALENTE:
+   * SELECT * FROM date_schedules WHERE employeeId = $1 ORDER BY date;
+   * 
+   * USO TÍPICO:
+   * - Calendario personal del empleado
+   * - Vista de horarios excepcionales
+   * - Validación de asistencia vs horario esperado
+   * 
+   * @param employeeId - ID del empleado
+   * @returns Array con horarios por fecha del empleado
+   */
+  async getDateSchedulesByEmployee(employeeId: string): Promise<DateSchedule[]> {
+    return await db.select().from(dateSchedules).where(eq(dateSchedules.employeeId, employeeId));
+  }
+
+  /**
+   * OBTENER HORARIOS POR EMPLEADO Y RANGO DE FECHAS
+   * ==============================================
+   * 
+   * Recupera horarios específicos por fecha de un empleado dentro de un rango.
+   * 
+   * @param employeeId - ID del empleado
+   * @param startDate - Fecha de inicio (opcional, formato YYYY-MM-DD)
+   * @param endDate - Fecha de fin (opcional, formato YYYY-MM-DD)
+   * @returns Array con horarios filtrados por fecha
+   */
+  async getDateSchedulesByEmployeeAndRange(employeeId: string, startDate?: string, endDate?: string): Promise<DateSchedule[]> {
+    const conditions = [eq(dateSchedules.employeeId, employeeId)];
+    
+    // Agregar filtros de fecha si están presentes
+    if (startDate && endDate) {
+      conditions.push(gte(dateSchedules.date, startDate));
+      conditions.push(lte(dateSchedules.date, endDate));
+    } else if (startDate) {
+      conditions.push(gte(dateSchedules.date, startDate));
+    } else if (endDate) {
+      conditions.push(lte(dateSchedules.date, endDate));
+    }
+    
+    return await db.select().from(dateSchedules).where(and(...conditions));
+  }
+
+  /**
+   * OBTENER HORARIOS POR RANGO DE FECHAS (TODOS LOS EMPLEADOS)
+   * =========================================================
+   * 
+   * Recupera horarios específicos por fecha de todos los empleados dentro de un rango.
+   * 
+   * @param startDate - Fecha de inicio (opcional, formato YYYY-MM-DD)
+   * @param endDate - Fecha de fin (opcional, formato YYYY-MM-DD)
+   * @returns Array con horarios filtrados por fecha
+   */
+  async getDateSchedulesByRange(startDate?: string, endDate?: string): Promise<DateSchedule[]> {
+    if (!startDate && !endDate) {
+      return await db.select().from(dateSchedules);
+    }
+    
+    const conditions = [];
+    
+    // Agregar filtros de fecha si están presentes
+    if (startDate && endDate) {
+      conditions.push(gte(dateSchedules.date, startDate));
+      conditions.push(lte(dateSchedules.date, endDate));
+    } else if (startDate) {
+      conditions.push(gte(dateSchedules.date, startDate));
+    } else if (endDate) {
+      conditions.push(lte(dateSchedules.date, endDate));
+    }
+    
+    return await db.select().from(dateSchedules).where(and(...conditions));
+  }
+
+  /**
+   * CREAR HORARIO ESPECÍFICO POR FECHA
+   * =================================
+   * 
+   * Crea un horario para una fecha específica (sobrescribe horario semanal).
+   * 
+   * CONSULTA SQL EQUIVALENTE:
+   * INSERT INTO date_schedules (employeeId, date, startTime, endTime, workHours, isActive)
+   * VALUES ($1, $2, $3, $4, $5, $6)
+   * RETURNING *;
+   * 
+   * DATOS REQUERIDOS:
+   * - employeeId: ID del empleado
+   * - date: Fecha específica (formato YYYY-MM-DD)
+   * - startTime: Hora de inicio (formato HH:MM)
+   * - endTime: Hora de finalización (formato HH:MM)
+   * - workHours: Se calcula automáticamente en minutos
+   * - isActive: Si el horario está activo (default: true)
+   * 
+   * USO TÍPICO:
+   * - Horarios de días festivos
+   * - Horas extras programadas
+   * - Turnos especiales por eventos
+   * - Excepciones temporales de horario
+   * 
+   * @param insertDateSchedule - Datos del horario para fecha específica
+   * @returns Horario por fecha creado con ID asignado
+   */
+  async createDateSchedule(insertDateSchedule: InsertDateSchedule): Promise<DateSchedule> {
+    // Calcular workHours automáticamente
+    const scheduleWithHours = {
+      ...insertDateSchedule,
+      workHours: this.calculateWorkHours(insertDateSchedule.startTime, insertDateSchedule.endTime)
+    };
+    
+    const [dateSchedule] = await db
+      .insert(dateSchedules)
+      .values(scheduleWithHours)
+      .returning();
+    return dateSchedule;
+  }
+
+  /**
+   * ACTUALIZAR HORARIO POR FECHA
+   * ===========================
+   * 
+   * Actualiza campos específicos de un horario por fecha existente.
+   * 
+   * CONSULTA SQL EQUIVALENTE:
+   * UPDATE date_schedules 
+   * SET startTime = $1, endTime = $2, isActive = $3, workHours = $4
+   * WHERE id = $5 
+   * RETURNING *;
+   * 
+   * CAMPOS ACTUALIZABLES:
+   * - startTime: Cambiar hora de inicio
+   * - endTime: Cambiar hora de finalización
+   * - date: Mover a otra fecha (cuidado con duplicados)
+   * - isActive: Activar/desactivar horario
+   * - workHours: Se recalcula automáticamente
+   * 
+   * CASOS COMUNES:
+   * - Ajustar horarios por cambios de última hora
+   * - Extender/reducir jornada específica
+   * - Desactivar temporalmente un horario especial
+   * 
+   * @param id - ID del horario por fecha a actualizar
+   * @param dateScheduleData - Campos a modificar
+   * @returns Horario por fecha actualizado o undefined si no existía
+   */
+  async updateDateSchedule(id: string, dateScheduleData: Partial<InsertDateSchedule>): Promise<DateSchedule | undefined> {
+    const [updatedDateSchedule] = await db
+      .update(dateSchedules)
+      .set(dateScheduleData)
+      .where(eq(dateSchedules.id, id))
+      .returning();
+    return updatedDateSchedule || undefined;
+  }
+
+  /**
+   * ELIMINAR HORARIO POR FECHA
+   * =========================
+   * 
+   * Elimina permanentemente un horario específico por fecha.
+   * Al eliminarlo, se vuelve al horario semanal normal para esa fecha.
+   * 
+   * CONSULTA SQL EQUIVALENTE:
+   * DELETE FROM date_schedules WHERE id = $1;
+   * 
+   * CONSIDERACIONES:
+   * - Operación irreversible
+   * - El empleado usará el horario semanal normal para esa fecha
+   * - Puede afectar cálculos de horas programadas
+   * - Alternativa: updateDateSchedule(id, { isActive: false })
+   * 
+   * @param id - ID del horario por fecha a eliminar
+   * @returns true si se eliminó, false si no existía
+   */
+  async deleteDateSchedule(id: string): Promise<boolean> {
+    const result = await db.delete(dateSchedules).where(eq(dateSchedules.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  /**
+   * CREAR HORARIOS MASIVOS POR FECHA CON ANTI-DUPLICADOS
+   * ===================================================
+   * 
+   * Crea múltiples horarios específicos por fecha en una operación.
+   * Ideal para planificación de calendario anual con lógica anti-duplicados.
+   * 
+   * PROCESO EN 4 ETAPAS:
+   * 
+   * 1. VALIDACIÓN: Verifica que hay horarios para crear
+   * 2. CONSULTA EXISTENTES: Busca horarios existentes para evitar duplicados
+   * 3. FILTRADO: Identifica cuáles horarios NO existen ya
+   * 4. INSERCIÓN MASIVA: Crea solo los horarios únicos
+   * 
+   * LÓGICA ANTI-DUPLICADOS:
+   * Un horario se considera duplicado si COINCIDEN:
+   * - employeeId (mismo empleado)
+   * - date (misma fecha específica)
+   * - startTime (misma hora inicio)
+   * - endTime (misma hora fin)
+   * - isActive = true (solo horarios activos)
+   * 
+   * EJEMPLO DE USO:
+   * bulkData = {
+   *   schedules: [
+   *     {
+   *       employeeId: "123",
+   *       date: "2024-12-25",
+   *       startTime: "08:00",
+   *       endTime: "14:00"
+   *     },
+   *     {
+   *       employeeId: "123",
+   *       date: "2024-12-26",
+   *       startTime: "09:00",
+   *       endTime: "15:00"
+   *     }
+   *   ]
+   * }
+   * 
+   * VENTAJAS:
+   * - Una sola operación de insert para múltiples horarios
+   * - Prevención automática de duplicados
+   * - Ideal para calendarios anuales
+   * - Manejo eficiente de grandes volúmenes
+   * 
+   * @param bulkData - Datos con array de horarios por fecha
+   * @returns Array de horarios por fecha creados (solo los nuevos)
+   */
+  async createBulkDateSchedules(bulkData: BulkDateScheduleCreate): Promise<DateSchedule[]> {
+    if (!bulkData.dates || bulkData.dates.length === 0) {
+      return [];
+    }
+
+    // PASO 1: Transformar datos bulk en array de horarios individuales
+    const workHours = this.calculateWorkHours(bulkData.startTime, bulkData.endTime);
+    const schedulesToCreate = bulkData.dates.map(date => ({
+      employeeId: bulkData.employeeId,
+      date: date,
+      startTime: bulkData.startTime,
+      endTime: bulkData.endTime,
+      workHours: workHours,
+      isActive: bulkData.isActive ?? true
+    }));
+
+    // PASO 2: Obtener horarios existentes para evitar duplicados
+    const existingSchedules = await db.select()
+      .from(dateSchedules)
+      .where(eq(dateSchedules.employeeId, bulkData.employeeId));
+
+    // PASO 3: Filtrar horarios que NO existen (evitar duplicados)
+    const uniqueSchedules = schedulesToCreate.filter(newSchedule => {
+      return !existingSchedules.some(existing => 
+        existing.employeeId === newSchedule.employeeId &&
+        existing.date === newSchedule.date &&
+        existing.startTime === newSchedule.startTime &&
+        existing.endTime === newSchedule.endTime &&
+        existing.isActive === true
+      );
+    });
+
+    // PASO 4: Si no hay horarios únicos que crear, retornar array vacío
+    if (uniqueSchedules.length === 0) {
+      return [];
+    }
+
+    // PASO 5: Inserción masiva de horarios únicos
+    const createdSchedules = await db
+      .insert(dateSchedules)
+      .values(uniqueSchedules)
+      .returning();
+
+    return createdSchedules;
   }
 }
 

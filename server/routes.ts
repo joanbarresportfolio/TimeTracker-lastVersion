@@ -55,7 +55,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertScheduleSchemaBase, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkScheduleCreateSchema } from "@shared/schema";
+import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertScheduleSchemaBase, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkScheduleCreateSchema, insertDateScheduleSchema, insertDateScheduleSchemaBase, bulkDateScheduleCreateSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
 import { z } from "zod";
 
@@ -1538,6 +1538,235 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ message: "Error al obtener estadísticas del dashboard" });
+    }
+  });
+
+  // ==========================================
+  // RUTAS API: HORARIOS ESPECÍFICOS POR FECHA (dateSchedules)
+  // ==========================================
+  
+  /**
+   * GET /api/date-schedules
+   * =====================
+   * 
+   * Obtiene horarios específicos por fecha con control de acceso.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAuth: Requiere usuario autenticado (admin o employee)
+   * 
+   * CONTROL DE ACCESO POR ROLES:
+   * - Employee: Solo puede ver sus propios horarios por fecha
+   * - Admin: Puede ver todos con filtro opcional por empleado
+   * 
+   * PARÁMETROS DE QUERY OPCIONALES:
+   * - employeeId: Filtra horarios de empleado específico (solo admin)
+   * - startDate y endDate: Deben proporcionarse ambos o ninguno (formato YYYY-MM-DD)
+   * 
+   * RESPONSES:
+   * - 200: Array de horarios específicos por fecha
+   * - 400: Parámetros de query inválidos
+   * - 401: No autorizado
+   * - 500: Error interno del servidor
+   */
+  app.get("/api/date-schedules", requireAuth, async (req, res) => {
+    try {
+      // Validar parámetros de query
+      const querySchema = z.object({
+        employeeId: z.string().optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      }).refine((data) => {
+        // Ambos startDate y endDate deben estar presentes o ausentes
+        return (!data.startDate && !data.endDate) || (data.startDate && data.endDate);
+      }, {
+        message: "startDate y endDate deben proporcionarse ambos o ninguno"
+      });
+
+      const queryResult = querySchema.safeParse(req.query);
+      if (!queryResult.success) {
+        return res.status(400).json({ 
+          message: "Parámetros de query inválidos", 
+          errors: queryResult.error.errors 
+        });
+      }
+
+      const { employeeId, startDate, endDate } = queryResult.data;
+      let dateSchedules;
+      
+      // CONTROL DE ACCESO: Employees solo ven sus horarios, admins todos
+      if (req.user!.role === "employee") {
+        // EMPLOYEE: Solo horarios propios por fecha
+        if (startDate && endDate) {
+          dateSchedules = await storage.getDateSchedulesByEmployeeAndRange(req.user!.id, startDate, endDate);
+        } else {
+          dateSchedules = await storage.getDateSchedulesByEmployee(req.user!.id);
+        }
+      } else {
+        // ADMIN: Puede filtrar por empleado o ver todos
+        if (employeeId) {
+          if (startDate && endDate) {
+            dateSchedules = await storage.getDateSchedulesByEmployeeAndRange(employeeId, startDate, endDate);
+          } else {
+            dateSchedules = await storage.getDateSchedulesByEmployee(employeeId);
+          }
+        } else {
+          if (startDate && endDate) {
+            dateSchedules = await storage.getDateSchedulesByRange(startDate, endDate);
+          } else {
+            dateSchedules = await storage.getDateSchedules();
+          }
+        }
+      }
+      
+      res.json(dateSchedules);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener horarios por fecha" });
+    }
+  });
+
+  /**
+   * POST /api/date-schedules
+   * ======================
+   * 
+   * Crea un horario específico para una fecha determinada.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores pueden crear horarios por fecha
+   * 
+   * FUNCIONALIDAD:
+   * - Crea horario para una fecha específica (sobrescribe horario semanal)
+   * - Útil para excepciones, días festivos, horas extras, etc.
+   * - Validación de datos con Zod schema
+   * 
+   * REQUEST BODY:
+   * {
+   *   "employeeId": "uuid-del-empleado",
+   *   "date": "2024-12-25",
+   *   "startTime": "08:00",
+   *   "endTime": "16:00"
+   * }
+   */
+  app.post("/api/date-schedules", requireAdmin, async (req, res) => {
+    try {
+      const dateSchedule = insertDateScheduleSchema.parse(req.body);
+      const newDateSchedule = await storage.createDateSchedule(dateSchedule);
+      res.json(newDateSchedule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos de horario por fecha inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al crear horario por fecha" });
+    }
+  });
+
+  /**
+   * POST /api/date-schedules/bulk
+   * ===========================
+   * 
+   * Crea múltiples horarios específicos por fecha en una sola operación.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores pueden crear horarios masivos
+   * 
+   * FUNCIONALIDAD:
+   * - Crea horarios para múltiples fechas y empleados
+   * - Ideal para planificación de calendario anual
+   * - Evita duplicados automáticamente
+   * - Validación de datos con Zod schema
+   * 
+   * REQUEST BODY:
+   * {
+   *   "schedules": [
+   *     {
+   *       "employeeId": "uuid-del-empleado-1",
+   *       "date": "2024-12-25",
+   *       "startTime": "08:00",
+   *       "endTime": "16:00"
+   *     },
+   *     {
+   *       "employeeId": "uuid-del-empleado-2", 
+   *       "date": "2024-12-26",
+   *       "startTime": "09:00",
+   *       "endTime": "17:00"
+   *     }
+   *   ]
+   * }
+   */
+  app.post("/api/date-schedules/bulk", requireAdmin, async (req, res) => {
+    try {
+      const bulkData = bulkDateScheduleCreateSchema.parse(req.body);
+      const createdSchedules = await storage.createBulkDateSchedules(bulkData);
+      res.json({ 
+        message: "Horarios por fecha creados exitosamente",
+        count: createdSchedules.length,
+        schedules: createdSchedules
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos de horarios masivos inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al crear horarios masivos por fecha" });
+    }
+  });
+
+  /**
+   * PUT /api/date-schedules/:id
+   * =========================
+   * 
+   * Actualiza un horario específico por fecha existente.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores pueden modificar horarios
+   * 
+   * FUNCIONALIDAD:
+   * - Permite modificar horarios, fechas y empleados asignados
+   * - Validación de datos con Zod schema
+   * - Recalcula horas de trabajo automáticamente
+   */
+  app.put("/api/date-schedules/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateData = insertDateScheduleSchemaBase.partial().parse(req.body);
+      const updatedSchedule = await storage.updateDateSchedule(id, updateData);
+      
+      if (!updatedSchedule) {
+        return res.status(404).json({ message: "Horario por fecha no encontrado" });
+      }
+      
+      res.json(updatedSchedule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Datos de actualización inválidos", errors: error.errors });
+      }
+      res.status(500).json({ message: "Error al actualizar horario por fecha" });
+    }
+  });
+
+  /**
+   * DELETE /api/date-schedules/:id
+   * ============================
+   * 
+   * Elimina un horario específico por fecha.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores pueden eliminar horarios
+   * 
+   * FUNCIONALIDAD:
+   * - Eliminación física del registro
+   * - Al eliminar un horario por fecha, se vuelve al horario semanal normal
+   */
+  app.delete("/api/date-schedules/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteDateSchedule(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Horario por fecha no encontrado" });
+      }
+      
+      res.json({ message: "Horario por fecha eliminado exitosamente" });
+    } catch (error) {
+      res.status(500).json({ message: "Error al eliminar horario por fecha" });
     }
   });
 
