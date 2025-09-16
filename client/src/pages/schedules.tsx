@@ -170,6 +170,58 @@ export default function Schedules() {
     return Array.from(new Set(employees.map(emp => emp.department)));
   }, [employees]);
 
+  // ⚠️ CALENDARIO DATA MOVIDO AQUÍ - Debe estar antes de returns condicionales
+  const calendarData = useMemo(() => {
+    const year = calendarYear;
+    const startDate = startOfYear(new Date(year, 0, 1));
+    const endDate = endOfYear(new Date(year, 11, 31));
+    const months = eachMonthOfInterval({ start: startDate, end: endDate });
+
+    return months.map(month => {
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
+      
+      // Agregar días del mes anterior para completar la primera semana (Monday-first)
+      const startDay = (getDay(monthStart) + 6) % 7; // Convert Sunday-first to Monday-first
+      const prevDays = [];
+      for (let i = startDay - 1; i >= 0; i--) {
+        const prevDate = new Date(monthStart);
+        prevDate.setDate(prevDate.getDate() - i - 1);
+        prevDays.push(prevDate);
+      }
+      
+      // Agregar días del mes siguiente para completar la última semana (Monday-first)
+      const endDay = (getDay(monthEnd) + 6) % 7; // Convert Sunday-first to Monday-first
+      const nextDays = [];
+      for (let i = 1; i <= (6 - endDay); i++) {
+        const nextDate = new Date(monthEnd);
+        nextDate.setDate(nextDate.getDate() + i);
+        nextDays.push(nextDate);
+      }
+      
+      const allDays = [...prevDays, ...days, ...nextDays];
+      
+      return {
+        month,
+        days: allDays.map((date): CalendarDay => {
+          const dateStr = format(date, 'yyyy-MM-dd');
+          const schedule = dateSchedules?.find(s => s.date === dateStr);
+          
+          return {
+            date,
+            dateStr,
+            isCurrentMonth: isSameMonth(date, month),
+            isToday: isToday(date),
+            isSelected: selectedDates.some(selected => selected.dateStr === dateStr),
+            hasSchedule: !!schedule,
+            schedule,
+          };
+        })
+      };
+    });
+  }, [calendarYear, dateSchedules, selectedDates]);
+
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
@@ -380,57 +432,6 @@ export default function Schedules() {
   }
 
 
-  // Calcular días del calendario anual
-  const calendarData = useMemo(() => {
-    const year = calendarYear;
-    const startDate = startOfYear(new Date(year, 0, 1));
-    const endDate = endOfYear(new Date(year, 11, 31));
-    const months = eachMonthOfInterval({ start: startDate, end: endDate });
-
-    return months.map(month => {
-      const monthStart = startOfMonth(month);
-      const monthEnd = endOfMonth(month);
-      const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-      
-      // Agregar días del mes anterior para completar la primera semana (Monday-first)
-      const startDay = (getDay(monthStart) + 6) % 7; // Convert Sunday-first to Monday-first
-      const prevDays = [];
-      for (let i = startDay - 1; i >= 0; i--) {
-        const prevDate = new Date(monthStart);
-        prevDate.setDate(prevDate.getDate() - i - 1);
-        prevDays.push(prevDate);
-      }
-      
-      // Agregar días del mes siguiente para completar la última semana (Monday-first)
-      const endDay = (getDay(monthEnd) + 6) % 7; // Convert Sunday-first to Monday-first
-      const nextDays = [];
-      for (let i = 1; i <= (6 - endDay); i++) {
-        const nextDate = new Date(monthEnd);
-        nextDate.setDate(nextDate.getDate() + i);
-        nextDays.push(nextDate);
-      }
-      
-      const allDays = [...prevDays, ...days, ...nextDays];
-      
-      return {
-        month,
-        days: allDays.map((date): CalendarDay => {
-          const dateStr = format(date, 'yyyy-MM-dd');
-          const schedule = dateSchedules?.find(s => s.date === dateStr);
-          
-          return {
-            date,
-            dateStr,
-            isCurrentMonth: isSameMonth(date, month),
-            isToday: isToday(date),
-            isSelected: selectedDates.some(selected => selected.dateStr === dateStr),
-            hasSchedule: !!schedule,
-            schedule,
-          };
-        })
-      };
-    });
-  }, [calendarYear, dateSchedules, selectedDates]);
 
   const handleDateClick = (day: CalendarDay) => {
     if (!day.isCurrentMonth) return;
