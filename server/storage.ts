@@ -46,10 +46,232 @@
  * PROPÓSITO: Refactorización con buenas prácticas y documentación exhaustiva
  */
 
-import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type BulkScheduleCreate, type DateSchedule, type InsertDateSchedule, type BulkDateScheduleCreate, employees, timeEntries, schedules, incidents, dateSchedules } from "@shared/schema";
+import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type BulkScheduleCreate, type DateSchedule, type InsertDateSchedule, type BulkDateScheduleCreate, employees, timeEntries, schedules, incidents, dateSchedules, usuarios, departamentos, horariosPlanificados, fichajes, incidencias, type Usuario, type Departamento, type HorarioPlanificado, type Fichaje, type Incidencia } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+
+// ============================================================================
+// FUNCIONES ADAPTADORAS: MAPEO ENTRE TIPOS INGLÉS ↔ ESPAÑOL
+// ============================================================================
+
+/**
+ * Mapea un Usuario (español) a Employee (inglés) para mantener compatibilidad de API
+ */
+function mapUsuarioToEmployee(usuario: Usuario, departamento?: Departamento): Employee {
+  return {
+    id: usuario.idUsuario,
+    employeeNumber: usuario.numEmpleado,
+    firstName: usuario.firstName,
+    lastName: usuario.lastName,
+    email: usuario.email,
+    password: usuario.passwordHash,
+    role: usuario.rol === "administrador" ? "admin" : "employee",
+    department: departamento?.nombreDepartamento || "",
+    position: "", // No tenemos posición en la nueva estructura
+    hireDate: usuario.fechaContratacion,
+    conventionHours: 1752, // Valor por defecto
+    isActive: usuario.activo,
+  };
+}
+
+/**
+ * Mapea CreateEmployee (inglés) a datos para insertar Usuario (español)
+ */
+function mapCreateEmployeeToInsertUsuario(employee: CreateEmployee) {
+  return {
+    numEmpleado: employee.employeeNumber,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    email: employee.email,
+    passwordHash: "", // Se establecerá con bcrypt
+    fechaContratacion: employee.hireDate,
+    activo: employee.isActive,
+    rol: employee.role === "admin" ? "administrador" : "empleado",
+    idDepartamento: null as string | null, // Se establecerá después
+  };
+}
+
+/**
+ * Mapea un Fichaje (español) a TimeEntry (inglés)
+ */
+function mapFichajeToTimeEntry(fichaje: Fichaje): TimeEntry {
+  return {
+    id: fichaje.idFichaje,
+    employeeId: fichaje.idUsuario,
+    clockIn: fichaje.horaEntrada,
+    clockOut: fichaje.horaSalida || null,
+    totalHours: fichaje.horasTrabajadas || null,
+    date: fichaje.fecha,
+  };
+}
+
+/**
+ * Mapea un HorarioPlanificado (español) a DateSchedule (inglés)
+ */
+function mapHorarioPlanificadoToDateSchedule(horario: HorarioPlanificado): DateSchedule {
+  // Calcular workHours a partir de start/end time
+  const [startHour, startMin] = horario.horaInicioProgramada.split(':').map(Number);
+  const [endHour, endMin] = horario.horaFinProgramada.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  const workMinutes = endMinutes - startMinutes - (horario.descansoMinutos || 0);
+  
+  return {
+    id: horario.idHorario,
+    employeeId: horario.idUsuario,
+    date: horario.fecha,
+    startTime: horario.horaInicioProgramada,
+    endTime: horario.horaFinProgramada,
+    workHours: workMinutes,
+    isActive: true, // No tenemos isActive en horarios_planificados, asumimos true
+  };
+}
+
+/**
+ * Mapea una Incidencia (español) a Incident (inglés)
+ */
+function mapIncidenciaToIncident(incidencia: Incidencia): Incident {
+  // Mapeo inverso de tipos
+  const typeMap: Record<string, string> = {
+    "retraso": "late",
+    "ausencia": "absence",
+    "baja_medica": "absence",
+    "vacaciones": "absence",
+    "olvido_fichar": "forgot_clock_in",
+    "otro": "early_departure",
+  };
+  
+  // Mapeo inverso de estados
+  const statusMap: Record<string, string> = {
+    "pendiente": "pending",
+    "justificada": "approved",
+    "no_justificada": "rejected",
+  };
+  
+  return {
+    id: incidencia.idIncidencia,
+    employeeId: incidencia.idUsuario,
+    type: typeMap[incidencia.tipoIncidencia] || "early_departure",
+    description: incidencia.descripcion,
+    date: incidencia.fechaRegistro,
+    status: statusMap[incidencia.estado] || "pending",
+    createdAt: incidencia.fechaRegistro,
+  };
+}
+
+// ============================================================================
+// FUNCIONES REVERSE MAPPING: INGLÉS → ESPAÑOL (para INSERT/UPDATE)
+// ============================================================================
+
+/**
+ * Mapea InsertTimeEntry a formato para insertar en Fichaje
+ */
+async function toFichajeInsert(entry: InsertTimeEntry): Promise<Omit<typeof fichajes.$inferInsert, 'idFichaje'>> {
+  let horasTrabajadas = null;
+  
+  // Calcular horas trabajadas si existe clockOut
+  if (entry.clockOut) {
+    const clockIn = new Date(entry.clockIn);
+    const clockOut = new Date(entry.clockOut);
+    horasTrabajadas = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60));
+  }
+  
+  // Determinar estado
+  let estado = "pendiente";
+  if (entry.clockOut) {
+    estado = "completo";
+  } else {
+    estado = "incompleto";
+  }
+  
+  return {
+    idUsuario: entry.employeeId,
+    idHorario: null, // Se vinculará después si existe horario correspondiente
+    fecha: entry.date,
+    horaEntrada: entry.clockIn,
+    horaSalida: entry.clockOut || null,
+    horasTrabajadas,
+    estado,
+  };
+}
+
+/**
+ * Busca o crea departamento y retorna su ID
+ */
+async function getDepartamentoId(departmentName: string): Promise<string | null> {
+  if (!departmentName) return null;
+  
+  // Buscar existente
+  const [existing] = await db
+    .select()
+    .from(departamentos)
+    .where(eq(departamentos.nombreDepartamento, departmentName))
+    .limit(1);
+  
+  if (existing) return existing.idDepartamento;
+  
+  // Crear nuevo
+  const [newDept] = await db
+    .insert(departamentos)
+    .values({ nombreDepartamento: departmentName, descripcion: null })
+    .returning();
+  
+  return newDept.idDepartamento;
+}
+
+/**
+ * Mapea InsertDateSchedule a formato para insertar en HorarioPlanificado
+ */
+function toHorarioPlanificadoInsert(schedule: any): Omit<typeof horariosPlanificados.$inferInsert, 'idHorario'> {
+  // Calcular descansoMinutos basado en workHours si está disponible
+  // workHours está en minutos y representa el tiempo de trabajo neto
+  // descansoMinutos es el tiempo de descanso
+  const [startHour, startMin] = schedule.startTime.split(':').map(Number);
+  const [endHour, endMin] = schedule.endTime.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  const totalMinutes = endMinutes - startMinutes;
+  const workHours = schedule.workHours ?? totalMinutes;
+  const descansoMinutos = totalMinutes - workHours;
+  
+  return {
+    idUsuario: schedule.employeeId,
+    fecha: schedule.date,
+    horaInicioProgramada: schedule.startTime,
+    horaFinProgramada: schedule.endTime,
+    descansoMinutos: descansoMinutos > 0 ? descansoMinutos : 0,
+  };
+}
+
+/**
+ * Mapea InsertIncident a formato para insertar en Incidencia
+ */
+function toIncidenciaInsert(incident: InsertIncident): Omit<typeof incidencias.$inferInsert, 'idIncidencia'> {
+  // Mapeo de tipos inglés → español
+  const typeMap: Record<string, string> = {
+    "late": "retraso",
+    "absence": "ausencia",
+    "early_departure": "otro",
+    "forgot_clock_in": "olvido_fichar",
+    "forgot_clock_out": "olvido_fichar",
+  };
+  
+  // Mapeo de estados inglés → español
+  const statusMap: Record<string, string> = {
+    "pending": "pendiente",
+    "approved": "justificada",
+    "rejected": "no_justificada",
+  };
+  
+  return {
+    idUsuario: incident.employeeId,
+    tipoIncidencia: typeMap[incident.type] || "otro",
+    descripcion: incident.description,
+    fechaRegistro: incident.date,
+    estado: statusMap[incident.status] || "pendiente",
+  };
+}
 
 /**
  * INTERFAZ DE ALMACENAMIENTO
@@ -244,8 +466,20 @@ export class DatabaseStorage implements IStorage {
    * @returns Empleado encontrado o undefined si no existe
    */
   async getEmployeeByEmail(email: string): Promise<Employee | undefined> {
-    const [employee] = await db.select().from(employees).where(eq(employees.email, email));
-    return employee || undefined;
+    // Usar tabla usuarios (español) y hacer join con departamentos
+    const result = await db
+      .select({
+        usuario: usuarios,
+        departamento: departamentos,
+      })
+      .from(usuarios)
+      .leftJoin(departamentos, eq(usuarios.idDepartamento, departamentos.idDepartamento))
+      .where(eq(usuarios.email, email))
+      .limit(1);
+    
+    if (result.length === 0) return undefined;
+    
+    return mapUsuarioToEmployee(result[0].usuario, result[0].departamento || undefined);
   }
 
   /**
@@ -315,16 +549,53 @@ export class DatabaseStorage implements IStorage {
     // PASO 1: Encriptar contraseña con bcrypt (factor de costo: 10)
     const hashedPassword = await bcrypt.hash(employeeData.password, 10);
     
-    // PASO 2: Insertar en base de datos con contraseña encriptada
-    const [employee] = await db
-      .insert(employees)
-      .values({
-        ...employeeData,
-        password: hashedPassword, // Contraseña ya encriptada
-      })
-      .returning(); // Devolver el registro creado con ID generado
+    // PASO 2: Buscar o crear departamento
+    let departamentoId: string | null = null;
+    let departamentoData: Departamento | undefined = undefined;
+    
+    if (employeeData.department) {
+      // Buscar departamento existente
+      const [existingDept] = await db
+        .select()
+        .from(departamentos)
+        .where(eq(departamentos.nombreDepartamento, employeeData.department))
+        .limit(1);
       
-    return employee;
+      if (existingDept) {
+        departamentoId = existingDept.idDepartamento;
+        departamentoData = existingDept;
+      } else {
+        // Crear nuevo departamento
+        const [newDept] = await db
+          .insert(departamentos)
+          .values({
+            nombreDepartamento: employeeData.department,
+            descripcion: null,
+          })
+          .returning();
+        departamentoId = newDept.idDepartamento;
+        departamentoData = newDept;
+      }
+    }
+    
+    // PASO 3: Insertar usuario en tabla usuarios (español)
+    const [usuario] = await db
+      .insert(usuarios)
+      .values({
+        numEmpleado: employeeData.employeeNumber,
+        firstName: employeeData.firstName,
+        lastName: employeeData.lastName,
+        email: employeeData.email,
+        passwordHash: hashedPassword,
+        fechaContratacion: employeeData.hireDate,
+        activo: employeeData.isActive,
+        rol: employeeData.role === "admin" ? "administrador" : "empleado",
+        idDepartamento: departamentoId,
+      })
+      .returning();
+      
+    // PASO 4: Mapear a formato Employee (inglés) para compatibilidad
+    return mapUsuarioToEmployee(usuario, departamentoData);
   }
 
   // ==========================================
@@ -349,8 +620,19 @@ export class DatabaseStorage implements IStorage {
    * @returns Empleado encontrado o undefined si no existe
    */
   async getEmployee(id: string): Promise<Employee | undefined> {
-    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
-    return employee || undefined;
+    const result = await db
+      .select({
+        usuario: usuarios,
+        departamento: departamentos,
+      })
+      .from(usuarios)
+      .leftJoin(departamentos, eq(usuarios.idDepartamento, departamentos.idDepartamento))
+      .where(eq(usuarios.idUsuario, id))
+      .limit(1);
+    
+    if (result.length === 0) return undefined;
+    
+    return mapUsuarioToEmployee(result[0].usuario, result[0].departamento || undefined);
   }
 
   /**
@@ -376,7 +658,15 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con todos los empleados (puede estar vacío)
    */
   async getEmployees(): Promise<Employee[]> {
-    return await db.select().from(employees);
+    const results = await db
+      .select({
+        usuario: usuarios,
+        departamento: departamentos,
+      })
+      .from(usuarios)
+      .leftJoin(departamentos, eq(usuarios.idDepartamento, departamentos.idDepartamento));
+    
+    return results.map(r => mapUsuarioToEmployee(r.usuario, r.departamento || undefined));
   }
 
   /**
@@ -398,8 +688,19 @@ export class DatabaseStorage implements IStorage {
    * @returns Empleado encontrado o undefined si no existe
    */
   async getEmployeeByNumber(employeeNumber: string): Promise<Employee | undefined> {
-    const [employee] = await db.select().from(employees).where(eq(employees.employeeNumber, employeeNumber));
-    return employee || undefined;
+    const result = await db
+      .select({
+        usuario: usuarios,
+        departamento: departamentos,
+      })
+      .from(usuarios)
+      .leftJoin(departamentos, eq(usuarios.idDepartamento, departamentos.idDepartamento))
+      .where(eq(usuarios.numEmpleado, employeeNumber))
+      .limit(1);
+    
+    if (result.length === 0) return undefined;
+    
+    return mapUsuarioToEmployee(result[0].usuario, result[0].departamento || undefined);
   }
 
   /**
@@ -454,12 +755,42 @@ export class DatabaseStorage implements IStorage {
    * @returns Empleado actualizado o undefined si no existía
    */
   async updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee | undefined> {
-    const [updatedEmployee] = await db
-      .update(employees)
-      .set(employee)
-      .where(eq(employees.id, id))
-      .returning(); // Devolver el registro actualizado
-    return updatedEmployee || undefined;
+    // Preparar datos para actualización en tabla usuarios
+    const updateData: any = {};
+    
+    if (employee.employeeNumber !== undefined) updateData.numEmpleado = employee.employeeNumber;
+    if (employee.firstName !== undefined) updateData.firstName = employee.firstName;
+    if (employee.lastName !== undefined) updateData.lastName = employee.lastName;
+    if (employee.email !== undefined) updateData.email = employee.email;
+    if (employee.hireDate !== undefined) updateData.fechaContratacion = employee.hireDate;
+    if (employee.isActive !== undefined) updateData.activo = employee.isActive;
+    // Note: role is not in InsertEmployee type, handled separately if needed
+    
+    // Si se actualiza el departamento, buscar o crear el ID correspondiente
+    if (employee.department !== undefined) {
+      updateData.idDepartamento = await getDepartamentoId(employee.department);
+    }
+    
+    const [updatedUsuario] = await db
+      .update(usuarios)
+      .set(updateData)
+      .where(eq(usuarios.idUsuario, id))
+      .returning();
+    
+    if (!updatedUsuario) return undefined;
+    
+    // Obtener departamento para mapear correctamente
+    let departamento: Departamento | undefined;
+    if (updatedUsuario.idDepartamento) {
+      const [dept] = await db
+        .select()
+        .from(departamentos)
+        .where(eq(departamentos.idDepartamento, updatedUsuario.idDepartamento))
+        .limit(1);
+      departamento = dept;
+    }
+    
+    return mapUsuarioToEmployee(updatedUsuario, departamento);
   }
 
   /**
@@ -484,7 +815,7 @@ export class DatabaseStorage implements IStorage {
    * @returns true si se eliminó, false si no existía
    */
   async deleteEmployee(id: string): Promise<boolean> {
-    const result = await db.delete(employees).where(eq(employees.id, id));
+    const result = await db.delete(usuarios).where(eq(usuarios.idUsuario, id));
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -505,8 +836,8 @@ export class DatabaseStorage implements IStorage {
    * @returns Registro encontrado o undefined si no existe
    */
   async getTimeEntry(id: string): Promise<TimeEntry | undefined> {
-    const [timeEntry] = await db.select().from(timeEntries).where(eq(timeEntries.id, id));
-    return timeEntry || undefined;
+    const [fichaje] = await db.select().from(fichajes).where(eq(fichajes.idFichaje, id));
+    return fichaje ? mapFichajeToTimeEntry(fichaje) : undefined;
   }
 
   /**
@@ -525,7 +856,8 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con todos los registros de tiempo
    */
   async getTimeEntries(): Promise<TimeEntry[]> {
-    return await db.select().from(timeEntries);
+    const fichajesData = await db.select().from(fichajes);
+    return fichajesData.map(mapFichajeToTimeEntry);
   }
 
   /**
@@ -547,7 +879,8 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con todos los registros del empleado (ordenados por fecha)
    */
   async getTimeEntriesByEmployee(employeeId: string): Promise<TimeEntry[]> {
-    return await db.select().from(timeEntries).where(eq(timeEntries.employeeId, employeeId));
+    const fichajesData = await db.select().from(fichajes).where(eq(fichajes.idUsuario, employeeId));
+    return fichajesData.map(mapFichajeToTimeEntry);
   }
 
   /**
@@ -573,7 +906,8 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con todos los registros de esa fecha
    */
   async getTimeEntriesByDate(date: string): Promise<TimeEntry[]> {
-    return await db.select().from(timeEntries).where(eq(timeEntries.date, date));
+    const fichajesData = await db.select().from(fichajes).where(eq(fichajes.fecha, date));
+    return fichajesData.map(mapFichajeToTimeEntry);
   }
 
   /**
@@ -607,26 +941,33 @@ export class DatabaseStorage implements IStorage {
    * @returns Registro creado con totalHours calculado automáticamente
    */
   async createTimeEntry(insertTimeEntry: InsertTimeEntry): Promise<TimeEntry> {
-    let totalHours = null;
+    // Usar función helper para mapear a formato español
+    const fichajeData = await toFichajeInsert(insertTimeEntry);
     
-    // CÁLCULO AUTOMÁTICO DE HORAS TRABAJADAS
-    if (insertTimeEntry.clockOut) {
-      const clockIn = new Date(insertTimeEntry.clockIn);
-      const clockOut = new Date(insertTimeEntry.clockOut);
-      // Diferencia en minutos (no horas decimales)
-      totalHours = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60));
+    // Buscar horario planificado correspondiente si existe
+    const horarioMatch = await db
+      .select()
+      .from(horariosPlanificados)
+      .where(
+        and(
+          eq(horariosPlanificados.idUsuario, insertTimeEntry.employeeId),
+          eq(horariosPlanificados.fecha, insertTimeEntry.date)
+        )
+      )
+      .limit(1);
+    
+    if (horarioMatch.length > 0) {
+      fichajeData.idHorario = horarioMatch[0].idHorario;
     }
-
-    // INSERCIÓN EN BASE DE DATOS
-    const [timeEntry] = await db
-      .insert(timeEntries)
-      .values({
-        ...insertTimeEntry,
-        totalHours, // Puede ser null si no hay clockOut
-      })
-      .returning(); // Devolver registro creado con ID asignado
+    
+    // Insertar en tabla fichajes (español)
+    const [fichaje] = await db
+      .insert(fichajes)
+      .values(fichajeData)
+      .returning();
       
-    return timeEntry;
+    // Mapear de vuelta a TimeEntry (inglés) para compatibilidad
+    return mapFichajeToTimeEntry(fichaje);
   }
 
   /**
@@ -678,17 +1019,31 @@ export class DatabaseStorage implements IStorage {
       totalHours = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60));
     }
 
-    // ETAPA 4: Actualizar en base de datos
-    const [updatedTimeEntry] = await db
-      .update(timeEntries)
-      .set({
-        ...timeEntryData,
-        totalHours, // Horas recalculadas
-      })
-      .where(eq(timeEntries.id, id))
+    // ETAPA 4: Actualizar en base de datos (tabla fichajes)
+    const updateData: any = {};
+    
+    if (timeEntryData.clockIn !== undefined) updateData.horaEntrada = timeEntryData.clockIn;
+    if (timeEntryData.clockOut !== undefined) updateData.horaSalida = timeEntryData.clockOut;
+    if (timeEntryData.date !== undefined) updateData.fecha = timeEntryData.date;
+    if (timeEntryData.employeeId !== undefined) updateData.idUsuario = timeEntryData.employeeId;
+    
+    // Calcular horas trabajadas y estado
+    if (totalHours !== null) {
+      updateData.horasTrabajadas = totalHours;
+      updateData.estado = "completo";
+    } else if (updatedData.clockIn && !updatedData.clockOut) {
+      updateData.estado = "incompleto";
+    }
+    
+    const [updatedFichaje] = await db
+      .update(fichajes)
+      .set(updateData)
+      .where(eq(fichajes.idFichaje, id))
       .returning();
       
-    return updatedTimeEntry || undefined;
+    if (!updatedFichaje) return undefined;
+    
+    return mapFichajeToTimeEntry(updatedFichaje);
   }
 
   /**
@@ -719,7 +1074,7 @@ export class DatabaseStorage implements IStorage {
    * @returns true si se eliminó, false si no existía
    */
   async deleteTimeEntry(id: string): Promise<boolean> {
-    const result = await db.delete(timeEntries).where(eq(timeEntries.id, id));
+    const result = await db.delete(fichajes).where(eq(fichajes.idFichaje, id));
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -996,8 +1351,8 @@ export class DatabaseStorage implements IStorage {
    * @returns Incidencia encontrada o undefined si no existe
    */
   async getIncident(id: string): Promise<Incident | undefined> {
-    const [incident] = await db.select().from(incidents).where(eq(incidents.id, id));
-    return incident || undefined;
+    const [incidencia] = await db.select().from(incidencias).where(eq(incidencias.idIncidencia, id));
+    return incidencia ? mapIncidenciaToIncident(incidencia) : undefined;
   }
 
   /**
@@ -1025,7 +1380,8 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con todas las incidencias del sistema
    */
   async getIncidents(): Promise<Incident[]> {
-    return await db.select().from(incidents);
+    const incidenciasList = await db.select().from(incidencias);
+    return incidenciasList.map(mapIncidenciaToIncident);
   }
 
   /**
@@ -1054,7 +1410,8 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con incidencias del empleado ordenadas por fecha
    */
   async getIncidentsByEmployee(employeeId: string): Promise<Incident[]> {
-    return await db.select().from(incidents).where(eq(incidents.employeeId, employeeId));
+    const incidenciasList = await db.select().from(incidencias).where(eq(incidencias.idUsuario, employeeId));
+    return incidenciasList.map(mapIncidenciaToIncident);
   }
 
   /**
@@ -1094,11 +1451,12 @@ export class DatabaseStorage implements IStorage {
    * @returns Incidencia creada con ID asignado
    */
   async createIncident(insertIncident: InsertIncident): Promise<Incident> {
-    const [incident] = await db
-      .insert(incidents)
-      .values(insertIncident)
+    const incidenciaData = toIncidenciaInsert(insertIncident);
+    const [incidencia] = await db
+      .insert(incidencias)
+      .values(incidenciaData)
       .returning();
-    return incident;
+    return mapIncidenciaToIncident(incidencia);
   }
 
   /**
@@ -1134,12 +1492,42 @@ export class DatabaseStorage implements IStorage {
    * @returns Incidencia actualizada o undefined si no existía
    */
   async updateIncident(id: string, incidentData: Partial<InsertIncident>): Promise<Incident | undefined> {
-    const [updatedIncident] = await db
-      .update(incidents)
-      .set(incidentData)
-      .where(eq(incidents.id, id))
+    // Preparar datos para actualización en incidencias
+    const updateData: any = {};
+    
+    if (incidentData.employeeId !== undefined) updateData.idUsuario = incidentData.employeeId;
+    if (incidentData.description !== undefined) updateData.descripcion = incidentData.description;
+    if (incidentData.date !== undefined) updateData.fechaRegistro = incidentData.date;
+    
+    // Mapear tipo de incidencia
+    if (incidentData.type !== undefined) {
+      const typeMap: Record<string, string> = {
+        "late": "retraso",
+        "absence": "ausencia",
+        "early_departure": "otro",
+        "forgot_clock_in": "olvido_fichar",
+        "forgot_clock_out": "olvido_fichar",
+      };
+      updateData.tipoIncidencia = typeMap[incidentData.type] || "otro";
+    }
+    
+    // Mapear estado
+    if (incidentData.status !== undefined) {
+      const statusMap: Record<string, string> = {
+        "pending": "pendiente",
+        "approved": "justificada",
+        "rejected": "no_justificada",
+      };
+      updateData.estado = statusMap[incidentData.status] || "pendiente";
+    }
+    
+    const [updatedIncidencia] = await db
+      .update(incidencias)
+      .set(updateData)
+      .where(eq(incidencias.idIncidencia, id))
       .returning();
-    return updatedIncident || undefined;
+    
+    return updatedIncidencia ? mapIncidenciaToIncident(updatedIncidencia) : undefined;
   }
 
   /**
@@ -1170,7 +1558,7 @@ export class DatabaseStorage implements IStorage {
    * @returns true si se eliminó, false si no existía
    */
   async deleteIncident(id: string): Promise<boolean> {
-    const result = await db.delete(incidents).where(eq(incidents.id, id));
+    const result = await db.delete(incidencias).where(eq(incidencias.idIncidencia, id));
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -1226,7 +1614,8 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con todos los horarios por fecha del sistema
    */
   async getDateSchedules(): Promise<DateSchedule[]> {
-    return await db.select().from(dateSchedules);
+    const horarios = await db.select().from(horariosPlanificados);
+    return horarios.map(mapHorarioPlanificadoToDateSchedule);
   }
 
   /**
@@ -1248,7 +1637,8 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con horarios por fecha del empleado
    */
   async getDateSchedulesByEmployee(employeeId: string): Promise<DateSchedule[]> {
-    return await db.select().from(dateSchedules).where(eq(dateSchedules.employeeId, employeeId));
+    const horarios = await db.select().from(horariosPlanificados).where(eq(horariosPlanificados.idUsuario, employeeId));
+    return horarios.map(mapHorarioPlanificadoToDateSchedule);
   }
 
   /**
@@ -1263,19 +1653,20 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con horarios filtrados por fecha
    */
   async getDateSchedulesByEmployeeAndRange(employeeId: string, startDate?: string, endDate?: string): Promise<DateSchedule[]> {
-    const conditions = [eq(dateSchedules.employeeId, employeeId)];
+    const conditions = [eq(horariosPlanificados.idUsuario, employeeId)];
     
     // Agregar filtros de fecha si están presentes
     if (startDate && endDate) {
-      conditions.push(gte(dateSchedules.date, startDate));
-      conditions.push(lte(dateSchedules.date, endDate));
+      conditions.push(gte(horariosPlanificados.fecha, startDate));
+      conditions.push(lte(horariosPlanificados.fecha, endDate));
     } else if (startDate) {
-      conditions.push(gte(dateSchedules.date, startDate));
+      conditions.push(gte(horariosPlanificados.fecha, startDate));
     } else if (endDate) {
-      conditions.push(lte(dateSchedules.date, endDate));
+      conditions.push(lte(horariosPlanificados.fecha, endDate));
     }
     
-    return await db.select().from(dateSchedules).where(and(...conditions));
+    const horarios = await db.select().from(horariosPlanificados).where(and(...conditions));
+    return horarios.map(mapHorarioPlanificadoToDateSchedule);
   }
 
   /**
@@ -1290,22 +1681,24 @@ export class DatabaseStorage implements IStorage {
    */
   async getDateSchedulesByRange(startDate?: string, endDate?: string): Promise<DateSchedule[]> {
     if (!startDate && !endDate) {
-      return await db.select().from(dateSchedules);
+      const horarios = await db.select().from(horariosPlanificados);
+      return horarios.map(mapHorarioPlanificadoToDateSchedule);
     }
     
     const conditions = [];
     
     // Agregar filtros de fecha si están presentes
     if (startDate && endDate) {
-      conditions.push(gte(dateSchedules.date, startDate));
-      conditions.push(lte(dateSchedules.date, endDate));
+      conditions.push(gte(horariosPlanificados.fecha, startDate));
+      conditions.push(lte(horariosPlanificados.fecha, endDate));
     } else if (startDate) {
-      conditions.push(gte(dateSchedules.date, startDate));
+      conditions.push(gte(horariosPlanificados.fecha, startDate));
     } else if (endDate) {
-      conditions.push(lte(dateSchedules.date, endDate));
+      conditions.push(lte(horariosPlanificados.fecha, endDate));
     }
     
-    return await db.select().from(dateSchedules).where(and(...conditions));
+    const horarios = await db.select().from(horariosPlanificados).where(and(...conditions));
+    return horarios.map(mapHorarioPlanificadoToDateSchedule);
   }
 
   /**
@@ -1337,17 +1730,21 @@ export class DatabaseStorage implements IStorage {
    * @returns Horario por fecha creado con ID asignado
    */
   async createDateSchedule(insertDateSchedule: InsertDateSchedule): Promise<DateSchedule> {
-    // Calcular workHours automáticamente
+    // Calcular workHours automáticamente si no está presente
     const scheduleWithHours = {
       ...insertDateSchedule,
-      workHours: this.calculateWorkHours(insertDateSchedule.startTime, insertDateSchedule.endTime)
+      workHours: (insertDateSchedule as any).workHours ?? this.calculateWorkHours(insertDateSchedule.startTime, insertDateSchedule.endTime)
     };
     
-    const [dateSchedule] = await db
-      .insert(dateSchedules)
-      .values(scheduleWithHours)
+    // Convertir a formato HorarioPlanificado
+    const horarioPlanificadoData = toHorarioPlanificadoInsert(scheduleWithHours);
+    
+    const [horario] = await db
+      .insert(horariosPlanificados)
+      .values(horarioPlanificadoData)
       .returning();
-    return dateSchedule;
+    
+    return mapHorarioPlanificadoToDateSchedule(horario);
   }
 
   /**
@@ -1379,12 +1776,38 @@ export class DatabaseStorage implements IStorage {
    * @returns Horario por fecha actualizado o undefined si no existía
    */
   async updateDateSchedule(id: string, dateScheduleData: Partial<InsertDateSchedule>): Promise<DateSchedule | undefined> {
-    const [updatedDateSchedule] = await db
-      .update(dateSchedules)
-      .set(dateScheduleData)
-      .where(eq(dateSchedules.id, id))
+    // Preparar datos para actualización en horariosPlanificados
+    const updateData: any = {};
+    
+    if (dateScheduleData.employeeId !== undefined) updateData.idUsuario = dateScheduleData.employeeId;
+    if (dateScheduleData.date !== undefined) updateData.fecha = dateScheduleData.date;
+    if (dateScheduleData.startTime !== undefined) updateData.horaInicioProgramada = dateScheduleData.startTime;
+    if (dateScheduleData.endTime !== undefined) updateData.horaFinProgramada = dateScheduleData.endTime;
+    
+    // Si se actualiza start/endTime, recalcular descansoMinutos
+    if (dateScheduleData.startTime !== undefined || dateScheduleData.endTime !== undefined) {
+      // Obtener el horario actual para tener valores completos
+      const [current] = await db.select().from(horariosPlanificados).where(eq(horariosPlanificados.idHorario, id)).limit(1);
+      if (current) {
+        const startTime = dateScheduleData.startTime ?? current.horaInicioProgramada;
+        const endTime = dateScheduleData.endTime ?? current.horaFinProgramada;
+        
+        const [startHour, startMin] = startTime.split(':').map(Number);
+        const [endHour, endMin] = endTime.split(':').map(Number);
+        const totalMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+        const workHours = this.calculateWorkHours(startTime, endTime);
+        const descansoMinutos = totalMinutes - workHours;
+        updateData.descansoMinutos = descansoMinutos > 0 ? descansoMinutos : 0;
+      }
+    }
+    
+    const [updatedHorario] = await db
+      .update(horariosPlanificados)
+      .set(updateData)
+      .where(eq(horariosPlanificados.idHorario, id))
       .returning();
-    return updatedDateSchedule || undefined;
+    
+    return updatedHorario ? mapHorarioPlanificadoToDateSchedule(updatedHorario) : undefined;
   }
 
   /**
@@ -1407,7 +1830,7 @@ export class DatabaseStorage implements IStorage {
    * @returns true si se eliminó, false si no existía
    */
   async deleteDateSchedule(id: string): Promise<boolean> {
-    const result = await db.delete(dateSchedules).where(eq(dateSchedules.id, id));
+    const result = await db.delete(horariosPlanificados).where(eq(horariosPlanificados.idHorario, id));
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -1467,7 +1890,7 @@ export class DatabaseStorage implements IStorage {
 
     // PASO 1: Transformar datos bulk en array de horarios individuales con horas calculadas
     const schedulesToCreate = bulkData.schedules.map(schedule => {
-      const workHours = this.calculateWorkHours(schedule.startTime, schedule.endTime);
+      const workHours = (schedule as any).workHours ?? this.calculateWorkHours(schedule.startTime, schedule.endTime);
       return {
         employeeId: schedule.employeeId,
         date: schedule.date,
@@ -1483,17 +1906,16 @@ export class DatabaseStorage implements IStorage {
     
     // PASO 3: Obtener horarios existentes para todos los empleados
     const existingSchedules = await db.select()
-      .from(dateSchedules)
-      .where(inArray(dateSchedules.employeeId, employeeIds));
+      .from(horariosPlanificados)
+      .where(inArray(horariosPlanificados.idUsuario, employeeIds));
 
     // PASO 4: Filtrar horarios que NO existen (evitar duplicados)
     const uniqueSchedules = schedulesToCreate.filter(newSchedule => {
       return !existingSchedules.some(existing => 
-        existing.employeeId === newSchedule.employeeId &&
-        existing.date === newSchedule.date &&
-        existing.startTime === newSchedule.startTime &&
-        existing.endTime === newSchedule.endTime &&
-        existing.isActive === true
+        existing.idUsuario === newSchedule.employeeId &&
+        existing.fecha === newSchedule.date &&
+        existing.horaInicioProgramada === newSchedule.startTime &&
+        existing.horaFinProgramada === newSchedule.endTime
       );
     });
 
@@ -1502,13 +1924,16 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
 
-    // PASO 6: Inserción masiva de horarios únicos
-    const createdSchedules = await db
-      .insert(dateSchedules)
-      .values(uniqueSchedules)
+    // PASO 6: Convertir a formato HorarioPlanificado para inserción
+    const horariosToInsert = uniqueSchedules.map(schedule => toHorarioPlanificadoInsert(schedule));
+
+    // PASO 7: Inserción masiva de horarios únicos
+    const createdHorarios = await db
+      .insert(horariosPlanificados)
+      .values(horariosToInsert)
       .returning();
 
-    return createdSchedules;
+    return createdHorarios.map(mapHorarioPlanificadoToDateSchedule);
   }
 }
 

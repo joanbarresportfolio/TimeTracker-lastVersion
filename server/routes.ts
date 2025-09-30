@@ -89,45 +89,22 @@ import { z } from "zod";
  */
 async function validateClockingTime(employeeId: string, currentTime: Date, action: "clock-in" | "clock-out"): Promise<{isValid: boolean, message: string}> {
   try {
-    // PASO 1: Priorizar dateSchedules para fecha específica
+    // Buscar horarios planificados para la fecha específica (horariosPlanificados table)
     const todayStr = currentTime.toISOString().split('T')[0];
     const dateSchedules = await storage.getDateSchedulesByEmployeeAndRange(employeeId, todayStr, todayStr);
     
     // Filtrar solo horarios activos
     const activeDateSchedules = dateSchedules.filter(schedule => schedule.isActive);
     
-    if (activeDateSchedules.length > 0) {
-      // Usar dateSchedules para validación
-      return validateTimeWindow(activeDateSchedules, currentTime, action);
-    }
-    
-    // PASO 2: FALLBACK - Si no hay dateSchedules, usar schedules tradicionales
-    const legacySchedules = await storage.getSchedulesByEmployee(employeeId);
-    
-    if (legacySchedules.length === 0) {
+    if (activeDateSchedules.length === 0) {
       return {
         isValid: false,
-        message: "No tienes horarios asignados. Contacta con tu supervisor para configurar tus horarios de trabajo."
-      };
-    }
-
-    // Determinar día actual y filtrar horarios legacy
-    const currentDayOfWeek = currentTime.getDay(); // 0=Domingo, 1=Lunes, etc.
-    
-    // Filtrar solo horarios activos para hoy
-    const todayLegacySchedules = legacySchedules.filter(schedule => 
-      schedule.dayOfWeek === currentDayOfWeek && schedule.isActive
-    );
-    
-    if (todayLegacySchedules.length === 0) {
-      return {
-        isValid: false,
-        message: "No tienes horarios asignados para hoy. Contacta con tu supervisor."
+        message: "No tienes horarios asignados para hoy. Contacta con tu supervisor para configurar tus horarios de trabajo."
       };
     }
     
-    // Usar schedules legacy para validación
-    return validateTimeWindow(todayLegacySchedules, currentTime, action);
+    // Validar ventana de tiempo
+    return validateTimeWindow(activeDateSchedules, currentTime, action);
   } catch (error) {
     return {
       isValid: false,
