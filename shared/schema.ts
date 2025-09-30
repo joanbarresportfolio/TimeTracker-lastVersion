@@ -491,3 +491,192 @@ export type User = {
   role: "admin" | "employee";
   employeeNumber: string;
 };
+
+// ============================================================================
+// NUEVA ESTRUCTURA DE BASE DE DATOS EN ESPAÑOL
+// ============================================================================
+
+/**
+ * TABLA: departamentos
+ * ====================
+ * 
+ * Organiza los diferentes departamentos de la empresa.
+ */
+export const departamentos = pgTable("departamentos", {
+  idDepartamento: varchar("id_departamento").primaryKey().default(sql`gen_random_uuid()`),
+  nombreDepartamento: text("nombre_departamento").notNull(),
+  descripcion: text("descripcion"),
+});
+
+/**
+ * TABLA: usuarios
+ * ===============
+ * 
+ * Almacena información de empleados y administradores.
+ * Reemplaza la tabla 'employees' con nombres en español.
+ */
+export const usuarios = pgTable("usuarios", {
+  idUsuario: varchar("id_usuario").primaryKey().default(sql`gen_random_uuid()`),
+  numEmpleado: text("num_empleado").notNull().unique(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  fechaContratacion: timestamp("fecha_contratacion").notNull(),
+  activo: boolean("activo").notNull().default(true),
+  rol: text("rol").notNull().default("empleado"), // "administrador" o "empleado"
+  idDepartamento: varchar("id_departamento").references(() => departamentos.idDepartamento),
+});
+
+/**
+ * TABLA: horarios_planificados
+ * =============================
+ * 
+ * Horarios planificados a futuro para cada empleado.
+ * Un empleado puede tener miles de registros (todo un año de turnos).
+ */
+export const horariosPlanificados = pgTable("horarios_planificados", {
+  idHorario: varchar("id_horario").primaryKey().default(sql`gen_random_uuid()`),
+  idUsuario: varchar("id_usuario").notNull().references(() => usuarios.idUsuario),
+  fecha: text("fecha").notNull(), // YYYY-MM-DD
+  horaInicioProgramada: text("hora_inicio_programada").notNull(), // HH:MM
+  horaFinProgramada: text("hora_fin_programada").notNull(), // HH:MM
+  descansoMinutos: integer("descanso_minutos").notNull().default(0),
+  creadoPor: varchar("creado_por").references(() => usuarios.idUsuario),
+  fechaCreacion: timestamp("fecha_creacion").notNull().default(sql`now()`),
+  observaciones: text("observaciones"),
+});
+
+/**
+ * TABLA: fichajes
+ * ===============
+ * 
+ * Registros reales de fichaje (clock-in/clock-out) de cada jornada laboral.
+ */
+export const fichajes = pgTable("fichajes", {
+  idFichaje: varchar("id_fichaje").primaryKey().default(sql`gen_random_uuid()`),
+  idUsuario: varchar("id_usuario").notNull().references(() => usuarios.idUsuario),
+  idHorario: varchar("id_horario").references(() => horariosPlanificados.idHorario),
+  fecha: text("fecha").notNull(), // YYYY-MM-DD
+  horaEntrada: timestamp("hora_entrada").notNull(),
+  horaSalida: timestamp("hora_salida"),
+  horasTrabajadas: integer("horas_trabajadas"), // en minutos
+  estado: text("estado").notNull().default("pendiente"), // "completo", "incompleto", "pendiente", "fuera_de_horario"
+});
+
+/**
+ * TABLA: pausas
+ * =============
+ * 
+ * Registro de pausas durante un fichaje/turno.
+ */
+export const pausas = pgTable("pausas", {
+  idPausa: varchar("id_pausa").primaryKey().default(sql`gen_random_uuid()`),
+  idFichaje: varchar("id_fichaje").notNull().references(() => fichajes.idFichaje),
+  horaInicioPausa: timestamp("hora_inicio_pausa").notNull(),
+  horaFinPausa: timestamp("hora_fin_pausa"),
+  duracionMinutos: integer("duracion_minutos"),
+});
+
+/**
+ * TABLA: incidencias
+ * ==================
+ * 
+ * Registro de incidencias laborales (retrasos, ausencias, bajas, etc.).
+ */
+export const incidencias = pgTable("incidencias", {
+  idIncidencia: varchar("id_incidencia").primaryKey().default(sql`gen_random_uuid()`),
+  idUsuario: varchar("id_usuario").notNull().references(() => usuarios.idUsuario),
+  idFichaje: varchar("id_fichaje").references(() => fichajes.idFichaje),
+  tipoIncidencia: text("tipo_incidencia").notNull(), // "retraso", "ausencia", "baja_medica", "vacaciones", "olvido_fichar", "otro"
+  descripcion: text("descripcion").notNull(),
+  registradoPor: varchar("registrado_por").references(() => usuarios.idUsuario),
+  fechaRegistro: timestamp("fecha_registro").notNull().default(sql`now()`),
+  estado: text("estado").notNull().default("pendiente"), // "pendiente", "justificada", "no_justificada"
+});
+
+// ============================================================================
+// ESQUEMAS ZOD PARA NUEVAS TABLAS ESPAÑOLAS
+// ============================================================================
+
+/**
+ * ESQUEMAS PARA DEPARTAMENTOS
+ */
+export const insertDepartamentoSchema = createInsertSchema(departamentos).omit({
+  idDepartamento: true,
+});
+
+/**
+ * ESQUEMAS PARA USUARIOS
+ */
+export const insertUsuarioSchema = createInsertSchema(usuarios).omit({
+  idUsuario: true,
+  passwordHash: true,
+  rol: true,
+});
+
+export const createUsuarioSchema = insertUsuarioSchema.extend({
+  passwordHash: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
+  rol: z.enum(["administrador", "empleado"]).default("empleado"),
+  fechaContratacion: z.string().transform((str) => new Date(str)),
+});
+
+/**
+ * ESQUEMAS PARA HORARIOS PLANIFICADOS
+ */
+export const insertHorarioPlanificadoSchema = createInsertSchema(horariosPlanificados).omit({
+  idHorario: true,
+  fechaCreacion: true,
+});
+
+/**
+ * ESQUEMAS PARA FICHAJES
+ */
+export const insertFichajeSchema = createInsertSchema(fichajes).omit({
+  idFichaje: true,
+  horasTrabajadas: true,
+}).extend({
+  estado: z.enum(["completo", "incompleto", "pendiente", "fuera_de_horario"]).default("pendiente"),
+});
+
+/**
+ * ESQUEMAS PARA PAUSAS
+ */
+export const insertPausaSchema = createInsertSchema(pausas).omit({
+  idPausa: true,
+  duracionMinutos: true,
+});
+
+/**
+ * ESQUEMAS PARA INCIDENCIAS
+ */
+export const insertIncidenciaSchema = createInsertSchema(incidencias).omit({
+  idIncidencia: true,
+  fechaRegistro: true,
+}).extend({
+  tipoIncidencia: z.enum(["retraso", "ausencia", "baja_medica", "vacaciones", "olvido_fichar", "otro"]),
+  estado: z.enum(["pendiente", "justificada", "no_justificada"]).default("pendiente"),
+});
+
+// ============================================================================
+// TIPOS TYPESCRIPT PARA NUEVAS TABLAS
+// ============================================================================
+
+export type Departamento = typeof departamentos.$inferSelect;
+export type InsertDepartamento = z.infer<typeof insertDepartamentoSchema>;
+
+export type Usuario = typeof usuarios.$inferSelect;
+export type InsertUsuario = z.infer<typeof insertUsuarioSchema>;
+export type CreateUsuario = z.infer<typeof createUsuarioSchema>;
+
+export type HorarioPlanificado = typeof horariosPlanificados.$inferSelect;
+export type InsertHorarioPlanificado = z.infer<typeof insertHorarioPlanificadoSchema>;
+
+export type Fichaje = typeof fichajes.$inferSelect;
+export type InsertFichaje = z.infer<typeof insertFichajeSchema>;
+
+export type Pausa = typeof pausas.$inferSelect;
+export type InsertPausa = z.infer<typeof insertPausaSchema>;
+
+export type Incidencia = typeof incidencias.$inferSelect;
+export type InsertIncidencia = z.infer<typeof insertIncidenciaSchema>;

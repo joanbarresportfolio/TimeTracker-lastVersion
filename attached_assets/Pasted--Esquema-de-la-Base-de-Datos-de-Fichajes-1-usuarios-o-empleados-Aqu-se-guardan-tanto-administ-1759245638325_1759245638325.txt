@@ -1,0 +1,110 @@
+📌 Esquema de la Base de Datos de Fichajes
+1. usuarios (o empleados)
+
+Aquí se guardan tanto administradores como empleados, ya que el rol marcará las diferencias.
+
+id_usuario (PK, autoincremental)
+
+num_empleado (único, código interno)
+
+first_name
+
+last_name
+
+email (único)
+
+password_hash (contraseña encriptada)
+
+fecha_contratacion
+
+activo (boolean: sigue en la empresa o no)
+
+rol (ENUM: administrador, empleado)
+
+id_departamento (FK → departamentos.id_departamento)
+
+2. departamentos
+
+Tabla para organizar los diferentes departamentos.
+
+id_departamento (PK)
+
+nombre_departamento (ej: Marketing, Desarrollo, Ventas)
+
+descripcion (opcional)
+
+3. horarios_planificados
+
+El administrador crea los horarios planificados a futuro. Un empleado puede tener miles de registros (ej: todo un año de turnos).
+
+id_horario (PK)
+
+id_usuario (FK → usuarios.id_usuario)
+
+fecha (día del turno)
+
+hora_inicio_programada
+
+hora_fin_programada
+
+descanso_minutos (opcional, para almuerzo o pausas predefinidas)
+
+creado_por (FK → usuarios.id_usuario, quién creó/modificó el horario, normalmente un administrador)
+
+fecha_creacion (timestamp)
+
+observaciones (texto libre)
+
+4. fichajes
+
+Aquí se registran los datos reales del fichaje de cada jornada laboral.
+
+id_fichaje (PK)
+
+id_usuario (FK → usuarios.id_usuario)
+
+id_horario (FK → horarios_planificados.id_horario, opcional si se vincula a un turno planificado)
+
+fecha (día en que fichó)
+
+hora_entrada (timestamp real)
+
+hora_salida (timestamp real, NULL si aún no salió)
+
+horas_trabajadas (se puede calcular, pero conviene guardarlas para reporting)
+
+estado (ENUM: completo, incompleto, pendiente, fuera_de_horario)
+
+5. pausas
+
+Cada empleado puede registrar varias pausas en un mismo turno.
+
+id_pausa (PK)
+
+id_fichaje (FK → fichajes.id_fichaje)
+
+hora_inicio_pausa (timestamp)
+
+hora_fin_pausa (timestamp, NULL si aún no terminó)
+
+duracion_minutos (se calcula o guarda directamente)
+
+6. incidencias
+
+El administrador puede registrar incidencias relacionadas con horarios o fichajes (faltas, retrasos, olvidos de fichar, permisos, bajas, etc.).
+
+id_incidencia (PK)
+
+id_usuario (FK → usuarios.id_usuario)
+
+id_fichaje (FK → fichajes.id_fichaje, opcional)
+
+tipo_incidencia (ENUM: retraso, ausencia, baja_medica, vacaciones, olvido_fichar, otro)
+
+descripcion (texto libre)
+
+registrado_por (FK → usuarios.id_usuario, administrador que lo registró)
+
+fecha_registro (timestamp)
+
+estado (ENUM: pendiente, justificada, no_justificada)
