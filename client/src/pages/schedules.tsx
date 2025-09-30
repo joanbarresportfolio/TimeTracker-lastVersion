@@ -45,6 +45,7 @@ export default function Schedules() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const [selectedDates, setSelectedDates] = useState<SelectedDate[]>([]);
+  const [selectionType, setSelectionType] = useState<"with-schedule" | "without-schedule" | null>(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({ startTime: "09:00", endTime: "17:00" });
   const { toast } = useToast();
@@ -449,17 +450,45 @@ export default function Schedules() {
   const handleDateClick = (day: CalendarDay) => {
     if (!day.isCurrentMonth) return;
     
-    setSelectedDates(prev => {
-      const isSelected = prev.some(selected => selected.dateStr === day.dateStr);
+    const isSelected = selectedDates.some(selected => selected.dateStr === day.dateStr);
+    
+    if (isSelected) {
+      // Deseleccionar fecha
+      const newSelectedDates = selectedDates.filter(selected => selected.dateStr !== day.dateStr);
+      setSelectedDates(newSelectedDates);
       
-      if (isSelected) {
-        // Deseleccionar fecha
-        return prev.filter(selected => selected.dateStr !== day.dateStr);
-      } else {
-        // Seleccionar fecha
-        return [...prev, { date: day.date, dateStr: day.dateStr }];
+      // Si no quedan fechas seleccionadas, resetear el tipo de selección
+      if (newSelectedDates.length === 0) {
+        setSelectionType(null);
       }
-    });
+    } else {
+      // Intentar seleccionar fecha
+      const dayHasSchedule = day.hasSchedule;
+      
+      // Si no hay ninguna fecha seleccionada, establecer el tipo según el día clickeado
+      if (selectedDates.length === 0) {
+        setSelectionType(dayHasSchedule ? "with-schedule" : "without-schedule");
+        setSelectedDates([{ date: day.date, dateStr: day.dateStr }]);
+      } else {
+        // Si ya hay fechas seleccionadas, verificar que el tipo coincida
+        if (selectionType === "with-schedule" && dayHasSchedule) {
+          // Permitir selección - mismo tipo (con horario)
+          setSelectedDates(prev => [...prev, { date: day.date, dateStr: day.dateStr }]);
+        } else if (selectionType === "without-schedule" && !dayHasSchedule) {
+          // Permitir selección - mismo tipo (sin horario)
+          setSelectedDates(prev => [...prev, { date: day.date, dateStr: day.dateStr }]);
+        } else {
+          // Bloquear selección - tipos diferentes
+          toast({
+            title: "Selección no permitida",
+            description: selectionType === "with-schedule" 
+              ? "No puedes seleccionar días sin horario cuando ya has seleccionado días con horario"
+              : "No puedes seleccionar días con horario cuando ya has seleccionado días sin horario",
+            variant: "destructive"
+          });
+        }
+      }
+    }
   };
 
   const handleAssignSchedule = async () => {
@@ -479,8 +508,21 @@ export default function Schedules() {
     }
     
     try {
+      // Si estamos modificando horarios existentes, primero borrarlos
+      if (selectionType === "with-schedule" && dateSchedules) {
+        const schedulesToDelete = selectedDates
+          .map(selected => dateSchedules.find(s => s.date === selected.dateStr))
+          .filter(s => s !== undefined)
+          .map(s => s!.id);
+        
+        // Borrar los horarios antiguos silenciosamente
+        for (const scheduleId of schedulesToDelete) {
+          await apiRequest("DELETE", `/api/date-schedules/${scheduleId}`);
+        }
+      }
+      
+      // Crear los nuevos horarios
       if (selectedDates.length === 1) {
-        // Crear horario individual
         await createDateScheduleMutation.mutateAsync({
           employeeId: selectedEmployee.id,
           date: selectedDates[0].dateStr,
@@ -488,7 +530,6 @@ export default function Schedules() {
           endTime: scheduleForm.endTime,
         });
       } else {
-        // Crear horarios múltiples
         await createBulkDateScheduleMutation.mutateAsync({
           schedules: selectedDates.map(selected => ({
             employeeId: selectedEmployee.id,
@@ -498,8 +539,20 @@ export default function Schedules() {
           }))
         });
       }
+      
+      // Mostrar mensaje de éxito apropiado
+      if (selectionType === "with-schedule") {
+        toast({
+          title: "Horario modificado",
+          description: "El horario ha sido modificado exitosamente"
+        });
+      }
     } catch (error) {
-      // Error handling is done in mutation onError callbacks
+      toast({
+        title: "Error",
+        description: "Hubo un error al procesar la operación. Por favor, intenta de nuevo.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -507,8 +560,33 @@ export default function Schedules() {
     await deleteDateScheduleMutation.mutateAsync(scheduleId);
   };
 
+  const handleDeleteSelectedSchedules = async () => {
+    if (!dateSchedules || selectedDates.length === 0) return;
+    
+    try {
+      // Encontrar los IDs de los horarios de los días seleccionados
+      const schedulesToDelete = selectedDates
+        .map(selected => dateSchedules.find(s => s.date === selected.dateStr))
+        .filter(s => s !== undefined)
+        .map(s => s!.id);
+      
+      // Borrar cada horario
+      for (const scheduleId of schedulesToDelete) {
+        await deleteDateScheduleMutation.mutateAsync(scheduleId);
+      }
+      
+      // Limpiar selección
+      setSelectedDates([]);
+      setSelectionType(null);
+      setShowScheduleDialog(false);
+    } catch (error) {
+      // Error handling is done in mutation onError callbacks
+    }
+  };
+
   const clearSelection = () => {
     setSelectedDates([]);
+    setSelectionType(null);
   };
 
   // Vista de calendario
@@ -570,7 +648,19 @@ export default function Schedules() {
                     </Badge>
                     <Button 
                       size="sm"
-                      onClick={() => setShowScheduleDialog(true)}
+                      onClick={() => {
+                        // Si estamos seleccionando días con horario, pre-rellenar el formulario con el horario existente
+                        if (selectionType === "with-schedule" && dateSchedules && selectedDates.length > 0) {
+                          const firstSchedule = dateSchedules.find(s => s.date === selectedDates[0].dateStr);
+                          if (firstSchedule) {
+                            setScheduleForm({
+                              startTime: firstSchedule.startTime,
+                              endTime: firstSchedule.endTime
+                            });
+                          }
+                        }
+                        setShowScheduleDialog(true);
+                      }}
                       disabled={createDateScheduleMutation.isPending || createBulkDateScheduleMutation.isPending}
                       data-testid="button-assign-schedule"
                     >
@@ -690,13 +780,18 @@ export default function Schedules() {
           </CardContent>
         </Card>
         
-        {/* Dialog para asignar horario */}
+        {/* Dialog para asignar/modificar horario */}
         <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
           <DialogContent data-testid="dialog-assign-schedule">
             <DialogHeader>
-              <DialogTitle>Asignar Horario</DialogTitle>
+              <DialogTitle>
+                {selectionType === "with-schedule" ? "Modificar Horario" : "Asignar Horario"}
+              </DialogTitle>
               <DialogDescription>
-                Asignar horario a {selectedDates.length} fecha{selectedDates.length > 1 ? 's' : ''} seleccionada{selectedDates.length > 1 ? 's' : ''}
+                {selectionType === "with-schedule" 
+                  ? `Modificar o borrar horario de ${selectedDates.length} fecha${selectedDates.length > 1 ? 's' : ''} seleccionada${selectedDates.length > 1 ? 's' : ''}`
+                  : `Asignar horario a ${selectedDates.length} fecha${selectedDates.length > 1 ? 's' : ''} seleccionada${selectedDates.length > 1 ? 's' : ''}`
+                }
               </DialogDescription>
             </DialogHeader>
             
@@ -736,7 +831,7 @@ export default function Schedules() {
               </div>
             </div>
             
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               <Button 
                 variant="outline" 
                 onClick={() => setShowScheduleDialog(false)}
@@ -744,13 +839,27 @@ export default function Schedules() {
               >
                 Cancelar
               </Button>
+              {selectionType === "with-schedule" && (
+                <Button 
+                  variant="destructive"
+                  onClick={handleDeleteSelectedSchedules}
+                  disabled={deleteDateScheduleMutation.isPending}
+                  data-testid="button-delete-schedules"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Borrar
+                </Button>
+              )}
               <Button 
                 onClick={handleAssignSchedule}
                 disabled={createDateScheduleMutation.isPending || createBulkDateScheduleMutation.isPending}
                 data-testid="button-save-schedule"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {selectedDates.length > 1 ? 'Asignar a Todas' : 'Asignar'}
+                {selectionType === "with-schedule" 
+                  ? (selectedDates.length > 1 ? 'Modificar Todas' : 'Modificar')
+                  : (selectedDates.length > 1 ? 'Asignar a Todas' : 'Asignar')
+                }
               </Button>
             </DialogFooter>
           </DialogContent>
