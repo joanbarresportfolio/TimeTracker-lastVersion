@@ -372,10 +372,9 @@ export default function Employees() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="Desarrollo">Desarrollo</SelectItem>
-                              <SelectItem value="Administracion">Administración</SelectItem>
-                              <SelectItem value="Ventas">Ventas</SelectItem>
-                              <SelectItem value="Marketing">Marketing</SelectItem>
+                              <SelectItem value="Administración">Administración</SelectItem>
+                              <SelectItem value="Grupo Chova Felix">Grupo Chova Felix</SelectItem>
+                              <SelectItem value="Marina Fruit">Marina Fruit</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
