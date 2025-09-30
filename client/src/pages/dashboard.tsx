@@ -38,6 +38,8 @@ export default function Dashboard() {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
@@ -206,7 +208,7 @@ export default function Dashboard() {
     createIncidentMutation.mutate(data);
   };
 
-  const onScheduleSubmit = (data: InsertSchedule) => {
+  const onScheduleSubmit = (data: InsertDateSchedule) => {
     createScheduleMutation.mutate(data);
   };
 
@@ -352,7 +354,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {employees?.slice(0, 5).map((employee) => {
+                {employees?.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((employee) => {
                   const entry = todayEntries.find(e => e.employeeId === employee.id);
                   const status = getEmployeeStatus(employee);
                   
@@ -430,16 +432,38 @@ export default function Dashboard() {
           
           <div className="flex items-center justify-between mt-4 pt-4">
             <p className="text-sm text-muted-foreground">
-              Mostrando {Math.min(5, employees?.length || 0)} de {employees?.length || 0} empleados
+              Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, employees?.length || 0)} - {Math.min(currentPage * itemsPerPage, employees?.length || 0)} de {employees?.length || 0} empleados
             </p>
             <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" data-testid="button-previous-page">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                data-testid="button-previous-page"
+              >
                 Anterior
               </Button>
-              <span className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded">1</span>
-              <span className="px-3 py-1 text-sm text-muted-foreground">2</span>
-              <span className="px-3 py-1 text-sm text-muted-foreground">3</span>
-              <Button variant="outline" size="sm" data-testid="button-next-page">
+              {Array.from({ length: Math.ceil((employees?.length || 0) / itemsPerPage) }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1 text-sm rounded ${
+                    currentPage === page 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setCurrentPage(prev => Math.min(Math.ceil((employees?.length || 0) / itemsPerPage), prev + 1))}
+                disabled={currentPage >= Math.ceil((employees?.length || 0) / itemsPerPage)}
+                data-testid="button-next-page"
+              >
                 Siguiente
               </Button>
             </div>
