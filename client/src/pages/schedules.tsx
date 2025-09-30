@@ -69,6 +69,8 @@ export default function Schedules() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
       refetchDateSchedules();
+      setSelectedDates([]);
+      setShowScheduleDialog(false);
       toast({ title: "Éxito", description: "Horario creado correctamente" });
     },
     onError: (error: any) => {
@@ -103,6 +105,8 @@ export default function Schedules() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
       refetchDateSchedules();
+      setSelectedDates([]);
+      setShowScheduleDialog(false);
       toast({ title: "Éxito", description: "Horarios creados correctamente" });
     },
     onError: (error: any) => {
@@ -485,9 +489,6 @@ export default function Schedules() {
           }))
         });
       }
-      
-      setSelectedDates([]);
-      setShowScheduleDialog(false);
     } catch (error) {
       // Error handling is done in mutation onError callbacks
     }
