@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
-import { insertEmployeeSchema, createEmployeeSchema } from "@shared/schema";
+import { createEmployeeSchema } from "@shared/schema";
 import type { Employee, InsertEmployee } from "@shared/schema";
 import { z } from "zod";
 
@@ -113,9 +113,7 @@ export default function Employees() {
   });
 
   // Esquema para el formulario (frontend - usa Date objects)
-  const employeeFormSchema = insertEmployeeSchema.extend({
-    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
-    position: z.string().min(1, "La posición es requerida"),
+  const employeeFormSchema = createEmployeeSchema.extend({
     hireDate: z.date() // El formulario usa Date objects
   });
   

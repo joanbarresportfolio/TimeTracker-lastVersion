@@ -18,7 +18,7 @@
  */
 
 import { db } from "./db";
-import { employees, timeEntries, schedules, incidents } from "@shared/schema";
+import { usuarios, fichajes, horariosPlanificados, incidencias } from "@shared/schema";
 import { storage } from "./storage";
 import { and, eq, or } from "drizzle-orm";
 
@@ -33,11 +33,11 @@ export async function seedDatabase() {
     // PASO 1: Crear usuario administrador si no existe
     // Verifica por email Y employeeNumber para evitar duplicados
     let adminEmployee = await db.select()
-      .from(employees)
+      .from(usuarios)
       .where(
         or(
-          eq(employees.employeeNumber, "ADMIN001"),
-          eq(employees.email, "admin@admin.com")
+          eq(usuarios.numEmpleado, "ADMIN001"),
+          eq(usuarios.email, "admin@admin.com")
         )
       )
       .limit(1);
@@ -228,18 +228,10 @@ export async function seedDatabase() {
     const createdEmployees = [];
     
     for (const employeeData of sampleEmployees) {
-      // Verificar si ya existe por email O employeeNumber
-      const existingEmployee = await db.select()
-        .from(employees)
-        .where(
-          or(
-            eq(employees.email, employeeData.email),
-            eq(employees.employeeNumber, employeeData.employeeNumber)
-          )
-        )
-        .limit(1);
+      // Verificar si ya existe por email usando storage
+      const existingEmployee = await storage.getEmployeeByEmail(employeeData.email);
 
-      if (existingEmployee.length === 0) {
+      if (!existingEmployee) {
         try {
           // No existe, crear empleado nuevo usando storage para hashing
           const newEmployee = await storage.createEmployeeWithPassword(employeeData);
@@ -248,23 +240,15 @@ export async function seedDatabase() {
         } catch (error: any) {
           console.log(`⚠️  Error creando ${employeeData.firstName} ${employeeData.lastName}:`, error.message);
           // Intentar obtener el empleado si se creó entre verificación y creación
-          const retryEmployee = await db.select()
-            .from(employees)
-            .where(
-              or(
-                eq(employees.email, employeeData.email),
-                eq(employees.employeeNumber, employeeData.employeeNumber)
-              )
-            )
-            .limit(1);
-          if (retryEmployee.length > 0) {
-            createdEmployees.push(retryEmployee[0]);
+          const retryEmployee = await storage.getEmployeeByEmail(employeeData.email);
+          if (retryEmployee) {
+            createdEmployees.push(retryEmployee);
             console.log(`ℹ️  Empleado ya existía: ${employeeData.firstName} ${employeeData.lastName}`);
           }
         }
       } else {
         // Ya existe, usar el existente
-        createdEmployees.push(existingEmployee[0]);
+        createdEmployees.push(existingEmployee);
         console.log(`ℹ️  Empleado ya existe: ${employeeData.firstName} ${employeeData.lastName}`);
       }
     }
@@ -284,10 +268,10 @@ export async function seedDatabase() {
         
         // Verificar si ya existe registro para este empleado en esta fecha
         const existingEntry = await db.select()
-          .from(timeEntries)
+          .from(fichajes)
           .where(and(
-            eq(timeEntries.employeeId, employee.id),
-            eq(timeEntries.date, workDateStr)
+            eq(fichajes.idUsuario, employee.id),
+            eq(fichajes.fecha, workDateStr)
           ))
           .limit(1);
 
@@ -300,14 +284,14 @@ export async function seedDatabase() {
 
           const clockIn = new Date(`${workDateStr}T${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00`);
           const clockOut = new Date(`${workDateStr}T${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}:00`);
-          const totalHours = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60)); // en minutos
+          const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60)); // en minutos
 
-          await db.insert(timeEntries).values({
-            employeeId: employee.id,
-            clockIn,
-            clockOut,
-            date: workDateStr,
-            totalHours,
+          await db.insert(fichajes).values({
+            idUsuario: employee.id,
+            horaEntrada: clockIn,
+            horaSalida: clockOut,
+            fecha: workDateStr,
+            horasTrabajadas: totalMinutes,
           });
 
           console.log(`⏰ Registro de tiempo creado para ${employee.firstName} ${employee.lastName} el ${workDateStr}`);
@@ -320,21 +304,21 @@ export async function seedDatabase() {
     if (createdEmployees.length > 0) {
       // Verificar si ya hay registro para hoy
       const existingTodayEntry = await db.select()
-        .from(timeEntries)
+        .from(fichajes)
         .where(and(
-          eq(timeEntries.employeeId, createdEmployees[0].id),
-          eq(timeEntries.date, todayStr)
+          eq(fichajes.idUsuario, createdEmployees[0].id),
+          eq(fichajes.fecha, todayStr)
         ))
         .limit(1);
 
       if (existingTodayEntry.length === 0) {
         // Crear registro de "clock-in" para el primer empleado (simula que está presente)
-        await db.insert(timeEntries).values({
-          employeeId: createdEmployees[0].id,
-          clockIn: new Date(`${todayStr}T08:00:00`),
-          date: todayStr,
-          clockOut: null,
-          totalHours: null,
+        await db.insert(fichajes).values({
+          idUsuario: createdEmployees[0].id,
+          horaEntrada: new Date(`${todayStr}T08:00:00`),
+          fecha: todayStr,
+          horaSalida: null,
+          horasTrabajadas: null,
         });
         console.log(`📍 Registro de entrada de hoy creado para ${createdEmployees[0].firstName}`);
       }

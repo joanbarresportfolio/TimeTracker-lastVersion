@@ -30,7 +30,7 @@
  * - /api/auth/*: Autenticación (login, logout, verificación sesión)
  * - /api/employees/*: Gestión CRUD de empleados (solo admins)
  * - /api/time-entries/*: Registros de tiempo y fichaje (clock-in/out)
- * - /api/schedules/*: Horarios de trabajo (individuales y masivos)
+ * - /api/date-schedules/*: Horarios específicos por fecha
  * - /api/incidents/*: Incidencias laborales
  * - /api/dashboard/*: Estadísticas y métricas del dashboard
  * 
@@ -55,7 +55,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertEmployeeSchema, insertTimeEntrySchema, insertScheduleSchema, insertScheduleSchemaBase, insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkScheduleCreateSchema, insertDateScheduleSchema, insertDateScheduleSchemaBase, bulkDateScheduleCreateSchema } from "@shared/schema";
+import { insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkDateScheduleCreateSchema, insertDateScheduleSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
 import { z } from "zod";
 
@@ -812,295 +812,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // RUTAS DE GESTIÓN DE HORARIOS
   // ==========================================
   
-  /**
-   * GET /api/schedules
-   * =================
-   * 
-   * Obtiene horarios con control de acceso por roles y filtrado.
-   * 
-   * MIDDLEWARE APLICADO:
-   * - requireAuth: Requiere usuario autenticado (admin o employee)
-   * 
-   * CONTROL DE ACCESO POR ROLES:
-   * - Employee: Solo puede ver sus propios horarios
-   * - Admin: Puede ver todos los horarios con filtro opcional
-   * 
-   * PARÁMETROS DE QUERY OPCIONALES:
-   * - employeeId: Filtra horarios de empleado específico (solo admin)
-   * 
-   * ESTRUCTURA DE HORARIOS:
-   * Cada horario define un día de la semana con horas de inicio y fin:
-   * - dayOfWeek: 0=Domingo, 1=Lunes, 2=Martes, ..., 6=Sábado
-   * - startTime/endTime: formato HH:MM (24 horas)
-   * - isActive: permite desactivar horarios sin eliminarlos
-   * 
-   * EJEMPLOS DE USO:
-   * - GET /api/schedules (admin: todos, employee: propios)
-   * - GET /api/schedules?employeeId=123 (admin: de empleado específico)
-   * 
-   * RESPONSES:
-   * - 200: Array de horarios
-   * - 401: No autorizado
-   * - 500: Error interno del servidor
-   */
-  app.get("/api/schedules", requireAuth, async (req, res) => {
-    try {
-      const { employeeId } = req.query;
-      let schedules;
-      
-      // CONTROL DE ACCESO: Employees solo ven sus horarios, admins todos
-      if (req.user!.role === "employee") {
-        // EMPLOYEE: Solo horarios propios
-        schedules = await storage.getSchedulesByEmployee(req.user!.id);
-      } else {
-        // ADMIN: Puede filtrar por empleado o ver todos
-        if (employeeId) {
-          schedules = await storage.getSchedulesByEmployee(employeeId as string);
-        } else {
-          schedules = await storage.getSchedules();
-        }
-      }
-      
-      res.json(schedules);
-    } catch (error) {
-      res.status(500).json({ message: "Error al obtener horarios" });
-    }
-  });
-
-  /**
-   * POST /api/schedules
-   * ==================
-   * 
-   * Crea un horario individual para un día específico.
-   * 
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden crear horarios
-   * 
-   * FUNCIONALIDAD:
-   * - Crea horario para un solo día de la semana
-   * - Validación de datos con Zod schema
-   * - Para horarios completos de semana usar /api/schedules/bulk
-   * 
-   * VALIDACIONES:
-   * - dayOfWeek válido (0-6)
-   * - Formato de tiempo HH:MM
-   * - startTime < endTime
-   * - empleado existe
-   * 
-   * REQUEST BODY:
-   * {
-   *   "employeeId": "emp-id",
-   *   "dayOfWeek": 1, // 1=Lunes
-   *   "startTime": "08:00",
-   *   "endTime": "17:00",
-   *   "isActive": true
-   * }
-   * 
-   * RESPONSES:
-   * - 201: Horario creado exitosamente
-   * - 400: Datos inválidos
-   * - 401: No autorizado
-   * - 500: Error interno del servidor
-   */
-  app.post("/api/schedules", requireAdmin, async (req, res) => {
-    try {
-      // PASO 1: Validar datos de entrada
-      const scheduleData = insertScheduleSchema.parse(req.body);
-      
-      // PASO 2: Crear horario individual
-      const schedule = await storage.createSchedule(scheduleData);
-      
-      // PASO 3: Responder con horario creado
-      res.status(201).json(schedule);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Datos de horario inválidos", errors: error.errors });
-      }
-      res.status(500).json({ message: "Error al crear horario" });
-    }
-  });
-
-  /**
-   * POST /api/schedules/bulk
-   * =======================
-   * 
-   * Crea múltiples horarios para un empleado de forma masiva y eficiente.
-   * 
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden crear horarios masivos
-   * 
-   * FUNCIONALIDAD AVANZADA:
-   * - Crea horarios para múltiples días con una sola request
-   * - Anti-duplicados automático: no crea horarios que ya existen
-   * - Transaccional: crea todos o ninguno si hay error
-   * - Optimizado para asignación de horarios completos de semana
-   * 
-   * LÓGICA ANTI-DUPLICADOS:
-   * Verifica por employeeId + dayOfWeek + startTime + endTime + isActive
-   * Solo crea los horarios que no existen ya
-   * 
-   * CASO DE USO TÍPICO:
-   * Asignar horario L-V 8:00-17:00 a un empleado nuevo
-   * 
-   * REQUEST BODY:
-   * {
-   *   "employeeId": "emp-id",
-   *   "daysOfWeek": [1, 2, 3, 4, 5], // Lunes a Viernes
-   *   "startTime": "08:00",
-   *   "endTime": "17:00",
-   *   "isActive": true
-   * }
-   * 
-   * RESPONSES:
-   * - 201: Horarios creados (array puede estar vacío si todos existían)
-   * - 400: Datos inválidos
-   * - 401: No autorizado
-   * - 500: Error interno del servidor
-   */
-  app.post("/api/schedules/bulk", requireAdmin, async (req, res) => {
-    try {
-      // PASO 1: Validar datos de entrada bulk
-      const bulkData = bulkScheduleCreateSchema.parse(req.body);
-      
-      // PASO 2: Crear horarios masivos (con lógica anti-duplicados)
-      const schedules = await storage.createBulkSchedules(bulkData);
-      
-      // PASO 3: Responder con horarios creados
-      // NOTA: Array puede estar vacío si todos los horarios ya existían
-      res.status(201).json(schedules);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Datos de horarios inválidos", errors: error.errors });
-      }
-      res.status(500).json({ message: "Error al crear horarios masivos" });
-    }
-  });
-
-  /**
-   * PUT /api/schedules/:id
-   * =====================
-   * 
-   * Actualiza un horario existente con validación de consistencia.
-   * 
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden actualizar horarios
-   * 
-   * VALIDACIÓN INTELIGENTE:
-   * - Usa superRefine para validaciones complejas
-   * - Solo valida startTime vs endTime si ambos están presentes
-   * - Permite actualización parcial de campos
-   * 
-   * LÓGICA DE VALIDACIÓN:
-   * Si se proporcionan ambos tiempos, verifica que startTime < endTime
-   * Si solo se proporciona uno, no valida contra el otro
-   * 
-   * CAMPOS ACTUALIZABLES:
-   * - dayOfWeek: Cambiar día del horario
-   * - startTime/endTime: Modificar horario
-   * - isActive: Activar/desactivar sin eliminar
-   * 
-   * REQUEST BODY (todos los campos opcionales):
-   * {
-   *   "dayOfWeek": 2, // Cambiar a Martes
-   *   "startTime": "09:00",
-   *   "endTime": "18:00",
-   *   "isActive": false
-   * }
-   * 
-   * RESPONSES:
-   * - 200: Horario actualizado exitosamente
-   * - 400: Datos inválidos (ej: startTime >= endTime)
-   * - 401: No autorizado
-   * - 404: Horario no encontrado
-   * - 500: Error interno del servidor
-   */
-  app.put("/api/schedules/:id", requireAdmin, async (req, res) => {
-    try {
-      // PASO 1: Crear schema de validación con lógica condicional
-      const updateSchema = insertScheduleSchemaBase.partial().superRefine((data, ctx) => {
-        // VALIDACIÓN INTELIGENTE: Solo validar tiempo si ambos campos están presentes
-        if (data.startTime && data.endTime) {
-          const [startHour, startMinute] = data.startTime.split(':').map(Number);
-          const [endHour, endMinute] = data.endTime.split(':').map(Number);
-          
-          const startTotalMinutes = startHour * 60 + startMinute;
-          const endTotalMinutes = endHour * 60 + endMinute;
-          
-          if (startTotalMinutes >= endTotalMinutes) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "La hora de inicio debe ser anterior a la hora de fin",
-              path: ["endTime"],
-            });
-          }
-        }
-      });
-
-      // PASO 2: Validar datos de entrada
-      const scheduleData = updateSchema.parse(req.body);
-      
-      // PASO 3: Actualizar horario en base de datos
-      const schedule = await storage.updateSchedule(req.params.id, scheduleData);
-      
-      if (!schedule) {
-        return res.status(404).json({ message: "Horario no encontrado" });
-      }
-      
-      // PASO 4: Responder con horario actualizado
-      res.json(schedule);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Datos de horario inválidos", errors: error.errors });
-      }
-      res.status(500).json({ message: "Error al actualizar horario" });
-    }
-  });
-
-  /**
-   * DELETE /api/schedules/:id
-   * ========================
-   * 
-   * Elimina permanentemente un horario del sistema.
-   * 
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden eliminar horarios
-   * 
-   * ⚠️  CONSIDERACIONES IMPORTANTES:
-   * - Operación irreversible
-   * - El empleado quedará sin horario para ese día
-   * - Puede afectar validaciones de fichaje si empleados intentan clock-in/out
-   * 
-   * ALTERNATIVA RECOMENDADA:
-   * PUT /api/schedules/:id con { "isActive": false }
-   * 
-   * CASOS VÁLIDOS:
-   * - Corrección de horarios erróneos
-   * - Limpieza de horarios duplicados
-   * - Empleado cambia completamente de turno
-   * 
-   * RESPONSES:
-   * - 204: Horario eliminado exitosamente (sin contenido)
-   * - 401: No autorizado
-   * - 404: Horario no encontrado
-   * - 500: Error interno del servidor
-   */
-  app.delete("/api/schedules/:id", requireAdmin, async (req, res) => {
-    try {
-      // PASO 1: Intentar eliminar horario
-      const success = await storage.deleteSchedule(req.params.id);
-      
-      if (!success) {
-        return res.status(404).json({ message: "Horario no encontrado" });
-      }
-      
-      // PASO 2: Responder sin contenido (eliminación exitosa)
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Error al eliminar horario" });
-    }
-  });
-
-  
   // ==========================================
   // RUTAS DE GESTIÓN DE INCIDENCIAS
   // ==========================================
@@ -1705,11 +1416,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * - 3 rutas de autenticación (/api/auth/*)
    * - 5 rutas CRUD de empleados (/api/employees/*)
    * - 5 rutas de registros de tiempo (/api/time-entries/*)
-   * - 5 rutas de horarios (/api/schedules/*)
+   * - 4 rutas de horarios por fecha (/api/date-schedules/*)
    * - 4 rutas de incidencias (/api/incidents/*)
    * - 1 ruta de dashboard personalizada (/api/dashboard/stats)
    * 
-   * TOTAL: 23 endpoints API completamente documentados en español
+   * TOTAL: 22 endpoints API completamente documentados en español
    * 
    * MIDDLEWARE STACK APLICADO:
    * - Express session management
