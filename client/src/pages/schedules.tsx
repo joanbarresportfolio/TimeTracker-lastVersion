@@ -59,6 +59,15 @@ export default function Schedules() {
 
   const { data: dateSchedules, isLoading: dateSchedulesLoading, refetch: refetchDateSchedules } = useQuery<DateSchedule[]>({
     queryKey: ["/api/date-schedules", selectedEmployee?.id, calendarYear],
+    queryFn: async () => {
+      if (!selectedEmployee) return [];
+      const startDate = `${calendarYear}-01-01`;
+      const endDate = `${calendarYear}-12-31`;
+      const url = `/api/date-schedules?employeeId=${selectedEmployee.id}&startDate=${startDate}&endDate=${endDate}`;
+      const response = await fetch(url, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch date schedules');
+      return response.json();
+    },
     enabled: !!selectedEmployee && viewMode === "calendar",
   });
 
