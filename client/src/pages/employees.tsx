@@ -83,9 +83,7 @@ export default function Employees() {
         description: "El empleado ha sido actualizado exitosamente.",
       });
     },
-    onError: (error) => {
-      console.log("❌ Error en updateEmployeeMutation:", error);
-      console.log("Detalles del error:", error.message);
+    onError: () => {
       toast({
         title: "Error",
         description: "No se pudo actualizar el empleado.",
@@ -116,7 +114,7 @@ export default function Employees() {
 
   // Esquema para el formulario (frontend - usa Date objects)
   const employeeFormSchema = insertEmployeeSchema.extend({
-    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres").default("password123"),
+    password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
     position: z.string().min(1, "La posición es requerida"),
     hireDate: z.date() // El formulario usa Date objects
   });
@@ -134,31 +132,18 @@ export default function Employees() {
       position: "",
       hireDate: new Date(),
       isActive: true,
-      password: "password123",
+      password: "",
     },
   });
 
   const onSubmit = (data: EmployeeFormData) => {
-    console.log("Datos del formulario:", data);
-    console.log("Errores del formulario:", form.formState.errors);
-    
-    // Convertir Date a string para el backend manualmente en las mutaciones
-    console.log("Datos originales:", data);
-    
     if (editingEmployee) {
       // Para actualizar, omitimos el password y convertimos fecha
-      console.log("🔄 === MODO ACTUALIZACIÓN ===");
-      console.log("ID del empleado a actualizar:", editingEmployee.id);
-      console.log("Datos del formulario para actualización:", data);
-      
       const { password, ...updateData } = data;
       const updatePayload = {
         ...updateData,
         hireDate: updateData.hireDate.toISOString()
       };
-      
-      console.log("Payload final para actualización:", updatePayload);
-      console.log("Enviando actualización...");
       
       updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updatePayload });
     } else {
@@ -290,6 +275,7 @@ export default function Employees() {
                       position: "",
                       hireDate: new Date(),
                       isActive: true,
+                      password: "",
                     });
                   }}
                   data-testid="button-add-employee"
@@ -360,6 +346,21 @@ export default function Employees() {
                         </FormItem>
                       )}
                     />
+                    {!editingEmployee && (
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contraseña</FormLabel>
+                            <FormControl>
+                              <Input type="password" {...field} data-testid="input-password" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <FormField
                       control={form.control}
                       name="department"
