@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
@@ -13,6 +14,42 @@ declare module "express-session" {
 }
 
 const app = express();
+
+// Configurar CORS para permitir requests desde app móvil web (Expo)
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permitir requests sin origin (como desde Postman o requests del servidor)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Lista de orígenes permitidos
+    const allowedOrigins = [
+      'http://localhost:3000', // Desarrollo local
+      'http://localhost:19006', // Expo web local
+      /^https:\/\/.*\.replit\.dev$/, // Cualquier subdominio de replit.dev (Expo en Replit)
+      /^https:\/\/.*\.repl\.co$/, // Cualquier subdominio de repl.co
+    ];
+    
+    // Verificar si el origin está permitido
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return allowed === origin;
+      }
+      return allowed.test(origin);
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // Permitir cookies y headers de autenticación
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

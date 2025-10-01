@@ -28,17 +28,29 @@ import { Platform } from 'react-native';
 
 // Configurar URL base según la plataforma
 const getApiBaseUrl = (): string => {
-  // Para web (Expo web), necesitamos apuntar al servidor backend en puerto 5000
+  // Para web (Expo web), necesitamos apuntar al servidor backend
   if (Platform.OS === 'web') {
-    // En Replit, usar el dominio actual pero apuntando al backend
-    // El backend está en el mismo dominio pero sirve desde el puerto 5000
+    // Verificar si estamos en Replit mirando el hostname
     if (typeof window !== 'undefined') {
-      // Extraer el protocolo y el dominio base
-      const protocol = window.location.protocol;
       const hostname = window.location.hostname;
-      // Usar el mismo dominio pero especificar que es para API
-      return `${protocol}//${hostname}/api`;
+      
+      // Si estamos en desarrollo local (localhost)
+      if (hostname === 'localhost') {
+        console.log('[API Config] Local development mode');
+        return 'http://localhost:5000/api';
+      }
+      
+      // Si estamos en Replit (detectar por el patrón del hostname)
+      if (hostname.includes('replit.dev')) {
+        // En Replit, el backend está en workspace.joanbarresportf.repl.co
+        const backendUrl = 'https://workspace.joanbarresportf.repl.co/api';
+        console.log('[API Config] Replit mode, using backend URL:', backendUrl);
+        return backendUrl;
+      }
     }
+    
+    // Último fallback: ruta relativa (probablemente no funcionará en Replit)
+    console.log('[API Config] Using relative path /api');
     return '/api';
   }
   
@@ -125,7 +137,10 @@ async function apiRequest<T>(
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const url = `${API_BASE_URL}${endpoint}`;
+    console.log(`[API] ${method} ${url}`, requireAuth ? '(with auth)' : '(no auth)');
+    
+    const response = await fetch(url, config);
 
     // Limpiar timeout
     clearTimeout(timeoutId);
