@@ -17,15 +17,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Configure sessions
-app.use(session({
-  secret: process.env.SESSION_SECRET || "employee-tracking-secret-key",
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: false, // Set to true in production with HTTPS
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-  },
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "employee-tracking-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  }),
+);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -60,7 +62,7 @@ app.use((req, res, next) => {
 (async () => {
   // Seed the database with initial data
   await seedDatabase();
-  
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -84,12 +86,14 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+    },
+    () => {
+      log(`serving on port ${port}`);
+    },
+  );
 })();
