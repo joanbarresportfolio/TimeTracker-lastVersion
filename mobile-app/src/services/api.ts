@@ -28,28 +28,46 @@ import { Platform } from 'react-native';
 
 // Configurar URL base según la plataforma
 const getApiBaseUrl = (): string => {
-  // Para web (Expo web), necesitamos apuntar al servidor backend
+  // Para web (Expo web), construir URL del backend
   if (Platform.OS === 'web') {
-    // Verificar si estamos en Replit mirando el hostname
+    // Verificar si estamos en Replit o desarrollo local
     if (typeof window !== 'undefined') {
+      const protocol = window.location.protocol;
       const hostname = window.location.hostname;
       
       // Si estamos en desarrollo local (localhost)
       if (hostname === 'localhost') {
-        console.log('[API Config] Local development mode');
+        console.log('[API Config] Local development - using localhost:5000');
         return 'http://localhost:5000/api';
       }
       
-      // Si estamos en Replit (detectar por el patrón del hostname)
+      // Si estamos en Replit (cualquier dominio de replit.dev)
       if (hostname.includes('replit.dev')) {
-        // En Replit, el backend está en workspace.joanbarresportf.repl.co
-        const backendUrl = 'https://workspace.joanbarresportf.repl.co/api';
-        console.log('[API Config] Replit mode, using backend URL:', backendUrl);
+        // En Replit, el formato del hostname es: {uuid}-00-{instance}.{cluster}.replit.dev:{port}
+        // Ejemplo: c01b1921-e768-4ceb-80ea-89c2b2f264d5-00-4yhqgowik164.worf.replit.dev:3003
+        // Para el backend en puerto 5000, necesitamos cambiar solo el puerto
+        
+        // Extraer las partes del hostname
+        const parts = hostname.split('.');
+        // parts = ["c01b1921-e768-4ceb-80ea-89c2b2f264d5-00-4yhqgowik164", "worf", "replit", "dev"]
+        const cluster = parts[1]; // "worf" (siempre la segunda parte)
+        const hostPart = parts[0]; // "c01b1921-e768-4ceb-80ea-89c2b2f264d5-00-4yhqgowik164"
+        
+        // Construir URL del backend cambiando el puerto a 5000
+        // Replit usa el formato {uuid}-00-{instance}.{cluster}.replit.dev:{port}
+        const backendUrl = `${protocol}//${hostPart}.${cluster}.replit.dev:5000/api`;
+        console.log('[API Config] Replit mode - backend URL:', backendUrl);
         return backendUrl;
+      }
+      
+      // Si estamos en repl.co (producción publicada)
+      if (hostname.includes('repl.co')) {
+        console.log('[API Config] Repl.co mode - using relative path');
+        return '/api';
       }
     }
     
-    // Último fallback: ruta relativa (probablemente no funcionará en Replit)
+    // Fallback: ruta relativa
     console.log('[API Config] Using relative path /api');
     return '/api';
   }
@@ -138,8 +156,6 @@ async function apiRequest<T>(
 
   try {
     const url = `${API_BASE_URL}${endpoint}`;
-    console.log(`[API] ${method} ${url}`, requireAuth ? '(with auth)' : '(no auth)');
-    
     const response = await fetch(url, config);
 
     // Limpiar timeout
