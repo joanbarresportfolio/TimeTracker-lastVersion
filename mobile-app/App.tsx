@@ -17,6 +17,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import SchedulesScreen from './src/screens/SchedulesScreen';
 import IncidentsScreen from './src/screens/IncidentsScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 import { User } from './src/types/schema';
 import { setAuthToken } from './src/services/api';
 
@@ -25,6 +26,7 @@ export type RootStackParamList = {
   Dashboard: { user: User };
   Schedules: { user: User };
   Incidents: { user: User };
+  History: { user: User };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -119,6 +121,10 @@ export default function App() {
             <Stack.Screen 
               name="Incidents" 
               component={IncidentsScreen}
+            />
+            <Stack.Screen 
+              name="History" 
+              component={HistoryScreen}
             />
           </Stack.Navigator>
         ) : (

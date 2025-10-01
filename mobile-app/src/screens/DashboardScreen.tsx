@@ -306,7 +306,10 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
             <Text style={styles.navButtonText}>Ver Horarios</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.navButton}>
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={() => navigation.navigate('History', { user })}
+          >
             <Text style={styles.navButtonText}>Historial</Text>
           </TouchableOpacity>
           
