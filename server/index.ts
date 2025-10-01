@@ -27,8 +27,8 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:3000', // Desarrollo local
       'http://localhost:19006', // Expo web local
-      /^https:\/\/.*\.replit\.dev$/, // Cualquier subdominio de replit.dev (Expo en Replit)
-      /^https:\/\/.*\.repl\.co$/, // Cualquier subdominio de repl.co
+      /^https?:\/\/.*\.replit\.dev(:\d+)?$/, // Cualquier subdominio de replit.dev con puerto opcional
+      /^https?:\/\/.*\.repl\.co(:\d+)?$/, // Cualquier subdominio de repl.co con puerto opcional
     ];
     
     // Verificar si el origin está permitido

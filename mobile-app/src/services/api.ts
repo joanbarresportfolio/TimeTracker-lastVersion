@@ -147,6 +147,8 @@ async function apiRequest<T>(
     method,
     headers,
     signal: abortController.signal,
+    // En web, incluir credentials para permitir cookies con CORS
+    ...(Platform.OS === 'web' && { credentials: 'include' }),
   };
 
   // Añadir body si se proporciona
@@ -413,6 +415,8 @@ export async function checkServerConnection(): Promise<boolean> {
     const response = await fetch(`${API_BASE_URL}/health`, {
       method: 'GET',
       signal: abortController.signal,
+      // En web, incluir credentials para permitir cookies con CORS
+      ...(Platform.OS === 'web' && { credentials: 'include' }),
     });
 
     clearTimeout(timeoutId);
