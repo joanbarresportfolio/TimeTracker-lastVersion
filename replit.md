@@ -2,7 +2,23 @@
 
 ## Overview
 
-This is a comprehensive employee time tracking and management system built as a full-stack web application. The system allows organizations to manage employee records, track work hours with clock-in/clock-out functionality, manage schedules and shifts, handle workplace incidents, and generate detailed reports. The application features a modern, responsive interface with real-time updates and comprehensive CRUD operations for all major entities.
+This is a comprehensive employee time tracking and management system built as a full-stack application with both web and mobile interfaces. The system allows organizations to manage employee records, track work hours with clock-in/clock-out functionality, manage schedules and shifts, handle workplace incidents, and generate detailed reports. The application features modern, responsive interfaces with real-time updates and comprehensive CRUD operations for all major entities.
+
+## Recent Changes (October 1, 2025)
+
+### Mobile App Integration
+- **JWT Authentication**: Implemented JWT token-based authentication in backend to support mobile app alongside session-based auth for web app
+- **History Screen**: Created HistoryScreen component for mobile app to display time entry history with filtering capabilities
+- **Navigation Integration**: Integrated History screen into mobile app navigation stack
+- **API Configuration**: Configured mobile app to connect to correct backend server URL (workspace.joanbarresportf.repl.co in production, localhost in development)
+- **Authentication Fix**: Updated middleware (requireAuth, requireAdmin, requireEmployeeAccess) to support both session and token authentication methods
+
+### Mobile App Features
+- Dashboard with clock-in/clock-out functionality
+- Schedules viewing
+- Incidents reporting
+- Time entry history with date filtering
+- Real-time status updates
 
 ## User Preferences
 
