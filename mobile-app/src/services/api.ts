@@ -28,6 +28,11 @@ import { Platform } from 'react-native';
 
 // Configurar URL base según la plataforma
 const getApiBaseUrl = (): string => {
+  // Para web (Expo web), usar la URL relativa del servidor en el mismo dominio
+  if (Platform.OS === 'web') {
+    return '/api';
+  }
+  
   if (__DEV__) {
     // En desarrollo, conectar al servidor local en puerto 5000
     if (Platform.OS === 'android') {
