@@ -56,7 +56,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkDateScheduleCreateSchema, insertDateScheduleSchema } from "@shared/schema";
-import { requireAuth, requireAdmin, requireEmployeeAccess } from "./middleware/auth";
+import { requireAuth, requireAdmin, requireEmployeeAccess, generateToken } from "./middleware/auth";
 import { z } from "zod";
 
 /**
@@ -144,11 +144,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Email o contraseña incorrectos" });
       }
       
-      // PASO 3: Establecer sesión de usuario
+      // PASO 3: Establecer sesión de usuario (para web app)
       req.session.user = user;
       
-      // PASO 4: Responder con datos seguros (sin password)
-      res.json({ user, message: "Inicio de sesión exitoso" });
+      // PASO 4: Generar token JWT (para mobile app)
+      const token = generateToken(user);
+      
+      // PASO 5: Responder con datos seguros (sin password) y token
+      res.json({ user, token, message: "Inicio de sesión exitoso" });
       
     } catch (error) {
       if (error instanceof z.ZodError) {

@@ -1,5 +1,9 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { type User } from "@shared/schema";
+import jwt from "jsonwebtoken";
+
+// JWT secret key - in production this should be in environment variables
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
 // Extend Request interface to include user
 declare global {
@@ -10,8 +14,31 @@ declare global {
   }
 }
 
-// Middleware to check if user is authenticated
+// Helper function to verify JWT token
+function verifyToken(token: string): User | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as User;
+    return decoded;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Middleware to check if user is authenticated (supports both session and JWT)
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // First check for JWT token in Authorization header
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const user = verifyToken(token);
+    
+    if (user) {
+      req.user = user;
+      return next();
+    }
+  }
+  
+  // Fallback to session-based authentication
   if (!req.session.user) {
     return res.status(401).json({ message: "No autorizado. Debe iniciar sesión." });
   }
@@ -20,8 +47,29 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Middleware to check if user is admin
+// Helper function to generate JWT token
+export function generateToken(user: User): string {
+  return jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
+}
+
+// Middleware to check if user is admin (supports both session and JWT)
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  // First check for JWT token in Authorization header
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const user = verifyToken(token);
+    
+    if (user) {
+      if (user.role !== "admin") {
+        return res.status(403).json({ message: "Acceso denegado. Se requieren permisos de administrador." });
+      }
+      req.user = user;
+      return next();
+    }
+  }
+  
+  // Fallback to session-based authentication
   if (!req.session.user) {
     return res.status(401).json({ message: "No autorizado. Debe iniciar sesión." });
   }
@@ -34,13 +82,26 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// Middleware to check if user can access employee data (admin or own data)
+// Middleware to check if user can access employee data (admin or own data, supports both session and JWT)
 export function requireEmployeeAccess(req: Request, res: Response, next: NextFunction) {
-  if (!req.session.user) {
+  let user: User | undefined;
+  
+  // First check for JWT token in Authorization header
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    user = verifyToken(token) || undefined;
+  }
+  
+  // Fallback to session-based authentication
+  if (!user && req.session.user) {
+    user = req.session.user;
+  }
+  
+  if (!user) {
     return res.status(401).json({ message: "No autorizado. Debe iniciar sesión." });
   }
   
-  const user = req.session.user;
   const employeeId = req.params.employeeId || req.query.employeeId || req.body.employeeId;
   
   // Admin can access all employee data
