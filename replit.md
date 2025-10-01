@@ -12,6 +12,8 @@ This is a comprehensive employee time tracking and management system built as a 
 - **Navigation Integration**: Integrated History screen into mobile app navigation stack
 - **API Configuration**: Configured mobile app to connect to correct backend server URL (workspace.joanbarresportf.repl.co in production, localhost in development)
 - **Authentication Fix**: Updated middleware (requireAuth, requireAdmin, requireEmployeeAccess) to support both session and token authentication methods
+- **CORS Configuration**: Added CORS middleware to backend server to allow cross-origin requests from Expo web app running on different subdomain
+- **Expo Web Fix**: Fixed mobile app web version to correctly detect Replit environment and use appropriate backend URL
 
 ### Mobile App Features
 - Dashboard with clock-in/clock-out functionality
@@ -19,6 +21,7 @@ This is a comprehensive employee time tracking and management system built as a 
 - Incidents reporting
 - Time entry history with date filtering
 - Real-time status updates
+- Full web compatibility with Expo web platform
 
 ## User Preferences
 
