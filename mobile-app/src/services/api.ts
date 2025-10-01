@@ -28,8 +28,17 @@ import { Platform } from 'react-native';
 
 // Configurar URL base según la plataforma
 const getApiBaseUrl = (): string => {
-  // Para web (Expo web), usar la URL relativa del servidor en el mismo dominio
+  // Para web (Expo web), necesitamos apuntar al servidor backend en puerto 5000
   if (Platform.OS === 'web') {
+    // En Replit, usar el dominio actual pero apuntando al backend
+    // El backend está en el mismo dominio pero sirve desde el puerto 5000
+    if (typeof window !== 'undefined') {
+      // Extraer el protocolo y el dominio base
+      const protocol = window.location.protocol;
+      const hostname = window.location.hostname;
+      // Usar el mismo dominio pero especificar que es para API
+      return `${protocol}//${hostname}/api`;
+    }
     return '/api';
   }
   
