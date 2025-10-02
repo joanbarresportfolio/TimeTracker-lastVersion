@@ -348,33 +348,46 @@ export class DatabaseStorage implements IStorage {
    * Crea un fichaje de tipo "salida" y devuelve la jornada diaria actualizada
    */
   async clockOut(employeeId: string, date: string): Promise<TimeEntry> {
-    const idEmpleado = Number(employeeId);
-    
-    // Crear fichaje de salida
-    await db.insert(fichaje).values({
-      idEmpleado,
-      tipoRegistro: "salida",
-      timestampRegistro: new Date(),
-      origen: "web",
-    });
-    
-    // El trigger ya actualizó jornada_diaria, ahora la obtenemos
-    const [jornada] = await db
-      .select()
-      .from(jornadaDiaria)
-      .where(
-        and(
-          eq(jornadaDiaria.idEmpleado, idEmpleado),
-          eq(jornadaDiaria.fecha, date)
+    try {
+      const idEmpleado = Number(employeeId);
+      console.log(`[clockOut] Iniciando clock-out para empleado ${idEmpleado} en fecha ${date}`);
+      
+      // Crear fichaje de salida
+      const [fichajeSalida] = await db.insert(fichaje).values({
+        idEmpleado,
+        tipoRegistro: "salida",
+        timestampRegistro: new Date(),
+        origen: "web",
+      }).returning();
+      
+      console.log(`[clockOut] Fichaje de salida creado:`, fichajeSalida);
+      
+      // El trigger ya actualizó jornada_diaria, ahora la obtenemos
+      const [jornada] = await db
+        .select()
+        .from(jornadaDiaria)
+        .where(
+          and(
+            eq(jornadaDiaria.idEmpleado, idEmpleado),
+            eq(jornadaDiaria.fecha, date)
+          )
         )
-      )
-      .limit(1);
-    
-    if (!jornada) {
-      throw new Error("Error al registrar salida");
+        .limit(1);
+      
+      console.log(`[clockOut] Jornada diaria obtenida:`, jornada);
+      
+      if (!jornada) {
+        throw new Error("Error al registrar salida - jornada no encontrada");
+      }
+      
+      const timeEntry = mapJornadaDiariaToTimeEntry(jornada);
+      console.log(`[clockOut] TimeEntry mapeado:`, timeEntry);
+      
+      return timeEntry;
+    } catch (error) {
+      console.error(`[clockOut] Error en clock-out:`, error);
+      throw error;
     }
-    
-    return mapJornadaDiariaToTimeEntry(jornada);
   }
 
   // ==========================================
