@@ -15,6 +15,7 @@ This is a comprehensive employee time tracking and management system built as a 
   - Primary key: `id_registro` (varchar with UUID)
   - Fields: `id_empleado`, `tipo_registro`, `timestamp_registro`, `origen`, `observaciones`, `id_turno`
   - Each fichaje is a single timestamped event, not a complete workday record
+  - **NEW**: Bidirectional linking with horarios_planificados via `id_turno` for automatic shift association
   
 - **jornada_diaria table**: NEW - Consolidated daily work summary
   - Auto-calculated from fichajes events
@@ -28,9 +29,12 @@ This is a comprehensive employee time tracking and management system built as a 
 #### Backend Implementation
 - **server/storage.ts**: 
   - Added `fichajesService` with functions: crearFichaje, obtenerFichajes, obtenerJornadas, obtenerJornadaActual, obtenerUltimoFichaje
+  - **NEW**: `crearFichaje` now automatically assigns `id_turno` by looking up the planned schedule for the fichaje date
   - Implemented `calcularYActualizarJornada()` that recalculates jornada_diaria transactionally on each fichaje
   - Logic pairs entrada↔salida events and pausa_inicio↔pausa_fin to calculate worked hours and break time
   - Added compatibility adapter `obtenerTimeEntriesDesdeJornadas()` to support legacy API
+  - **Fixed**: All mapping functions updated to use new Spanish field names (idEmpleado, idTurno, horaInicioPrevista, etc.)
+  - **Fixed**: `createBulkDateSchedules` now works correctly with updated field names
 
 - **server/routes.ts**: 
   - Added new routes: POST `/api/fichajes`, GET `/api/fichajes/:employeeId`, GET `/api/jornadas/:employeeId`, GET `/api/jornadas/:employeeId/actual`, GET `/api/fichajes/:employeeId/ultimo`
@@ -50,8 +54,15 @@ This is a comprehensive employee time tracking and management system built as a 
 - ✅ Backend logic implemented with automatic jornada calculation
 - ✅ API routes created and adapted
 - ✅ Seed data working with new structure
+- ✅ **Automatic id_turno assignment implemented**
+- ✅ **Bulk schedule assignment fixed**
 - ⏳ Frontend web app - needs adaptation to use new APIs
 - ⏳ Mobile app - needs adaptation to use new APIs
+
+#### Known Edge Cases to Monitor
+- Multiple planned shifts on the same date (currently picks first match)
+- Cancelled schedules should be excluded from automatic assignment
+- Timezone handling in date extraction (toISOString may cause UTC/local mismatches)
 
 ### October 1, 2025 - Mobile App Integration
 
