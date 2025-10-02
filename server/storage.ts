@@ -126,6 +126,9 @@ export interface IStorage {
   createIncident(incident: InsertIncident): Promise<Incident>;
   updateIncident(id: string, incident: Partial<InsertIncident>): Promise<Incident | undefined>;
   deleteIncident(id: string): Promise<boolean>;
+
+  // Métodos específicos para fichaje
+  clockOut(employeeId: string, date: string): Promise<TimeEntry>;
 }
 
 // ============================================================================
@@ -338,6 +341,40 @@ export class DatabaseStorage implements IStorage {
       .where(eq(jornadaDiaria.idJornada, Number(id)));
     
     return true;
+  }
+
+  /**
+   * Método específico para clock-out
+   * Crea un fichaje de tipo "salida" y devuelve la jornada diaria actualizada
+   */
+  async clockOut(employeeId: string, date: string): Promise<TimeEntry> {
+    const idEmpleado = Number(employeeId);
+    
+    // Crear fichaje de salida
+    await db.insert(fichaje).values({
+      idEmpleado,
+      tipoRegistro: "salida",
+      timestampRegistro: new Date(),
+      origen: "web",
+    });
+    
+    // El trigger ya actualizó jornada_diaria, ahora la obtenemos
+    const [jornada] = await db
+      .select()
+      .from(jornadaDiaria)
+      .where(
+        and(
+          eq(jornadaDiaria.idEmpleado, idEmpleado),
+          eq(jornadaDiaria.fecha, date)
+        )
+      )
+      .limit(1);
+    
+    if (!jornada) {
+      throw new Error("Error al registrar salida");
+    }
+    
+    return mapJornadaDiariaToTimeEntry(jornada);
   }
 
   // ==========================================
@@ -556,6 +593,27 @@ export class MemStorage implements IStorage {
 
   async deleteIncident(id: string): Promise<boolean> {
     return this.incidents.delete(id);
+  }
+
+  async clockOut(employeeId: string, date: string): Promise<TimeEntry> {
+    // Buscar entrada del día
+    const entries = await this.getTimeEntriesByEmployee(employeeId);
+    const todayEntry = entries.find(e => e.date === date && !e.clockOut);
+    
+    if (!todayEntry) {
+      throw new Error("No hay entrada registrada para este día");
+    }
+    
+    // Actualizar con clock-out
+    const clockOutTime = new Date();
+    const diff = clockOutTime.getTime() - todayEntry.clockIn.getTime();
+    const totalMinutes = Math.floor(diff / (1000 * 60));
+    
+    todayEntry.clockOut = clockOutTime;
+    todayEntry.totalHours = totalMinutes;
+    
+    this.timeEntries.set(todayEntry.id, todayEntry);
+    return todayEntry;
   }
 }
 
