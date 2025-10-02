@@ -163,8 +163,40 @@ async function apiRequest<T>(
 
     // Verificar si la response es exitosa
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(errorData || `HTTP ${response.status}: ${response.statusText}`);
+      let errorMessage = 'Error en la solicitud';
+      
+      try {
+        // Intentar parsear respuesta JSON del servidor
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } catch {
+        // Si no es JSON, usar mensaje de texto
+        try {
+          errorMessage = await response.text() || errorMessage;
+        } catch {
+          // Usar mensaje por defecto
+        }
+      }
+      
+      // Añadir código de estado para más contexto
+      const statusMessage = response.status === 401 ? 'No autorizado' :
+                           response.status === 403 ? 'Acceso denegado' :
+                           response.status === 404 ? 'No encontrado' :
+                           response.status === 500 ? 'Error del servidor' :
+                           `Error ${response.status}`;
+      
+      // Combinar mensaje del servidor con código de estado si no están ya en el mensaje
+      if (!errorMessage.includes(response.status.toString()) && !errorMessage.includes(statusMessage)) {
+        errorMessage = `${statusMessage}: ${errorMessage}`;
+      }
+      
+      throw new Error(errorMessage);
     }
 
     // Parsear JSON response
@@ -177,12 +209,18 @@ async function apiRequest<T>(
     if (error instanceof Error) {
       // Si es error de timeout o red
       if (error.name === 'AbortError') {
-        throw new Error('La solicitud tardó demasiado. Verifica tu conexión.');
+        throw new Error('La solicitud tardó demasiado. Verifica tu conexión a internet.');
       }
+      
+      // Si es error de red (no hay conexión)
+      if (error.message === 'Network request failed' || error.message.includes('Failed to fetch')) {
+        throw new Error('No se pudo conectar al servidor. Verifica tu conexión a internet.');
+      }
+      
       throw error;
     }
     
-    throw new Error('Error desconocido en la API');
+    throw new Error('Error desconocido al comunicarse con el servidor');
   }
 }
 
