@@ -2,120 +2,7 @@
 
 ## Overview
 
-This is a comprehensive employee time tracking and management system built as a full-stack application with both web and mobile interfaces. The system allows organizations to manage employee records, track work hours with clock-in/clock-out functionality, manage schedules and shifts, handle workplace incidents, and generate detailed reports. The application features modern, responsive interfaces with real-time updates and comprehensive CRUD operations for all major entities.
-
-## Recent Changes
-
-### October 2, 2025 - Complete Backend Migration to English Schema
-
-**MAJOR REFACTORING**: Completed full migration of database schema and backend codebase from Spanish to English naming conventions. All tables, columns, functions, and types now use consistent English terminology throughout the backend.
-
-#### Database Schema Changes
-All database tables and columns renamed to English:
-- **departments** (formerly departamentos): id, name, description
-- **users** (formerly usuarios): id, username, email, password_hash, first_name, last_name, phone, role, department_id, is_active
-- **scheduled_shifts** (formerly horarios_planificados): id, employee_id, date, start_time, end_time, shift_type, status
-- **clock_entries** (formerly fichajes): id, employee_id, entry_type (clock_in/clock_out/break_start/break_end), entry_timestamp, source, notes, shift_id
-- **daily_workday** (formerly jornada_diaria): id, employee_id, date, start_time, end_time, hours_worked, break_hours, overtime_hours, status
-- **incidents** (formerly incidencias): id, employee_id, incident_date, incident_type, severity, description, status, reported_by, resolution_notes, resolved_at
-
-#### Backend Code Migration
-- **shared/schema.ts**: Completely redesigned with English table/column definitions, updated Zod validation schemas
-- **server/storage.ts**: Removed ALL Spanish-English mapping functions, now uses English schema directly from shared/schema.ts
-- **server/routes.ts**: Updated to use English field names throughout all API endpoints
-- **server/seed.ts**: Updated to seed data using English schema
-
-#### Architecture Simplification
-- **Eliminated complexity**: Removed entire layer of Spanish→English mapping/adapter functions
-- **Direct schema usage**: Backend now imports and uses English types directly from shared/schema.ts
-- **Cleaner codebase**: Significantly reduced code duplication and maintenance burden
-
-#### Migration Results
-- ✅ Database schema migrated successfully with `npm run db:push --force`
-- ✅ All backend code compiles without LSP errors
-- ✅ Server running successfully on port 5000
-- ✅ Seed data created: 13 employees with 3 days of clock entries each
-- ✅ Event-based clock entry system with automatic daily workday calculation working correctly
-- ✅ **Frontend web app**: Updated to use new English schema exports
-- ✅ **Mobile app**: Updated to use English schema (userId, incidentType, expectedStartTime, expectedEndTime)
-
-### Previous: Event-Based Clock Entries System
-
-**Event-based time tracking**: System uses individual clock events (clock_in, clock_out, break_start, break_end) with automatic daily workday consolidation.
-
-#### Database Changes
-- **fichajes table**: Now stores individual events (entrada, salida, pausa_inicio, pausa_fin) instead of paired clock-in/clock-out
-  - Primary key: `id_registro` (varchar with UUID)
-  - Fields: `id_empleado`, `tipo_registro`, `timestamp_registro`, `origen`, `observaciones`, `id_turno`
-  - Each fichaje is a single timestamped event, not a complete workday record
-  - **NEW**: Bidirectional linking with horarios_planificados via `id_turno` for automatic shift association
-  
-- **jornada_diaria table**: NEW - Consolidated daily work summary
-  - Auto-calculated from fichajes events
-  - Fields: `id_jornada`, `id_empleado`, `fecha`, `hora_inicio`, `hora_fin`, `horas_trabajadas`, `horas_pausas`, `horas_extra`, `estado`
-  - Updated transactionally with each fichaje insertion
-
-- **horarios_planificados table**: Structure updated
-  - Renamed: `id_horario` → `id_turno`, `id_usuario` → `id_empleado`, `hora_inicio_programada` → `hora_inicio_prevista`, `hora_fin_programada` → `hora_fin_prevista`
-  - Added: `tipo_turno` ('manana', 'tarde', 'noche'), `estado` ('programado', 'cancelado', 'modificado')
-
-#### Backend Implementation
-- **server/storage.ts**: 
-  - Added `fichajesService` with functions: crearFichaje, obtenerFichajes, obtenerJornadas, obtenerJornadaActual, obtenerUltimoFichaje
-  - **NEW**: `crearFichaje` now automatically assigns `id_turno` by looking up the planned schedule for the fichaje date
-  - Implemented `calcularYActualizarJornada()` that recalculates jornada_diaria transactionally on each fichaje
-  - Logic pairs entrada↔salida events and pausa_inicio↔pausa_fin to calculate worked hours and break time
-  - Added compatibility adapter `obtenerTimeEntriesDesdeJornadas()` to support legacy API
-  - **Fixed**: All mapping functions updated to use new Spanish field names (idEmpleado, idTurno, horaInicioPrevista, etc.)
-  - **Fixed**: `createBulkDateSchedules` now works correctly with updated field names
-
-- **server/routes.ts**: 
-  - Added new routes: POST `/api/fichajes`, GET `/api/fichajes/:employeeId`, GET `/api/jornadas/:employeeId`, GET `/api/jornadas/:employeeId/actual`, GET `/api/fichajes/:employeeId/ultimo`
-  - Updated GET `/api/time-entries` to use jornada_diaria adapter for backwards compatibility
-  - Legacy time-entries routes maintained but adapted to work with new event system
-
-- **server/seed.ts**: 
-  - Updated to create fichajes as individual entrada/salida events
-  - Uses fichajesService to ensure jornadas are auto-calculated during seeding
-
-#### CORS Configuration
-- Simplified CORS to allow all origins in development (origin: true)
-- Resolves compatibility issues with Replit's multi-port architecture
-
-#### Migration Status
-- ✅ Database schema migrated and populated
-- ✅ Backend logic implemented with automatic jornada calculation
-- ✅ API routes created and adapted
-- ✅ Seed data working with new structure
-- ✅ **Automatic id_turno assignment implemented**
-- ✅ **Bulk schedule assignment fixed**
-- ⏳ Frontend web app - needs adaptation to use new APIs
-- ⏳ Mobile app - needs adaptation to use new APIs
-
-#### Known Edge Cases to Monitor
-- Multiple planned shifts on the same date (currently picks first match)
-- Cancelled schedules should be excluded from automatic assignment
-- Timezone handling in date extraction (toISOString may cause UTC/local mismatches)
-
-### October 1, 2025 - Mobile App Integration
-
-### Mobile App Integration
-- **JWT Authentication**: Implemented JWT token-based authentication in backend to support mobile app alongside session-based auth for web app
-- **History Screen**: Created HistoryScreen component for mobile app to display time entry history with filtering capabilities
-- **Navigation Integration**: Integrated History screen into mobile app navigation stack
-- **API Configuration**: Configured mobile app to connect to correct backend server URL (workspace.joanbarresportf.repl.co in production, localhost in development)
-- **Authentication Fix**: Updated middleware (requireAuth, requireAdmin, requireEmployeeAccess) to support both session and token authentication methods
-- **CORS Configuration**: Added CORS middleware to backend server to allow cross-origin requests from Expo web app running on different subdomain
-- **Expo Web Fix**: Fixed mobile app web version to correctly detect Replit environment and use appropriate backend URL
-
-### Mobile App Features
-- Dashboard with clock-in/clock-out functionality using legacy time-entries endpoints
-- Schedules viewing with ScheduledShift types (expectedStartTime, expectedEndTime)
-- Incidents reporting with updated types (userId, incidentType)
-- Time entry history with date filtering
-- Real-time status updates
-- Full web compatibility with Expo web platform
-- **Updated to English schema**: All types now use English field names matching backend
+This is a comprehensive, full-stack employee time tracking and management system with web and mobile interfaces. Its purpose is to streamline organizational tasks such as managing employee records, tracking work hours via clock-in/clock-out, scheduling shifts, handling workplace incidents, and generating detailed reports. The system is designed for modern organizations seeking efficient and accurate workforce management with real-time updates and full CRUD capabilities.
 
 ## User Preferences
 
@@ -124,55 +11,59 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: React with TypeScript for type safety and better development experience
-- **UI Library**: Radix UI components with shadcn/ui for consistent, accessible design system
-- **Styling**: Tailwind CSS with custom design tokens and CSS variables for theming
-- **State Management**: TanStack Query (React Query) for server state management and caching
-- **Routing**: Wouter for lightweight client-side routing
-- **Form Handling**: React Hook Form with Zod validation for type-safe form validation
-- **Build Tool**: Vite for fast development and optimized production builds
+- **Framework**: React with TypeScript
+- **UI Library**: Radix UI components with shadcn/ui for accessible design
+- **Styling**: Tailwind CSS with custom design tokens
+- **State Management**: TanStack Query for server state management
+- **Routing**: Wouter for client-side routing
+- **Form Handling**: React Hook Form with Zod validation
+- **Build Tool**: Vite
 
 ### Backend Architecture
 - **Runtime**: Node.js with TypeScript
-- **Framework**: Express.js for RESTful API development
-- **Database ORM**: Drizzle ORM for type-safe database operations
-- **Validation**: Zod schemas shared between client and server for consistent validation
-- **Storage**: In-memory storage implementation with interface for easy database migration
-- **API Design**: RESTful endpoints with proper HTTP status codes and error handling
+- **Framework**: Express.js for RESTful API
+- **Database ORM**: Drizzle ORM for type-safe operations
+- **Validation**: Zod schemas shared between client and server
+- **Storage**: In-memory storage with an interface for database migration
+- **API Design**: RESTful endpoints with proper error handling
+- **Authentication**: JWT for mobile, session-based for web
 
 ### Database Design
 - **Primary Database**: PostgreSQL with Neon serverless driver
-- **ORM**: Drizzle with schema-first approach
-- **Schema Language**: All tables and columns use English naming conventions
-- **Key Entities**:
-  - **users**: Employee records with role-based access (admin, manager, employee)
-  - **departments**: Organizational departments
-  - **scheduled_shifts**: Planned work shifts with date, time, and shift type
-  - **clock_entries**: Event-based time tracking (clock_in, clock_out, break_start, break_end)
-  - **daily_workday**: Automatically calculated daily work summaries from clock entries
-  - **incidents**: Workplace incidents and attendance issues with severity tracking
-- **Architecture Pattern**: Event-based time tracking with automatic workday consolidation
+- **ORM**: Drizzle with a schema-first approach
+- **Schema Language**: All tables and columns use consistent English naming conventions
+- **Key Entities**: `users`, `departments`, `scheduled_shifts`, `clock_entries`, `daily_workday`, `incidents`
+- **Architecture Pattern**: Event-based time tracking (`clock_entries`) with automatic daily workday consolidation (`daily_workday`).
 
 ### Development Architecture
 - **Monorepo Structure**: Shared schemas and types between frontend and backend
-- **Hot Reload**: Vite HMR for frontend, tsx for backend development
-- **Type Safety**: End-to-end TypeScript with shared schema definitions
-- **Path Aliases**: Consistent import paths using @ aliases
+- **Type Safety**: End-to-end TypeScript with shared Zod schema definitions
+- **Hot Reload**: Vite HMR for frontend, tsx for backend
+- **Path Aliases**: Consistent import paths using `@` aliases
+
+### Core Features
+- **Time Tracking**: Event-based clock-in/clock-out, break start/end.
+- **Break Management**: Comprehensive break management integrated into the mobile app.
+- **Daily Workday Calculation**: Automatic calculation of hours worked, breaks, and overtime from `clock_entries`.
+- **Scheduling**: Management of planned work shifts for employees.
+- **Incident Management**: Reporting and tracking of workplace incidents.
+- **Reporting**: Generation of detailed reports (implied by overview).
+- **Mobile App**: Dedicated mobile application with dashboard, schedules, incidents, and history.
+- **Internationalization**: Full migration of backend schema and codebase to English.
 
 ## External Dependencies
 
 ### Database and ORM
 - **@neondatabase/serverless**: Neon serverless PostgreSQL driver
-- **drizzle-orm**: Type-safe ORM with PostgreSQL dialect
-- **drizzle-kit**: Database migrations and schema management
+- **drizzle-orm**: Type-safe ORM
+- **drizzle-kit**: Database migrations
 
 ### Frontend Libraries
-- **@tanstack/react-query**: Server state management and caching
+- **@tanstack/react-query**: Server state management
 - **@radix-ui/react-***: Accessible UI component primitives
 - **react-hook-form**: Form state management
-- **@hookform/resolvers**: Form validation resolvers
 - **wouter**: Lightweight routing library
-- **date-fns**: Date manipulation and formatting
+- **date-fns**: Date manipulation
 - **lucide-react**: Icon library
 
 ### UI and Styling
@@ -183,14 +74,9 @@ Preferred communication style: Simple, everyday language.
 
 ### Development Tools
 - **vite**: Build tool and development server
-- **typescript**: Type checking and compilation
+- **typescript**: Type checking
 - **@vitejs/plugin-react**: React support for Vite
-- **@replit/vite-plugin-runtime-error-modal**: Development error overlay
-- **@replit/vite-plugin-cartographer**: Replit-specific development features
 
 ### Validation and Schemas
 - **zod**: Runtime type validation and schema definition
-- **drizzle-zod**: Integration between Drizzle schemas and Zod validation
-
-### Session Management
-- **connect-pg-simple**: PostgreSQL session store (configured for future use)
+- **drizzle-zod**: Drizzle and Zod integration
