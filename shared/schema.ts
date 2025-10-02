@@ -1,15 +1,15 @@
 /**
- * ESQUEMA COMPARTIDO DE BASE DE DATOS
- * =====================================
+ * SHARED DATABASE SCHEMA
+ * =====================
  * 
- * Este archivo define toda la estructura de datos compartida entre el frontend y el backend.
- * Utiliza Drizzle ORM para definir las tablas de PostgreSQL y Zod para las validaciones.
+ * This file defines the entire data structure shared between frontend and backend.
+ * Uses Drizzle ORM to define PostgreSQL tables and Zod for validations.
  * 
- * ARQUITECTURA:
- * - Tablas de DB definidas con Drizzle (pgTable)
- * - Esquemas de validación con Zod
- * - Tipos TypeScript inferidos automáticamente
- * - Validaciones compartidas entre cliente y servidor
+ * ARCHITECTURE:
+ * - DB tables defined with Drizzle (pgTable)
+ * - Validation schemas with Zod
+ * - TypeScript types automatically inferred
+ * - Shared validations between client and server
  */
 
 import { sql } from "drizzle-orm";
@@ -17,109 +17,241 @@ import { pgTable, text, varchar, timestamp, integer, boolean } from "drizzle-orm
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-
 // ============================================================================
-// ESQUEMAS DE VALIDACIÓN CON ZOD
+// DATABASE TABLES
 // ============================================================================
 
 /**
- * Schema para login de usuarios
- * Valida que el email tenga formato correcto y que la contraseña no esté vacía
+ * TABLE: departments
+ * ==================
+ * 
+ * Organizes the different departments of the company.
+ */
+export const departments = pgTable("departments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+});
+
+/**
+ * TABLE: users
+ * ============
+ * 
+ * Stores information about employees and administrators.
+ */
+export const users = pgTable("users", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeNumber: text("employee_number").notNull().unique(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  hireDate: timestamp("hire_date").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  role: text("role").notNull().default("employee"), // "admin" or "employee"
+  departmentId: varchar("department_id").references(() => departments.id),
+});
+
+/**
+ * TABLE: scheduled_shifts
+ * =======================
+ * 
+ * Scheduled shifts/schedules for each employee by specific date.
+ */
+export const scheduledShifts = pgTable("scheduled_shifts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  date: text("date").notNull(), // YYYY-MM-DD
+  expectedStartTime: text("expected_start_time").notNull(), // HH:MM
+  expectedEndTime: text("expected_end_time").notNull(), // HH:MM
+  shiftType: varchar("shift_type").notNull(), // 'morning', 'afternoon', 'night'
+  status: varchar("status").notNull().default('scheduled'), // 'scheduled', 'confirmed', 'completed', 'cancelled'
+});
+
+/**
+ * TABLE: clock_entries
+ * ====================
+ * 
+ * Individual clock entry records (clock in, clock out, breaks).
+ * Each entry is a unique event that updates the daily_workday.
+ */
+export const clockEntries = pgTable("clock_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  shiftId: varchar("shift_id").references(() => scheduledShifts.id), // NULL if no shift assigned
+  entryType: varchar("entry_type").notNull(), // 'clock_in', 'clock_out', 'break_start', 'break_end'
+  timestamp: timestamp("timestamp").notNull().default(sql`now()`),
+  source: varchar("source"), // 'mobile_app', 'physical_terminal', 'web'
+  notes: text("notes"),
+});
+
+/**
+ * TABLE: daily_workday
+ * ====================
+ * 
+ * Consolidated summary of each employee's work day.
+ * Automatically updated with each clock entry of the day.
+ */
+export const dailyWorkday = pgTable("daily_workday", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  date: text("date").notNull(), // YYYY-MM-DD
+  startTime: timestamp("start_time"), // First clock-in entry of the day
+  endTime: timestamp("end_time"), // Last clock-out entry of the day
+  workedMinutes: integer("worked_minutes").notNull().default(0), // in minutes
+  breakMinutes: integer("break_minutes").notNull().default(0), // in minutes
+  overtimeMinutes: integer("overtime_minutes").notNull().default(0), // in minutes
+  status: varchar("status").notNull().default('open'), // 'open', 'closed'
+});
+
+/**
+ * TABLE: incidents
+ * ================
+ * 
+ * Record of work incidents (delays, absences, sick leave, etc.).
+ */
+export const incidents = pgTable("incidents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  entryId: varchar("entry_id").references(() => clockEntries.id),
+  incidentType: text("incident_type").notNull(), // "late", "absence", "sick_leave", "vacation", "forgot_clock_in", "other"
+  description: text("description").notNull(),
+  registeredBy: varchar("registered_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  status: text("status").notNull().default("pending"), // "pending", "approved", "rejected"
+});
+
+// ============================================================================
+// ZOD VALIDATION SCHEMAS
+// ============================================================================
+
+/**
+ * Schema for user login
  */
 export const loginSchema = z.object({
-  email: z.string().email("Email inválido"),
-  password: z.string().min(1, "La contraseña es requerida"),
+  email: z.string().email("Invalid email"),
+  password: z.string().min(1, "Password is required"),
 });
 
 /**
- * Schema para crear nuevos empleados (para compatibilidad de API)
+ * SCHEMAS FOR DEPARTMENTS
  */
-export const createEmployeeSchema = z.object({
-  employeeNumber: z.string().min(1),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  email: z.string().email(),
-  password: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
+export const insertDepartmentSchema = createInsertSchema(departments).omit({
+  id: true,
+});
+
+/**
+ * SCHEMAS FOR USERS
+ */
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  passwordHash: true,
+  role: true,
+});
+
+export const createUserSchema = insertUserSchema.extend({
+  passwordHash: z.string().min(4, "Password must be at least 4 characters"),
   role: z.enum(["admin", "employee"]).default("employee"),
-  department: z.string().min(1),
-  position: z.string().min(1),
   hireDate: z.string().transform((str) => new Date(str)),
-  conventionHours: z.number().int().positive().optional().default(1752),
-  isActive: z.boolean().optional().default(true),
 });
 
-/**
- * Schema para actualizar empleados existentes (para compatibilidad de API)
- */
-export const updateEmployeeSchema = z.object({
+export const updateUserSchema = z.object({
   employeeNumber: z.string().min(1).optional(),
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
   email: z.string().email().optional(),
-  department: z.string().min(1).optional(),
-  position: z.string().min(1).optional(),
+  departmentId: z.string().min(1).optional(),
   hireDate: z.string().transform((str) => new Date(str)).optional(),
-  conventionHours: z.number().int().positive().optional(),
   isActive: z.boolean().optional(),
 });
 
 /**
- * ESQUEMAS PARA HORARIOS ESPECÍFICOS POR FECHA
- * =============================================
+ * SCHEMAS FOR SCHEDULED SHIFTS
  */
-
-/**
- * Schema para horarios por fecha específica (para compatibilidad de API)
- */
-export const insertDateScheduleSchema = z.object({
-  employeeId: z.string().min(1),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  workHours: z.number().int(),
-  isActive: z.boolean().optional().default(true),
+export const insertScheduledShiftSchema = createInsertSchema(scheduledShifts).omit({
+  id: true,
+}).extend({
+  shiftType: z.enum(['morning', 'afternoon', 'night']),
+  status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled']).default('scheduled'),
 });
 
-/**
- * Schema para creación masiva de horarios por fecha - VALIDACIÓN SIMPLIFICADA
- * FORMATO: { schedules: Array<{ employeeId, date, startTime, endTime }> }
- */
-export const bulkDateScheduleCreateSchema = z.object({
+export const bulkScheduledShiftCreateSchema = z.object({
   schedules: z.array(z.object({
     employeeId: z.string().min(1, "Employee ID is required"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
-    startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Start time must be in HH:MM format"),
-    endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "End time must be in HH:MM format"),
-    isActive: z.boolean().optional().default(true),
+    expectedStartTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Start time must be in HH:MM format"),
+    expectedEndTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "End time must be in HH:MM format"),
+    shiftType: z.enum(['morning', 'afternoon', 'night']).default('morning'),
+    status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled']).default('scheduled'),
   })).min(1, "At least one schedule is required"),
 });
 
 /**
- * Schema para crear incidencias (para compatibilidad de API)
+ * SCHEMAS FOR CLOCK ENTRIES
  */
-export const insertIncidentSchema = z.object({
-  employeeId: z.string().min(1),
-  type: z.enum(["late", "absence", "early_departure", "forgot_clock_in", "forgot_clock_out"], {
-    errorMap: () => ({ message: "Tipo de incidencia inválido" })
-  }),
-  description: z.string().min(1),
-  date: z.coerce.date(),
-  status: z.enum(["pending", "approved", "rejected"], {
-    errorMap: () => ({ message: "Estado de incidencia inválido" })
-  }).optional().default("pending"),
+export const insertClockEntrySchema = createInsertSchema(clockEntries).omit({
+  id: true,
+  timestamp: true,
+}).extend({
+  entryType: z.enum(['clock_in', 'clock_out', 'break_start', 'break_end']),
+  source: z.enum(['mobile_app', 'physical_terminal', 'web']).optional(),
+});
+
+/**
+ * SCHEMAS FOR DAILY WORKDAY
+ */
+export const insertDailyWorkdaySchema = createInsertSchema(dailyWorkday).omit({
+  id: true,
+  workedMinutes: true,
+  breakMinutes: true,
+  overtimeMinutes: true,
+}).extend({
+  status: z.enum(['open', 'closed']).default('open'),
+});
+
+/**
+ * SCHEMAS FOR INCIDENTS
+ */
+export const insertIncidentSchema = createInsertSchema(incidents).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  incidentType: z.enum(["late", "absence", "sick_leave", "vacation", "forgot_clock_in", "other"]),
+  status: z.enum(["pending", "approved", "rejected"]).default("pending"),
 });
 
 // ============================================================================
-// TIPOS TYPESCRIPT
+// TYPESCRIPT TYPES
+// ============================================================================
+
+export type Department = typeof departments.$inferSelect;
+export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type CreateUser = z.infer<typeof createUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
+
+export type ScheduledShift = typeof scheduledShifts.$inferSelect;
+export type InsertScheduledShift = z.infer<typeof insertScheduledShiftSchema>;
+export type BulkScheduledShiftCreate = z.infer<typeof bulkScheduledShiftCreateSchema>;
+
+export type ClockEntry = typeof clockEntries.$inferSelect;
+export type InsertClockEntry = z.infer<typeof insertClockEntrySchema>;
+
+export type DailyWorkday = typeof dailyWorkday.$inferSelect;
+export type InsertDailyWorkday = z.infer<typeof insertDailyWorkdaySchema>;
+
+export type Incident = typeof incidents.$inferSelect;
+export type InsertIncident = z.infer<typeof insertIncidentSchema>;
+
+// ============================================================================
+// LEGACY TYPES FOR API COMPATIBILITY
 // ============================================================================
 
 /**
- * TIPOS PARA EMPLEADOS
- * ====================
- * Estos tipos se infieren automáticamente de las tablas y esquemas de Zod
+ * Legacy Employee interface - maps to User
  */
-
-/** Tipo completo de empleado - mantenido para compatibilidad de API */
 export interface Employee {
   id: string;
   employeeNumber: string;
@@ -135,47 +267,9 @@ export interface Employee {
   isActive: boolean;
 }
 
-/** Tipo para insertar empleado (sin campos auto-generados) */
-export interface InsertEmployee {
-  employeeNumber: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  department: string;
-  position: string;
-  hireDate: Date;
-  conventionHours?: number;
-  isActive?: boolean;
-}
-
-/** Tipo para crear empleado (incluye password y role) */
-export interface CreateEmployee extends InsertEmployee {
-  password: string;
-  role: "admin" | "employee";
-}
-
-/** Tipo para actualizar empleado (todos los campos opcionales) */
-export interface UpdateEmployee {
-  employeeNumber?: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  department?: string;
-  position?: string;
-  hireDate?: Date;
-  conventionHours?: number;
-  isActive?: boolean;
-}
-
-/** Tipo para datos de login */
-export type LoginRequest = z.infer<typeof loginSchema>;
-
 /**
- * TIPOS PARA REGISTROS DE TIEMPO
- * ==============================
+ * Legacy TimeEntry interface - maps to DailyWorkday
  */
-
-/** Tipo completo de registro de tiempo - mantenido para compatibilidad de API */
 export interface TimeEntry {
   id: string;
   employeeId: string;
@@ -185,7 +279,9 @@ export interface TimeEntry {
   date: string;
 }
 
-/** Tipo para crear nuevo registro de tiempo */
+/**
+ * Legacy InsertTimeEntry interface
+ */
 export interface InsertTimeEntry {
   employeeId: string;
   clockIn: Date;
@@ -194,11 +290,8 @@ export interface InsertTimeEntry {
 }
 
 /**
- * TIPOS PARA HORARIOS
- * ===================
+ * Legacy Schedule interface - maps to ScheduledShift
  */
-
-/** Tipo completo de horario - mantenido para compatibilidad de API */
 export interface Schedule {
   id: string;
   employeeId: string;
@@ -208,23 +301,9 @@ export interface Schedule {
   isActive: boolean;
 }
 
-/** Tipo para crear horario individual */
-export interface InsertSchedule {
-  employeeId: string;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  isActive?: boolean;
-}
-
-/** Tipo para crear múltiples horarios en una operación */
-
 /**
- * TIPOS PARA HORARIOS ESPECÍFICOS POR FECHA
- * ==========================================
+ * Legacy DateSchedule interface - maps to ScheduledShift
  */
-
-/** Tipo completo de horario por fecha - mantenido para compatibilidad de API */
 export interface DateSchedule {
   id: string;
   employeeId: string;
@@ -235,7 +314,9 @@ export interface DateSchedule {
   isActive: boolean;
 }
 
-/** Tipo para crear horario por fecha específica */
+/**
+ * Legacy InsertDateSchedule interface
+ */
 export interface InsertDateSchedule {
   employeeId: string;
   date: string;
@@ -245,247 +326,12 @@ export interface InsertDateSchedule {
   isActive?: boolean;
 }
 
-/** Tipo para crear múltiples horarios por fechas específicas */
-export type BulkDateScheduleCreate = z.infer<typeof bulkDateScheduleCreateSchema>;
-
 /**
- * TIPOS PARA INCIDENCIAS
- * ======================
+ * Legacy types
  */
-
-/** Tipo completo de incidencia - mantenido para compatibilidad de API */
-export interface Incident {
-  id: string;
-  employeeId: string;
-  type: string;
-  description: string;
-  date: Date;
-  status: string;
-  createdAt: Date;
-}
-
-/** Tipo para crear nueva incidencia */
-export interface InsertIncident {
-  employeeId: string;
-  type: "late" | "absence" | "early_departure" | "forgot_clock_in" | "forgot_clock_out";
-  description: string;
-  date: Date;
-  status?: "pending" | "approved" | "rejected";
-}
-
-/**
- * TIPOS ESPECIALES
- * ================
- */
-
-/**
- * Tipo User para información de sesión
- * Se usa en el frontend para mostrar datos del usuario logueado
- * Es un subconjunto de Employee sin información sensible
- */
-export type User = {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: "admin" | "employee";
-  employeeNumber: string;
-};
-
-// ============================================================================
-// NUEVA ESTRUCTURA DE BASE DE DATOS EN ESPAÑOL
-// ============================================================================
-
-/**
- * TABLA: departamentos
- * ====================
- * 
- * Organiza los diferentes departamentos de la empresa.
- */
-export const departamentos = pgTable("departamentos", {
-  idDepartamento: varchar("id_departamento").primaryKey().default(sql`gen_random_uuid()`),
-  nombreDepartamento: text("nombre_departamento").notNull(),
-  descripcion: text("descripcion"),
-});
-
-/**
- * TABLA: usuarios
- * ===============
- * 
- * Almacena información de empleados y administradores.
- * Reemplaza la tabla 'employees' con nombres en español.
- */
-export const usuarios = pgTable("usuarios", {
-  idUsuario: varchar("id_usuario").primaryKey().default(sql`gen_random_uuid()`),
-  numEmpleado: text("num_empleado").notNull().unique(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  email: text("email").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  fechaContratacion: timestamp("fecha_contratacion").notNull(),
-  activo: boolean("activo").notNull().default(true),
-  rol: text("rol").notNull().default("empleado"), // "administrador" o "empleado"
-  idDepartamento: varchar("id_departamento").references(() => departamentos.idDepartamento),
-});
-
-/**
- * TABLA: horarios_planificados
- * =============================
- * 
- * Horarios/turnos planificados para cada empleado por fecha específica.
- */
-export const horariosPlanificados = pgTable("horarios_planificados", {
-  idTurno: varchar("id_turno").primaryKey().default(sql`gen_random_uuid()`),
-  idEmpleado: varchar("id_empleado").notNull().references(() => usuarios.idUsuario),
-  fecha: text("fecha").notNull(), // YYYY-MM-DD
-  horaInicioPrevista: text("hora_inicio_prevista").notNull(), // HH:MM
-  horaFinPrevista: text("hora_fin_prevista").notNull(), // HH:MM
-  tipoTurno: varchar("tipo_turno").notNull(), // 'mañana', 'tarde', 'noche'
-  estado: varchar("estado").notNull().default('pendiente'), // 'pendiente', 'confirmado', 'completado', 'cancelado'
-});
-
-/**
- * TABLA: fichajes
- * ===============
- * 
- * Registros individuales de fichaje (entrada, salida, pausas).
- * Cada fichaje es un evento único que actualiza la jornada_diaria.
- */
-export const fichajes = pgTable("fichajes", {
-  idRegistro: varchar("id_registro").primaryKey().default(sql`gen_random_uuid()`),
-  idEmpleado: varchar("id_empleado").notNull().references(() => usuarios.idUsuario),
-  idTurno: varchar("id_turno").references(() => horariosPlanificados.idTurno), // NULL si no hay turno asignado
-  tipoRegistro: varchar("tipo_registro").notNull(), // 'entrada', 'salida', 'pausa_inicio', 'pausa_fin'
-  timestampRegistro: timestamp("timestamp_registro").notNull().default(sql`now()`),
-  origen: varchar("origen"), // 'app_movil', 'terminal_fisico', 'web'
-  observaciones: text("observaciones"),
-});
-
-/**
- * TABLA: jornada_diaria
- * =====================
- * 
- * Resumen consolidado de cada jornada laboral de un empleado.
- * Se actualiza automáticamente con cada fichaje del día.
- */
-export const jornadaDiaria = pgTable("jornada_diaria", {
-  idJornada: varchar("id_jornada").primaryKey().default(sql`gen_random_uuid()`),
-  idEmpleado: varchar("id_empleado").notNull().references(() => usuarios.idUsuario),
-  fecha: text("fecha").notNull(), // YYYY-MM-DD
-  horaInicio: timestamp("hora_inicio"), // Primer fichaje de entrada del día
-  horaFin: timestamp("hora_fin"), // Último fichaje de salida del día
-  horasTrabajadas: integer("horas_trabajadas").notNull().default(0), // en minutos
-  horasPausas: integer("horas_pausas").notNull().default(0), // en minutos
-  horasExtra: integer("horas_extra").notNull().default(0), // en minutos
-  estado: varchar("estado").notNull().default('abierta'), // 'abierta', 'cerrada'
-});
-
-/**
- * TABLA: incidencias
- * ==================
- * 
- * Registro de incidencias laborales (retrasos, ausencias, bajas, etc.).
- */
-export const incidencias = pgTable("incidencias", {
-  idIncidencia: varchar("id_incidencia").primaryKey().default(sql`gen_random_uuid()`),
-  idUsuario: varchar("id_usuario").notNull().references(() => usuarios.idUsuario),
-  idRegistro: varchar("id_registro").references(() => fichajes.idRegistro),
-  tipoIncidencia: text("tipo_incidencia").notNull(), // "retraso", "ausencia", "baja_medica", "vacaciones", "olvido_fichar", "otro"
-  descripcion: text("descripcion").notNull(),
-  registradoPor: varchar("registrado_por").references(() => usuarios.idUsuario),
-  fechaRegistro: timestamp("fecha_registro").notNull().default(sql`now()`),
-  estado: text("estado").notNull().default("pendiente"), // "pendiente", "justificada", "no_justificada"
-});
-
-// ============================================================================
-// ESQUEMAS ZOD PARA NUEVAS TABLAS ESPAÑOLAS
-// ============================================================================
-
-/**
- * ESQUEMAS PARA DEPARTAMENTOS
- */
-export const insertDepartamentoSchema = createInsertSchema(departamentos).omit({
-  idDepartamento: true,
-});
-
-/**
- * ESQUEMAS PARA USUARIOS
- */
-export const insertUsuarioSchema = createInsertSchema(usuarios).omit({
-  idUsuario: true,
-  passwordHash: true,
-  rol: true,
-});
-
-export const createUsuarioSchema = insertUsuarioSchema.extend({
-  passwordHash: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
-  rol: z.enum(["administrador", "empleado"]).default("empleado"),
-  fechaContratacion: z.string().transform((str) => new Date(str)),
-});
-
-/**
- * ESQUEMAS PARA HORARIOS PLANIFICADOS
- */
-export const insertHorarioPlanificadoSchema = createInsertSchema(horariosPlanificados).omit({
-  idTurno: true,
-}).extend({
-  tipoTurno: z.enum(['mañana', 'tarde', 'noche']),
-  estado: z.enum(['pendiente', 'confirmado', 'completado', 'cancelado']).default('pendiente'),
-});
-
-/**
- * ESQUEMAS PARA FICHAJES
- */
-export const insertFichajeSchema = createInsertSchema(fichajes).omit({
-  idRegistro: true,
-  timestampRegistro: true,
-}).extend({
-  tipoRegistro: z.enum(['entrada', 'salida', 'pausa_inicio', 'pausa_fin']),
-  origen: z.enum(['app_movil', 'terminal_fisico', 'web']).optional(),
-});
-
-/**
- * ESQUEMAS PARA JORNADA DIARIA
- */
-export const insertJornadaDiariaSchema = createInsertSchema(jornadaDiaria).omit({
-  idJornada: true,
-  horasTrabajadas: true,
-  horasPausas: true,
-  horasExtra: true,
-}).extend({
-  estado: z.enum(['abierta', 'cerrada']).default('abierta'),
-});
-
-/**
- * ESQUEMAS PARA INCIDENCIAS
- */
-export const insertIncidenciaSchema = createInsertSchema(incidencias).omit({
-  idIncidencia: true,
-  fechaRegistro: true,
-}).extend({
-  tipoIncidencia: z.enum(["retraso", "ausencia", "baja_medica", "vacaciones", "olvido_fichar", "otro"]),
-  estado: z.enum(["pendiente", "justificada", "no_justificada"]).default("pendiente"),
-});
-
-// ============================================================================
-// TIPOS TYPESCRIPT PARA NUEVAS TABLAS
-// ============================================================================
-
-export type Departamento = typeof departamentos.$inferSelect;
-export type InsertDepartamento = z.infer<typeof insertDepartamentoSchema>;
-
-export type Usuario = typeof usuarios.$inferSelect;
-export type InsertUsuario = z.infer<typeof insertUsuarioSchema>;
-export type CreateUsuario = z.infer<typeof createUsuarioSchema>;
-
-export type HorarioPlanificado = typeof horariosPlanificados.$inferSelect;
-export type InsertHorarioPlanificado = z.infer<typeof insertHorarioPlanificadoSchema>;
-
-export type Fichaje = typeof fichajes.$inferSelect;
-export type InsertFichaje = z.infer<typeof insertFichajeSchema>;
-
-export type JornadaDiaria = typeof jornadaDiaria.$inferSelect;
-export type InsertJornadaDiaria = z.infer<typeof insertJornadaDiariaSchema>;
-
-export type Incidencia = typeof incidencias.$inferSelect;
-export type InsertIncidencia = z.infer<typeof insertIncidenciaSchema>;
+export type LoginRequest = z.infer<typeof loginSchema>;
+export type InsertEmployee = Omit<Employee, 'id' | 'password'>;
+export type CreateEmployee = InsertEmployee & { password: string; role: "admin" | "employee" };
+export type UpdateEmployee = Partial<InsertEmployee>;
+export type InsertSchedule = Omit<Schedule, 'id'>;
+export type BulkDateScheduleCreate = z.infer<typeof bulkScheduledShiftCreateSchema>;
