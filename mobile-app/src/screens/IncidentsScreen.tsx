@@ -42,9 +42,10 @@ interface IncidentsScreenProps {
 const INCIDENT_TYPES = {
   late: 'Llegada tardía',
   absence: 'Ausencia',
-  early_departure: 'Salida temprana',
+  sick_leave: 'Baja médica',
+  vacation: 'Vacaciones',
   forgot_clock_in: 'Olvido de fichaje de entrada',
-  forgot_clock_out: 'Olvido de fichaje de salida',
+  other: 'Otra',
 } as const;
 
 /**
@@ -76,9 +77,8 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
   
   // Estado del formulario de nueva incidencia
   const [newIncident, setNewIncident] = useState({
-    type: 'late' as const,
+    incidentType: 'late' as const,
     description: '',
-    date: new Date().toISOString().split('T')[0],
   });
 
   /**
@@ -122,10 +122,9 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
     try {
       setCreating(true);
       const incidentData: InsertIncident = {
-        employeeId: user.id,
-        type: newIncident.type,
+        userId: user.id,
+        incidentType: newIncident.incidentType,
         description: newIncident.description.trim(),
-        date: newIncident.date,
         status: 'pending',
       };
 
@@ -133,9 +132,8 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
       
       // Resetear formulario
       setNewIncident({
-        type: 'late',
+        incidentType: 'late',
         description: '',
-        date: new Date().toISOString().split('T')[0],
       });
       
       setShowCreateModal(false);
@@ -188,10 +186,10 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
       <View style={styles.incidentHeader}>
         <View style={styles.headerLeft}>
           <Text style={styles.incidentType}>
-            {INCIDENT_TYPES[incident.type]}
+            {INCIDENT_TYPES[incident.incidentType]}
           </Text>
           <Text style={styles.incidentDate}>
-            {formatDate(incident.date)}
+            {formatDate(incident.createdAt)}
           </Text>
         </View>
         <View style={[
@@ -267,7 +265,7 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
         ) : (
           <View style={styles.incidentsContainer}>
             {incidents
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
               .map(renderIncidentCard)}
           </View>
         )}
@@ -307,29 +305,19 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
                     key={type}
                     style={[
                       styles.typeButton,
-                      newIncident.type === type && styles.typeButtonActive
+                      newIncident.incidentType === type && styles.typeButtonActive
                     ]}
-                    onPress={() => setNewIncident({ ...newIncident, type: type as any })}
+                    onPress={() => setNewIncident({ ...newIncident, incidentType: type as any })}
                   >
                     <Text style={[
                       styles.typeButtonText,
-                      newIncident.type === type && styles.typeButtonTextActive
+                      newIncident.incidentType === type && styles.typeButtonTextActive
                     ]}>
                       {label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
-
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Fecha</Text>
-              <TextInput
-                style={styles.dateInput}
-                value={newIncident.date}
-                onChangeText={(date) => setNewIncident({ ...newIncident, date })}
-                placeholder="YYYY-MM-DD"
-              />
             </View>
 
             <View style={styles.formGroup}>

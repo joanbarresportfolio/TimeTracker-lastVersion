@@ -13,7 +13,7 @@ import {
   LoginResponse, 
   TimeEntry, 
   InsertTimeEntry, 
-  Schedule,
+  ScheduledShift,
   DateSchedule,
   Incident,
   InsertIncident,
@@ -302,9 +302,11 @@ export async function getTimeEntries(
 
 /**
  * Obtiene horarios del empleado actual (legacy - weekly recurring)
+ * NOTA: Este endpoint retorna un array vacío ya que el nuevo sistema
+ * usa scheduled_shifts en vez de weekly schedules.
  */
-export async function getMySchedules(): Promise<Schedule[]> {
-  return apiRequest<Schedule[]>('/schedules/my');
+export async function getMySchedules(): Promise<ScheduledShift[]> {
+  return apiRequest<ScheduledShift[]>('/schedules/my');
 }
 
 /**

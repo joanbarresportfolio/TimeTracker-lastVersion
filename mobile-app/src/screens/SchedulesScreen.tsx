@@ -21,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { User, Schedule, DateSchedule } from '../types/schema';
+import { User, ScheduledShift, DateSchedule } from '../types/schema';
 import { getMySchedules, getMyDateSchedules } from '../services/api';
 
 type SchedulesNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Schedules'>;
@@ -127,9 +127,9 @@ export default function SchedulesScreen({ route }: SchedulesScreenProps) {
             newSchedulesByDate[schedule.date] = [];
           }
           newSchedulesByDate[schedule.date].push({
-            startTime: schedule.startTime,
-            endTime: schedule.endTime,
-            isActive: schedule.isActive,
+            startTime: schedule.expectedStartTime,
+            endTime: schedule.expectedEndTime,
+            isActive: schedule.status === 'scheduled' || schedule.status === 'confirmed',
           });
         });
         
@@ -149,12 +149,14 @@ export default function SchedulesScreen({ route }: SchedulesScreenProps) {
             const dateStr = formatLocalDate(currentDate);
             const dayOfWeek = currentDate.getDay();
             
-            const daySchedules = legacySchedules.filter(s => s.dayOfWeek === dayOfWeek && s.isActive);
+            const daySchedules = legacySchedules.filter(s => 
+              s.date === dateStr && (s.status === 'scheduled' || s.status === 'confirmed')
+            );
             if (daySchedules.length > 0) {
               synthesizedByDate[dateStr] = daySchedules.map(s => ({
-                startTime: s.startTime,
-                endTime: s.endTime,
-                isActive: s.isActive,
+                startTime: s.expectedStartTime,
+                endTime: s.expectedEndTime,
+                isActive: s.status === 'scheduled' || s.status === 'confirmed',
               }));
             }
           }
