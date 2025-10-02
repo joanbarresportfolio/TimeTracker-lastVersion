@@ -1751,12 +1751,37 @@ async function mapJornadaToTimeEntry(jornada: JornadaDiaria, employeeId: string)
 export const fichajesService = {
   /**
    * Crear un nuevo fichaje y actualizar jornada automáticamente
+   * NUEVA FUNCIONALIDAD: Asigna automáticamente id_turno del horario planificado para esa fecha
    */
   async crearFichaje(data: InsertFichaje & { timestampRegistro?: Date }): Promise<Fichaje> {
-    // 1. Insertar fichaje
+    // 1. Preparar datos del fichaje
+    const timestampRegistro = data.timestampRegistro || new Date();
+    const fecha = timestampRegistro.toISOString().split('T')[0];
+    
+    // 2. NUEVO: Buscar horario planificado para esta fecha si no se proporcionó id_turno
+    let idTurno = data.idTurno;
+    if (!idTurno) {
+      const horarioMatch = await db
+        .select()
+        .from(horariosPlanificados)
+        .where(
+          and(
+            eq(horariosPlanificados.idEmpleado, data.idEmpleado),
+            eq(horariosPlanificados.fecha, fecha)
+          )
+        )
+        .limit(1);
+      
+      if (horarioMatch.length > 0) {
+        idTurno = horarioMatch[0].idTurno;
+      }
+    }
+    
+    // 3. Insertar fichaje con id_turno asignado automáticamente
     const fichajeData = {
       ...data,
-      timestampRegistro: data.timestampRegistro || new Date()
+      timestampRegistro,
+      idTurno
     };
     
     const [nuevoFichaje] = await db
@@ -1764,10 +1789,7 @@ export const fichajesService = {
       .values(fichajeData)
       .returning();
 
-    // 2. Obtener fecha del fichaje
-    const fecha = nuevoFichaje.timestampRegistro.toISOString().split('T')[0];
-
-    // 3. Actualizar jornada diaria
+    // 4. Actualizar jornada diaria
     await calcularYActualizarJornada(nuevoFichaje.idEmpleado, fecha);
 
     return nuevoFichaje;
