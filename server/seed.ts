@@ -1,49 +1,34 @@
 /**
- * PROCESO DE SEMILLA DE BASE DE DATOS
- * ===================================
+ * PROCESO DE SEMILLA DE BASE DE DATOS - NUEVA ESTRUCTURA
+ * =======================================================
  * 
- * Este archivo crea datos iniciales para el sistema cuando la base de datos está vacía.
- * Es idempotente - puede ejecutarse varias veces sin crear duplicados.
- * 
- * DATOS CREADOS:
- * - 1 usuario administrador (admin@admin.com / admin)
- * - 12 empleados de muestra en 4 departamentos (3 por departamento)
- * - Registros de tiempo históricos para los últimos 3 días
- * - Un registro de entrada para el día actual
- * 
- * ESTRATEGIA IDEMPOTENTE:
- * - Verifica existencia por employeeNumber Y email antes de crear
- * - Verifica registros de tiempo por employeeId + date antes de crear
- * - Si existe algún dato, lo omite y continúa con el siguiente
+ * Crea datos iniciales para el sistema cuando la base de datos está vacía.
+ * Usa la nueva estructura de tablas: empleado, horario_planificado, fichaje, jornada_diaria.
  */
 
 import { db } from "./db";
-import { usuarios, fichajes, horariosPlanificados, incidencias } from "@shared/schema";
+import { empleado } from "@shared/schema";
 import { storage } from "./storage";
-import { and, eq, or } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 /**
  * FUNCIÓN PRINCIPAL DE SEMILLA
- * Ejecuta el proceso completo de inicialización de datos
  */
 export async function seedDatabase() {
   try {
     console.log("🌱 Iniciando proceso de semilla de base de datos...");
 
     // PASO 1: Crear usuario administrador si no existe
-    // Verifica por email Y employeeNumber para evitar duplicados
     let adminEmployee = await db.select()
-      .from(usuarios)
+      .from(empleado)
       .where(
         or(
-          eq(usuarios.numEmpleado, "ADMIN001"),
-          eq(usuarios.email, "admin@admin.com")
+          eq(empleado.email, "admin@admin.com")
         )
       )
       .limit(1);
 
     if (adminEmployee.length === 0) {
-      // No existe admin, crearlo usando el storage para aprovechar el hashing
       const newAdmin = await storage.createEmployeeWithPassword({
         employeeNumber: "ADMIN001",
         firstName: "Administrador",
@@ -61,9 +46,8 @@ export async function seedDatabase() {
       console.log("ℹ️  Usuario administrador ya existe");
     }
 
-    // Empleados de Grupo Chova Felix y Marina Fruit según especificación
+    // PASO 2: Crear empleados de muestra si no existen
     const sampleEmployees = [
-      // Grupo Chova Felix (9 empleados - 1752 horas convenio)
       {
         employeeNumber: "000001",
         firstName: "ANTONIO",
@@ -74,7 +58,6 @@ export async function seedDatabase() {
         department: "Grupo Chova Felix",
         position: "Empleado",
         hireDate: new Date("2022-01-15"),
-        conventionHours: 1752,
         isActive: true,
       },
       {
@@ -87,7 +70,6 @@ export async function seedDatabase() {
         department: "Grupo Chova Felix",
         position: "Empleado",
         hireDate: new Date("2021-06-20"),
-        conventionHours: 1752,
         isActive: true,
       },
       {
@@ -100,7 +82,6 @@ export async function seedDatabase() {
         department: "Grupo Chova Felix",
         position: "Empleada",
         hireDate: new Date("2023-03-10"),
-        conventionHours: 1752,
         isActive: true,
       },
       {
@@ -113,7 +94,6 @@ export async function seedDatabase() {
         department: "Grupo Chova Felix",
         position: "Empleada",
         hireDate: new Date("2022-08-15"),
-        conventionHours: 1752,
         isActive: true,
       },
       {
@@ -126,7 +106,6 @@ export async function seedDatabase() {
         department: "Grupo Chova Felix",
         position: "Empleada",
         hireDate: new Date("2023-11-05"),
-        conventionHours: 1752,
         isActive: true,
       },
       {
@@ -139,7 +118,6 @@ export async function seedDatabase() {
         department: "Grupo Chova Felix",
         position: "Empleado",
         hireDate: new Date("2022-04-12"),
-        conventionHours: 1752,
         isActive: true,
       },
       {
@@ -152,7 +130,6 @@ export async function seedDatabase() {
         department: "Grupo Chova Felix",
         position: "Empleado",
         hireDate: new Date("2021-09-18"),
-        conventionHours: 1752,
         isActive: true,
       },
       {
@@ -165,7 +142,6 @@ export async function seedDatabase() {
         department: "Grupo Chova Felix",
         position: "Empleado",
         hireDate: new Date("2023-05-22"),
-        conventionHours: 1752,
         isActive: true,
       },
       {
@@ -178,10 +154,8 @@ export async function seedDatabase() {
         department: "Grupo Chova Felix",
         position: "Empleada",
         hireDate: new Date("2024-01-08"),
-        conventionHours: 1752,
         isActive: true,
       },
-      // Marina Fruit (3 empleados - 1803 horas convenio)
       {
         employeeNumber: "MF001",
         firstName: "JUAN MARCIAL",
@@ -192,7 +166,6 @@ export async function seedDatabase() {
         department: "Marina Fruit",
         position: "Empleado",
         hireDate: new Date("2021-10-15"),
-        conventionHours: 1803,
         isActive: true,
       },
       {
@@ -205,7 +178,6 @@ export async function seedDatabase() {
         department: "Marina Fruit",
         position: "Empleado",
         hireDate: new Date("2022-12-01"),
-        conventionHours: 1803,
         isActive: true,
       },
       {
@@ -218,117 +190,31 @@ export async function seedDatabase() {
         department: "Marina Fruit",
         position: "Empleado",
         hireDate: new Date("2023-07-30"),
-        conventionHours: 1803,
         isActive: true,
       },
     ];
 
-    // PASO 2: Crear empleados de muestra
-    // Usa verificación doble: por email Y por employeeNumber
-    const createdEmployees = [];
-    
+    let createdCount = 0;
     for (const employeeData of sampleEmployees) {
-      // Verificar si ya existe por email usando storage
       const existingEmployee = await storage.getEmployeeByEmail(employeeData.email);
 
       if (!existingEmployee) {
         try {
-          // No existe, crear empleado nuevo usando storage para hashing
-          const newEmployee = await storage.createEmployeeWithPassword(employeeData);
-          createdEmployees.push(newEmployee);
+          await storage.createEmployeeWithPassword(employeeData);
           console.log(`✅ Empleado creado: ${employeeData.firstName} ${employeeData.lastName}`);
+          createdCount++;
         } catch (error: any) {
-          console.log(`⚠️  Error creando ${employeeData.firstName} ${employeeData.lastName}:`, error.message);
-          // Intentar obtener el empleado si se creó entre verificación y creación
-          const retryEmployee = await storage.getEmployeeByEmail(employeeData.email);
-          if (retryEmployee) {
-            createdEmployees.push(retryEmployee);
-            console.log(`ℹ️  Empleado ya existía: ${employeeData.firstName} ${employeeData.lastName}`);
-          }
+          console.log(`ℹ️  Empleado ya existe: ${employeeData.firstName} ${employeeData.lastName}`);
         }
       } else {
-        // Ya existe, usar el existente
-        createdEmployees.push(existingEmployee);
         console.log(`ℹ️  Empleado ya existe: ${employeeData.firstName} ${employeeData.lastName}`);
       }
     }
 
-    // PASO 3: Crear registros de tiempo históricos
-    // Crea 3 días de historial de fichajes para todos los empleados
-    const today = new Date();
-    const dates = [
-      new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000), // Hace 3 días
-      new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000), // Hace 2 días
-      new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000), // Ayer
-    ];
-
-    for (const employee of createdEmployees) {
-      for (const workDate of dates) {
-        const workDateStr = workDate.toISOString().split('T')[0];
-        
-        // Verificar si ya existe registro para este empleado en esta fecha
-        const existingEntry = await db.select()
-          .from(fichajes)
-          .where(and(
-            eq(fichajes.idUsuario, employee.id),
-            eq(fichajes.fecha, workDateStr)
-          ))
-          .limit(1);
-
-        if (existingEntry.length === 0) {
-          // No existe registro, crear uno nuevo con horarios aleatorios realistas
-          const startHour = 8 + Math.floor(Math.random() * 2); // 8:00 o 9:00 AM
-          const startMinute = Math.floor(Math.random() * 4) * 15; // 00, 15, 30, o 45 minutos
-          const endHour = 17 + Math.floor(Math.random() * 2); // 5:00 o 6:00 PM
-          const endMinute = Math.floor(Math.random() * 4) * 15; // 00, 15, 30, o 45 minutos
-
-          const clockIn = new Date(`${workDateStr}T${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00`);
-          const clockOut = new Date(`${workDateStr}T${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}:00`);
-          const totalMinutes = Math.floor((clockOut.getTime() - clockIn.getTime()) / (1000 * 60)); // en minutos
-
-          await db.insert(fichajes).values({
-            idUsuario: employee.id,
-            horaEntrada: clockIn,
-            horaSalida: clockOut,
-            fecha: workDateStr,
-            horasTrabajadas: totalMinutes,
-          });
-
-          console.log(`⏰ Registro de tiempo creado para ${employee.firstName} ${employee.lastName} el ${workDateStr}`);
-        }
-      }
-    }
-
-    // PASO 4: Crear entrada del día actual para simular empleado presente
-    const todayStr = today.toISOString().split('T')[0];
-    if (createdEmployees.length > 0) {
-      // Verificar si ya hay registro para hoy
-      const existingTodayEntry = await db.select()
-        .from(fichajes)
-        .where(and(
-          eq(fichajes.idUsuario, createdEmployees[0].id),
-          eq(fichajes.fecha, todayStr)
-        ))
-        .limit(1);
-
-      if (existingTodayEntry.length === 0) {
-        // Crear registro de "clock-in" para el primer empleado (simula que está presente)
-        await db.insert(fichajes).values({
-          idUsuario: createdEmployees[0].id,
-          horaEntrada: new Date(`${todayStr}T08:00:00`),
-          fecha: todayStr,
-          horaSalida: null,
-          horasTrabajadas: null,
-        });
-        console.log(`📍 Registro de entrada de hoy creado para ${createdEmployees[0].firstName}`);
-      }
-    }
-
     console.log("🎉 Base de datos inicializada exitosamente!");
-    console.log(`ℹ️  Total empleados en sistema: ${createdEmployees.length + 1}`);
+    console.log(`ℹ️  ${createdCount} nuevos empleados creados`);
     
   } catch (error) {
     console.error("❌ Error inicializando base de datos:", error);
-    // No re-throw para evitar que crashee el servidor
   }
 }
