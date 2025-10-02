@@ -163,7 +163,7 @@ export class DatabaseStorage implements IStorage {
       email: employee.email,
       nombre: employee.firstName,
       apellido: employee.lastName,
-      rol: employee.role as "admin" | "empleado",
+      rol: employee.role === "admin" ? "admin" : "empleado",
     };
   }
 
@@ -455,7 +455,7 @@ export class MemStorage implements IStorage {
       email: employee.email,
       nombre: employee.firstName,
       apellido: employee.lastName,
-      rol: employee.role as "admin" | "empleado",
+      rol: employee.role === "admin" ? "admin" : "empleado",
     };
   }
 
