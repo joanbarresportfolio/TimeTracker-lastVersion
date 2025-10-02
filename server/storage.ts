@@ -42,219 +42,38 @@
  * - DatabaseStorage: Implementación concreta usando PostgreSQL
  * - storage: Instancia singleton para uso global
  * 
- * DOCUMENTACIÓN GENERADA: 2025-09-11
- * PROPÓSITO: Refactorización con buenas prácticas y documentación exhaustiva
+ * DOCUMENTACIÓN ACTUALIZADA: 2025-10-02
+ * REFACTORIZACIÓN: Uso directo del esquema en inglés sin mapeos
  */
 
-import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type DateSchedule, type InsertDateSchedule, type BulkDateScheduleCreate, usuarios, departamentos, horariosPlanificados, fichajes, incidencias, jornadaDiaria, type Usuario, type Departamento, type HorarioPlanificado, type Fichaje, type Incidencia, type JornadaDiaria, type InsertFichaje, type InsertJornadaDiaria } from "@shared/schema";
+import { 
+  type Employee, 
+  type InsertEmployee, 
+  type TimeEntry, 
+  type InsertTimeEntry, 
+  type Schedule, 
+  type InsertSchedule, 
+  type Incident, 
+  type InsertIncident, 
+  type CreateEmployee, 
+  type User, 
+  type DateSchedule, 
+  type InsertDateSchedule, 
+  type BulkDateScheduleCreate,
+  users,
+  departments,
+  scheduledShifts,
+  clockEntries,
+  dailyWorkday,
+  incidents,
+  type Department,
+  type ScheduledShift,
+  type ClockEntry,
+  type DailyWorkday
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-
-// ============================================================================
-// FUNCIONES ADAPTADORAS: MAPEO ENTRE TIPOS INGLÉS ↔ ESPAÑOL
-// ============================================================================
-
-/**
- * Mapea un Usuario (español) a Employee (inglés) para mantener compatibilidad de API
- */
-function mapUsuarioToEmployee(usuario: Usuario, departamento?: Departamento): Employee {
-  return {
-    id: usuario.idUsuario,
-    employeeNumber: usuario.numEmpleado,
-    firstName: usuario.firstName,
-    lastName: usuario.lastName,
-    email: usuario.email,
-    password: usuario.passwordHash,
-    role: usuario.rol === "administrador" ? "admin" : "employee",
-    department: departamento?.nombreDepartamento || "",
-    position: "", // No tenemos posición en la nueva estructura
-    hireDate: usuario.fechaContratacion,
-    conventionHours: 1752, // Valor por defecto
-    isActive: usuario.activo,
-  };
-}
-
-/**
- * Mapea CreateEmployee (inglés) a datos para insertar Usuario (español)
- */
-function mapCreateEmployeeToInsertUsuario(employee: CreateEmployee) {
-  return {
-    numEmpleado: employee.employeeNumber,
-    firstName: employee.firstName,
-    lastName: employee.lastName,
-    email: employee.email,
-    passwordHash: "", // Se establecerá con bcrypt
-    fechaContratacion: employee.hireDate,
-    activo: employee.isActive,
-    rol: employee.role === "admin" ? "administrador" : "empleado",
-    idDepartamento: null as string | null, // Se establecerá después
-  };
-}
-
-/**
- * [OBSOLETA] Mapea un Fichaje (español) a TimeEntry (inglés)
- * Esta función ya no se usa. Ahora usamos mapJornadaToTimeEntry que mapea desde jornada_diaria
- */
-/* function mapFichajeToTimeEntry(fichaje: Fichaje): TimeEntry {
-  return {
-    id: fichaje.idRegistro,
-    employeeId: fichaje.idEmpleado,
-    clockIn: fichaje.timestampRegistro,
-    clockOut: null,
-    totalHours: null,
-    date: fichaje.timestampRegistro.toISOString().split('T')[0],
-  };
-} */
-
-/**
- * Mapea un HorarioPlanificado (español) a DateSchedule (inglés)
- */
-function mapHorarioPlanificadoToDateSchedule(horario: HorarioPlanificado): DateSchedule {
-  // Calcular workHours a partir de start/end time
-  const [startHour, startMin] = horario.horaInicioPrevista.split(':').map(Number);
-  const [endHour, endMin] = horario.horaFinPrevista.split(':').map(Number);
-  const startMinutes = startHour * 60 + startMin;
-  const endMinutes = endHour * 60 + endMin;
-  const workMinutes = endMinutes - startMinutes;
-  
-  return {
-    id: horario.idTurno,
-    employeeId: horario.idEmpleado,
-    date: horario.fecha,
-    startTime: horario.horaInicioPrevista,
-    endTime: horario.horaFinPrevista,
-    workHours: workMinutes,
-    isActive: horario.estado === 'programado',
-  };
-}
-
-/**
- * Mapea una Incidencia (español) a Incident (inglés)
- */
-function mapIncidenciaToIncident(incidencia: Incidencia): Incident {
-  // Mapeo inverso de tipos
-  const typeMap: Record<string, string> = {
-    "retraso": "late",
-    "ausencia": "absence",
-    "baja_medica": "absence",
-    "vacaciones": "absence",
-    "olvido_fichar": "forgot_clock_in",
-    "otro": "early_departure",
-  };
-  
-  // Mapeo inverso de estados
-  const statusMap: Record<string, string> = {
-    "pendiente": "pending",
-    "justificada": "approved",
-    "no_justificada": "rejected",
-  };
-  
-  return {
-    id: incidencia.idIncidencia,
-    employeeId: incidencia.idUsuario,
-    type: typeMap[incidencia.tipoIncidencia] || "early_departure",
-    description: incidencia.descripcion,
-    date: incidencia.fechaRegistro,
-    status: statusMap[incidencia.estado] || "pending",
-    createdAt: incidencia.fechaRegistro,
-  };
-}
-
-// ============================================================================
-// FUNCIONES REVERSE MAPPING: INGLÉS → ESPAÑOL (para INSERT/UPDATE)
-// ============================================================================
-
-/**
- * [OBSOLETA] Mapea InsertTimeEntry a formato para insertar en Fichaje
- * Esta función ya no se usa. Ahora usamos fichajesService.crearFichaje para crear eventos individuales
- */
-/* async function toFichajeInsert(entry: InsertTimeEntry): Promise<Omit<typeof fichajes.$inferInsert, 'idRegistro'>> {
-  return {
-    idEmpleado: entry.employeeId,
-    tipoRegistro: 'entrada',
-    timestampRegistro: entry.clockIn,
-    idTurno: null,
-    origen: null,
-    observaciones: null,
-  };
-} */
-
-/**
- * Busca o crea departamento y retorna su ID
- */
-async function getDepartamentoId(departmentName: string): Promise<string | null> {
-  if (!departmentName) return null;
-  
-  // Buscar existente
-  const [existing] = await db
-    .select()
-    .from(departamentos)
-    .where(eq(departamentos.nombreDepartamento, departmentName))
-    .limit(1);
-  
-  if (existing) return existing.idDepartamento;
-  
-  // Crear nuevo
-  const [newDept] = await db
-    .insert(departamentos)
-    .values({ nombreDepartamento: departmentName, descripcion: null })
-    .returning();
-  
-  return newDept.idDepartamento;
-}
-
-/**
- * Mapea InsertDateSchedule a formato para insertar en HorarioPlanificado
- */
-function toHorarioPlanificadoInsert(schedule: any): Omit<typeof horariosPlanificados.$inferInsert, 'idTurno'> {
-  // Determinar tipo de turno basado en la hora de inicio
-  const [startHour] = schedule.startTime.split(':').map(Number);
-  let tipoTurno = 'manana';
-  if (startHour >= 14 && startHour < 22) {
-    tipoTurno = 'tarde';
-  } else if (startHour >= 22 || startHour < 6) {
-    tipoTurno = 'noche';
-  }
-  
-  return {
-    idEmpleado: schedule.employeeId,
-    fecha: schedule.date,
-    horaInicioPrevista: schedule.startTime,
-    horaFinPrevista: schedule.endTime,
-    tipoTurno,
-    estado: schedule.isActive === false ? 'cancelado' : 'programado',
-  };
-}
-
-/**
- * Mapea InsertIncident a formato para insertar en Incidencia
- */
-function toIncidenciaInsert(incident: InsertIncident): Omit<typeof incidencias.$inferInsert, 'idIncidencia'> {
-  // Mapeo de tipos inglés → español
-  const typeMap: Record<string, string> = {
-    "late": "retraso",
-    "absence": "ausencia",
-    "early_departure": "otro",
-    "forgot_clock_in": "olvido_fichar",
-    "forgot_clock_out": "olvido_fichar",
-  };
-  
-  // Mapeo de estados inglés → español
-  const statusMap: Record<string, string> = {
-    "pending": "pendiente",
-    "approved": "justificada",
-    "rejected": "no_justificada",
-  };
-  
-  return {
-    idUsuario: incident.employeeId,
-    tipoIncidencia: typeMap[incident.type] || "otro",
-    descripcion: incident.description,
-    fechaRegistro: incident.date,
-    estado: (incident.status && statusMap[incident.status]) || "pendiente",
-  };
-}
 
 /**
  * INTERFAZ DE ALMACENAMIENTO
@@ -414,26 +233,40 @@ export class DatabaseStorage implements IStorage {
    * Esta operación es fundamental para el proceso de autenticación.
    * 
    * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM employees WHERE email = $1 LIMIT 1;
+   * SELECT * FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.email = $1 LIMIT 1;
    * 
    * @param email - Dirección de correo electrónico del empleado
    * @returns Empleado encontrado o undefined si no existe
    */
   async getEmployeeByEmail(email: string): Promise<Employee | undefined> {
-    // Usar tabla usuarios (español) y hacer join con departamentos
     const result = await db
       .select({
-        usuario: usuarios,
-        departamento: departamentos,
+        user: users,
+        department: departments,
       })
-      .from(usuarios)
-      .leftJoin(departamentos, eq(usuarios.idDepartamento, departamentos.idDepartamento))
-      .where(eq(usuarios.email, email))
+      .from(users)
+      .leftJoin(departments, eq(users.departmentId, departments.id))
+      .where(eq(users.email, email))
       .limit(1);
     
     if (result.length === 0) return undefined;
     
-    return mapUsuarioToEmployee(result[0].usuario, result[0].departamento || undefined);
+    const { user, department } = result[0];
+    
+    return {
+      id: user.id,
+      employeeNumber: user.employeeNumber,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.passwordHash,
+      role: user.role,
+      department: department?.name || "",
+      position: "",
+      hireDate: user.hireDate,
+      conventionHours: 1752,
+      isActive: user.isActive,
+    };
   }
 
   /**
@@ -448,30 +281,26 @@ export class DatabaseStorage implements IStorage {
    * - Las contraseñas nunca se almacenan en texto plano
    * - Se usa bcrypt para hashing con salt automático
    * - El hash se compara usando bcrypt.compare() que es resistente a timing attacks
-   * - Solo se devuelve información no sensible en el objeto User
+   * - Devuelve el registro completo de User (las rutas API deben filtrar campos sensibles)
    * 
    * @param email - Email del empleado
    * @param password - Contraseña en texto plano
-   * @returns Objeto User con información básica si es válido, null si falla la autenticación
+   * @returns Objeto User completo si es válido, null si falla la autenticación
    */
   async authenticateEmployee(email: string, password: string): Promise<User | null> {
-    // PASO 1: Buscar empleado en base de datos
-    const employee = await this.getEmployeeByEmail(email);
-    if (!employee) return null;
-
-    // PASO 2: Verificar contraseña contra hash bcrypt
-    const isValidPassword = await bcrypt.compare(password, employee.password);
+    const result = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    
+    if (result.length === 0) return null;
+    
+    const user = result[0];
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) return null;
 
-    // PASO 3: Devolver solo información no sensible (sin password hash)
-    return {
-      id: employee.id,
-      email: employee.email,
-      firstName: employee.firstName,
-      lastName: employee.lastName,
-      role: employee.role as "admin" | "employee",
-      employeeNumber: employee.employeeNumber,
-    };
+    return user;
   }
 
   /**
@@ -487,69 +316,71 @@ export class DatabaseStorage implements IStorage {
    * - El hash resultante incluye salt + hash en un formato estándar
    * 
    * CONSULTA SQL EQUIVALENTE:
-   * INSERT INTO employees (employeeNumber, firstName, lastName, email, password, role, department, position, hireDate, isActive)
-   * VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+   * INSERT INTO users (employeeNumber, firstName, lastName, email, passwordHash, role, departmentId, hireDate, isActive)
+   * VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
    * RETURNING *;
-   * 
-   * ERRORES POSIBLES:
-   * - Violación de restricción única en email o employeeNumber
-   * - Violación de restricciones de validación (NOT NULL, CHECK)
-   * - Errores de conexión a base de datos
    * 
    * @param employeeData - Datos del empleado incluyendo contraseña en texto plano
    * @returns Empleado creado con ID generado y contraseña ya encriptada
    */
   async createEmployeeWithPassword(employeeData: CreateEmployee): Promise<Employee> {
-    // PASO 1: Encriptar contraseña con bcrypt (factor de costo: 10)
     const hashedPassword = await bcrypt.hash(employeeData.password, 10);
     
-    // PASO 2: Buscar o crear departamento
-    let departamentoId: string | null = null;
-    let departamentoData: Departamento | undefined = undefined;
+    let departmentId: string | null = null;
+    let departmentData: Department | undefined = undefined;
     
     if (employeeData.department) {
-      // Buscar departamento existente
       const [existingDept] = await db
         .select()
-        .from(departamentos)
-        .where(eq(departamentos.nombreDepartamento, employeeData.department))
+        .from(departments)
+        .where(eq(departments.name, employeeData.department))
         .limit(1);
       
       if (existingDept) {
-        departamentoId = existingDept.idDepartamento;
-        departamentoData = existingDept;
+        departmentId = existingDept.id;
+        departmentData = existingDept;
       } else {
-        // Crear nuevo departamento
         const [newDept] = await db
-          .insert(departamentos)
+          .insert(departments)
           .values({
-            nombreDepartamento: employeeData.department,
-            descripcion: null,
+            name: employeeData.department,
+            description: null,
           })
           .returning();
-        departamentoId = newDept.idDepartamento;
-        departamentoData = newDept;
+        departmentId = newDept.id;
+        departmentData = newDept;
       }
     }
     
-    // PASO 3: Insertar usuario en tabla usuarios (español)
-    const [usuario] = await db
-      .insert(usuarios)
+    const [user] = await db
+      .insert(users)
       .values({
-        numEmpleado: employeeData.employeeNumber,
+        employeeNumber: employeeData.employeeNumber,
         firstName: employeeData.firstName,
         lastName: employeeData.lastName,
         email: employeeData.email,
         passwordHash: hashedPassword,
-        fechaContratacion: employeeData.hireDate,
-        activo: employeeData.isActive,
-        rol: employeeData.role === "admin" ? "administrador" : "empleado",
-        idDepartamento: departamentoId,
+        hireDate: employeeData.hireDate,
+        isActive: employeeData.isActive,
+        role: employeeData.role,
+        departmentId: departmentId,
       })
       .returning();
       
-    // PASO 4: Mapear a formato Employee (inglés) para compatibilidad
-    return mapUsuarioToEmployee(usuario, departamentoData);
+    return {
+      id: user.id,
+      employeeNumber: user.employeeNumber,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.passwordHash,
+      role: user.role,
+      department: departmentData?.name || "",
+      position: "",
+      hireDate: user.hireDate,
+      conventionHours: 1752,
+      isActive: user.isActive,
+    };
   }
 
   // ==========================================
@@ -563,30 +394,40 @@ export class DatabaseStorage implements IStorage {
    * Busca un empleado por su identificador único generado por la base de datos.
    * 
    * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM employees WHERE id = $1 LIMIT 1;
+   * SELECT * FROM users u LEFT JOIN departments d ON u.department_id = d.id WHERE u.id = $1 LIMIT 1;
    * 
-   * ⚠️  ADVERTENCIA DE SEGURIDAD:
-   * Este método devuelve el registro completo incluyendo el hash de contraseña.
-   * Las rutas API NUNCA deben serializar el campo 'password' en las respuestas.
-   * Usar destructuring para omitir: const { password, ...safeEmployee } = employee
-   * 
-   * @param id - UUID o ID numérico del empleado
+   * @param id - UUID del empleado
    * @returns Empleado encontrado o undefined si no existe
    */
   async getEmployee(id: string): Promise<Employee | undefined> {
     const result = await db
       .select({
-        usuario: usuarios,
-        departamento: departamentos,
+        user: users,
+        department: departments,
       })
-      .from(usuarios)
-      .leftJoin(departamentos, eq(usuarios.idDepartamento, departamentos.idDepartamento))
-      .where(eq(usuarios.idUsuario, id))
+      .from(users)
+      .leftJoin(departments, eq(users.departmentId, departments.id))
+      .where(eq(users.id, id))
       .limit(1);
     
     if (result.length === 0) return undefined;
     
-    return mapUsuarioToEmployee(result[0].usuario, result[0].departamento || undefined);
+    const { user, department } = result[0];
+    
+    return {
+      id: user.id,
+      employeeNumber: user.employeeNumber,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.passwordHash,
+      role: user.role,
+      department: department?.name || "",
+      position: "",
+      hireDate: user.hireDate,
+      conventionHours: 1752,
+      isActive: user.isActive,
+    };
   }
 
   /**
@@ -597,30 +438,33 @@ export class DatabaseStorage implements IStorage {
    * Incluye tanto empleados activos como inactivos.
    * 
    * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM employees ORDER BY id;
-   * 
-   * ⚠️  ADVERTENCIA DE SEGURIDAD:
-   * Este método devuelve registros completos incluyendo hashes de contraseña.
-   * Las rutas API deben omitir el campo 'password' usando:
-   * employees.map(({password, ...safe}) => safe)
-   * 
-   * USO TÍPICO:
-   * - Dashboard de administración
-   * - Listados de empleados
-   * - Reportes generales
+   * SELECT * FROM users u LEFT JOIN departments d ON u.department_id = d.id ORDER BY u.id;
    * 
    * @returns Array con todos los empleados (puede estar vacío)
    */
   async getEmployees(): Promise<Employee[]> {
     const results = await db
       .select({
-        usuario: usuarios,
-        departamento: departamentos,
+        user: users,
+        department: departments,
       })
-      .from(usuarios)
-      .leftJoin(departamentos, eq(usuarios.idDepartamento, departamentos.idDepartamento));
+      .from(users)
+      .leftJoin(departments, eq(users.departmentId, departments.id));
     
-    return results.map(r => mapUsuarioToEmployee(r.usuario, r.departamento || undefined));
+    return results.map(({ user, department }) => ({
+      id: user.id,
+      employeeNumber: user.employeeNumber,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.passwordHash,
+      role: user.role,
+      department: department?.name || "",
+      position: "",
+      hireDate: user.hireDate,
+      conventionHours: 1752,
+      isActive: user.isActive,
+    }));
   }
 
   /**
@@ -628,15 +472,9 @@ export class DatabaseStorage implements IStorage {
    * ====================================
    * 
    * Busca un empleado usando su número de empleado (identificador empresarial).
-   * Este es diferente del ID de base de datos y lo asigna la empresa.
    * 
    * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM employees WHERE employeeNumber = $1 LIMIT 1;
-   * 
-   * USO TÍPICO:
-   * - Verificación de duplicados en proceso de semilla
-   * - Búsqueda rápida por código de empleado
-   * - Integración con sistemas externos
+   * SELECT * FROM users WHERE employee_number = $1 LIMIT 1;
    * 
    * @param employeeNumber - Código identificador del empleado (ej: "EMP001")
    * @returns Empleado encontrado o undefined si no existe
@@ -644,40 +482,44 @@ export class DatabaseStorage implements IStorage {
   async getEmployeeByNumber(employeeNumber: string): Promise<Employee | undefined> {
     const result = await db
       .select({
-        usuario: usuarios,
-        departamento: departamentos,
+        user: users,
+        department: departments,
       })
-      .from(usuarios)
-      .leftJoin(departamentos, eq(usuarios.idDepartamento, departamentos.idDepartamento))
-      .where(eq(usuarios.numEmpleado, employeeNumber))
+      .from(users)
+      .leftJoin(departments, eq(users.departmentId, departments.id))
+      .where(eq(users.employeeNumber, employeeNumber))
       .limit(1);
     
     if (result.length === 0) return undefined;
     
-    return mapUsuarioToEmployee(result[0].usuario, result[0].departamento || undefined);
+    const { user, department } = result[0];
+    
+    return {
+      id: user.id,
+      employeeNumber: user.employeeNumber,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.passwordHash,
+      role: user.role,
+      department: department?.name || "",
+      position: "",
+      hireDate: user.hireDate,
+      conventionHours: 1752,
+      isActive: user.isActive,
+    };
   }
 
   /**
-   * CREAR EMPLEADO (DELEGACIÓN)
-   * ==========================
+   * CREAR EMPLEADO
+   * =============
    * 
-   * Método de conveniencia que delega a createEmployeeWithPassword.
-   * Esto asegura que todas las creaciones de empleados:
-   * 1. Encripten la contraseña adecuadamente
-   * 2. Mantengan consistencia en los tipos
-   * 3. Eviten duplicación de lógica
+   * Delega a createEmployeeWithPassword para asegurar encriptación de contraseña.
    * 
-   * VENTAJAS DE LA DELEGACIÓN:
-   * - Un solo punto de entrada para creación
-   * - Garantiza encriptación de contraseña
-   * - Mantiene DRY (Don't Repeat Yourself)
-   * - Facilita futuras mejoras (ej: upserts)
-   * 
-   * @param employee - Datos completos del empleado con contraseña
-   * @returns Empleado creado con ID asignado
+   * @param employee - Datos completos del empleado
+   * @returns Empleado creado
    */
   async createEmployee(employee: CreateEmployee): Promise<Employee> {
-    // Delegar a createEmployeeWithPassword para asegurar hashing y tipos correctos
     return this.createEmployeeWithPassword(employee);
   }
 
@@ -686,90 +528,92 @@ export class DatabaseStorage implements IStorage {
    * ==================
    * 
    * Actualiza campos específicos de un empleado existente.
-   * Permite actualización parcial - solo los campos proporcionados se modifican.
    * 
    * CONSULTA SQL EQUIVALENTE:
-   * UPDATE employees 
-   * SET firstName = $1, lastName = $2, ... 
-   * WHERE id = $N 
-   * RETURNING *;
-   * 
-   * CAMPOS ACTUALIZABLES:
-   * - Información personal (firstName, lastName)
-   * - Datos laborales (department, position)
-   * - Estado (isActive)
-   * - Email (debe ser único)
-   * 
-   * NOTA: La contraseña NO se debe actualizar por este método ya que
-   * InsertEmployee excluye el campo password. Para cambiar contraseñas
-   * usar createEmployeeWithPassword o implementar método específico.
+   * UPDATE users SET field1 = $1, field2 = $2 WHERE id = $3 RETURNING *;
    * 
    * @param id - ID del empleado a actualizar
-   * @param employee - Campos a modificar (actualización parcial)
+   * @param employeeData - Campos a modificar
    * @returns Empleado actualizado o undefined si no existía
    */
-  async updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee | undefined> {
-    // Preparar datos para actualización en tabla usuarios
+  async updateEmployee(id: string, employeeData: Partial<InsertEmployee>): Promise<Employee | undefined> {
     const updateData: any = {};
     
-    if (employee.employeeNumber !== undefined) updateData.numEmpleado = employee.employeeNumber;
-    if (employee.firstName !== undefined) updateData.firstName = employee.firstName;
-    if (employee.lastName !== undefined) updateData.lastName = employee.lastName;
-    if (employee.email !== undefined) updateData.email = employee.email;
-    if (employee.hireDate !== undefined) updateData.fechaContratacion = employee.hireDate;
-    if (employee.isActive !== undefined) updateData.activo = employee.isActive;
-    // Note: role is not in InsertEmployee type, handled separately if needed
+    if (employeeData.employeeNumber !== undefined) updateData.employeeNumber = employeeData.employeeNumber;
+    if (employeeData.firstName !== undefined) updateData.firstName = employeeData.firstName;
+    if (employeeData.lastName !== undefined) updateData.lastName = employeeData.lastName;
+    if (employeeData.email !== undefined) updateData.email = employeeData.email;
+    if (employeeData.hireDate !== undefined) updateData.hireDate = employeeData.hireDate;
+    if (employeeData.isActive !== undefined) updateData.isActive = employeeData.isActive;
+    if (employeeData.role !== undefined) updateData.role = employeeData.role;
     
-    // Si se actualiza el departamento, buscar o crear el ID correspondiente
-    if (employee.department !== undefined) {
-      updateData.idDepartamento = await getDepartamentoId(employee.department);
+    if (employeeData.department !== undefined) {
+      if (employeeData.department) {
+        const [existingDept] = await db
+          .select()
+          .from(departments)
+          .where(eq(departments.name, employeeData.department))
+          .limit(1);
+        
+        if (existingDept) {
+          updateData.departmentId = existingDept.id;
+        } else {
+          const [newDept] = await db
+            .insert(departments)
+            .values({
+              name: employeeData.department,
+              description: null,
+            })
+            .returning();
+          updateData.departmentId = newDept.id;
+        }
+      } else {
+        updateData.departmentId = null;
+      }
     }
     
-    const [updatedUsuario] = await db
-      .update(usuarios)
+    const [updatedUser] = await db
+      .update(users)
       .set(updateData)
-      .where(eq(usuarios.idUsuario, id))
+      .where(eq(users.id, id))
       .returning();
     
-    if (!updatedUsuario) return undefined;
+    if (!updatedUser) return undefined;
     
-    // Obtener departamento para mapear correctamente
-    let departamento: Departamento | undefined;
-    if (updatedUsuario.idDepartamento) {
-      const [dept] = await db
-        .select()
-        .from(departamentos)
-        .where(eq(departamentos.idDepartamento, updatedUsuario.idDepartamento))
-        .limit(1);
-      departamento = dept;
-    }
+    const [dept] = updatedUser.departmentId 
+      ? await db.select().from(departments).where(eq(departments.id, updatedUser.departmentId)).limit(1)
+      : [undefined];
     
-    return mapUsuarioToEmployee(updatedUsuario, departamento);
+    return {
+      id: updatedUser.id,
+      employeeNumber: updatedUser.employeeNumber,
+      firstName: updatedUser.firstName,
+      lastName: updatedUser.lastName,
+      email: updatedUser.email,
+      password: updatedUser.passwordHash,
+      role: updatedUser.role,
+      department: dept?.name || "",
+      position: "",
+      hireDate: updatedUser.hireDate,
+      conventionHours: 1752,
+      isActive: updatedUser.isActive,
+    };
   }
 
   /**
    * ELIMINAR EMPLEADO
    * ================
    * 
-   * Elimina permanentemente un empleado de la base de datos.
+   * Elimina permanentemente un empleado del sistema.
    * 
    * CONSULTA SQL EQUIVALENTE:
-   * DELETE FROM employees WHERE id = $1;
-   * 
-   * CONSIDERACIONES IMPORTANTES:
-   * - Esta operación es IRREVERSIBLE
-   * - Puede fallar si existen registros relacionados (foreign keys)
-   * - En producción, considerar "soft delete" (isActive = false)
-   * - Verificar cascadas en tablas relacionadas (timeEntries, schedules, incidents)
-   * 
-   * ALTERNATIVA RECOMENDADA:
-   * En lugar de DELETE, usar: updateEmployee(id, { isActive: false })
+   * DELETE FROM users WHERE id = $1;
    * 
    * @param id - ID del empleado a eliminar
    * @returns true si se eliminó, false si no existía
    */
   async deleteEmployee(id: string): Promise<boolean> {
-    const result = await db.delete(usuarios).where(eq(usuarios.idUsuario, id));
+    const result = await db.delete(users).where(eq(users.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -781,199 +625,271 @@ export class DatabaseStorage implements IStorage {
    * OBTENER REGISTRO DE TIEMPO POR ID
    * ================================
    * 
-   * Recupera un registro específico de clock-in/clock-out.
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM time_entries WHERE id = $1 LIMIT 1;
+   * Recupera un registro consolidado de tiempo (jornada diaria) por su ID.
    * 
    * @param id - ID único del registro de tiempo
-   * @returns Registro encontrado o undefined si no existe
+   * @returns Registro de tiempo encontrado o undefined si no existe
    */
   async getTimeEntry(id: string): Promise<TimeEntry | undefined> {
-    // [OBSOLETO] Esta función ya no funciona con el nuevo sistema de eventos
-    // TODO: Migrar a usar fichajesService
-    return undefined;
+    const [workday] = await db
+      .select()
+      .from(dailyWorkday)
+      .where(eq(dailyWorkday.id, id));
+    
+    if (!workday) return undefined;
+    
+    const totalMinutes = workday.workedMinutes - workday.breakMinutes;
+    const totalHours = totalMinutes / 60;
+    
+    return {
+      id: workday.id,
+      employeeId: workday.employeeId,
+      clockIn: workday.startTime || new Date(),
+      clockOut: workday.endTime,
+      totalHours: totalHours,
+      date: workday.date,
+    };
   }
 
   /**
    * OBTENER TODOS LOS REGISTROS DE TIEMPO
    * ====================================
    * 
-   * Recupera todos los registros de tiempo del sistema.
-   * Útil para reportes generales y dashboards administrativos.
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM time_entries ORDER BY id;
-   * 
-   * NOTA: En sistemas grandes, considerar paginación o filtros por fecha
-   * para evitar cargar demasiados registros en memoria.
+   * Recupera todos los registros consolidados de tiempo del sistema.
    * 
    * @returns Array con todos los registros de tiempo
    */
   async getTimeEntries(): Promise<TimeEntry[]> {
-    // [OBSOLETO] Esta función ya no funciona con el nuevo sistema de eventos
-    // TODO: Migrar a usar obtenerTimeEntriesDesdeJornadas
-    return [];
+    const workdays = await db.select().from(dailyWorkday);
+    
+    return workdays.map(workday => {
+      const totalMinutes = workday.workedMinutes - workday.breakMinutes;
+      const totalHours = totalMinutes / 60;
+      
+      return {
+        id: workday.id,
+        employeeId: workday.employeeId,
+        clockIn: workday.startTime || new Date(),
+        clockOut: workday.endTime,
+        totalHours: totalHours,
+        date: workday.date,
+      };
+    });
   }
 
   /**
    * OBTENER REGISTROS DE TIEMPO POR EMPLEADO
    * =======================================
    * 
-   * Recupera todos los registros de un empleado específico.
-   * Útil para cálculos de nómina y reportes individuales.
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM time_entries WHERE employeeId = $1 ORDER BY date DESC;
-   * 
-   * USO TÍPICO:
-   * - Vista de historial del empleado
-   * - Cálculos de horas trabajadas por periodo
-   * - Reportes de asistencia individual
+   * Recupera todos los registros de tiempo de un empleado específico.
    * 
    * @param employeeId - ID del empleado
-   * @returns Array con todos los registros del empleado (ordenados por fecha)
+   * @returns Array con registros de tiempo del empleado
    */
   async getTimeEntriesByEmployee(employeeId: string): Promise<TimeEntry[]> {
-    // [OBSOLETO] Esta función ya no funciona con el nuevo sistema de eventos
-    // TODO: Migrar a usar obtenerTimeEntriesDesdeJornadas
-    return [];
+    const workdays = await db
+      .select()
+      .from(dailyWorkday)
+      .where(eq(dailyWorkday.employeeId, employeeId));
+    
+    return workdays.map(workday => {
+      const totalMinutes = workday.workedMinutes - workday.breakMinutes;
+      const totalHours = totalMinutes / 60;
+      
+      return {
+        id: workday.id,
+        employeeId: workday.employeeId,
+        clockIn: workday.startTime || new Date(),
+        clockOut: workday.endTime,
+        totalHours: totalHours,
+        date: workday.date,
+      };
+    });
   }
 
   /**
    * OBTENER REGISTROS DE TIEMPO POR FECHA
    * ====================================
    * 
-   * Recupera todos los registros de una fecha específica.
-   * Útil para reportes diarios y dashboards de asistencia.
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM time_entries WHERE date = $1 ORDER BY clockIn;
-   * 
-   * FORMATO DE FECHA:
-   * Debe ser string en formato ISO (YYYY-MM-DD)
-   * Ejemplo: "2024-03-15"
-   * 
-   * USO TÍPICO:
-   * - Dashboard de asistencia diaria
-   * - Reportes de quién está presente/ausente
-   * - Control de horarios por día
+   * Recupera todos los registros de tiempo de una fecha específica.
    * 
    * @param date - Fecha en formato YYYY-MM-DD
-   * @returns Array con todos los registros de esa fecha
+   * @returns Array con registros de tiempo de esa fecha
    */
   async getTimeEntriesByDate(date: string): Promise<TimeEntry[]> {
-    // [OBSOLETO] Esta función ya no funciona con el nuevo sistema de eventos
-    // TODO: Migrar a usar obtenerTimeEntriesDesdeJornadas
-    return [];
+    const workdays = await db
+      .select()
+      .from(dailyWorkday)
+      .where(eq(dailyWorkday.date, date));
+    
+    return workdays.map(workday => {
+      const totalMinutes = workday.workedMinutes - workday.breakMinutes;
+      const totalHours = totalMinutes / 60;
+      
+      return {
+        id: workday.id,
+        employeeId: workday.employeeId,
+        clockIn: workday.startTime || new Date(),
+        clockOut: workday.endTime,
+        totalHours: totalHours,
+        date: workday.date,
+      };
+    });
   }
 
   /**
-   * CREAR REGISTRO DE TIEMPO CON CÁLCULO AUTOMÁTICO
-   * =============================================
+   * CREAR REGISTRO DE TIEMPO
+   * =======================
    * 
-   * Crea un nuevo registro de tiempo con cálculo automático de horas trabajadas.
+   * Crea un nuevo registro de tiempo (jornada diaria).
+   * Este método crea o actualiza la jornada diaria y opcionalmente crea el evento de fichaje.
    * 
-   * FLUJO DE PROCESAMIENTO:
-   * 1. Verifica si hay clockOut para determinar si calcular horas
-   * 2. Si clockOut existe: calcula diferencia en minutos entre clockIn y clockOut
-   * 3. Si clockOut es null: deja totalHours como null (entrada sin salida)
-   * 4. Inserta en base de datos con el cálculo ya hecho
-   * 
-   * CÁLCULO DE HORAS:
-   * - Se calcula en MINUTOS, no horas decimales
-   * - Fórmula: (clockOut.getTime() - clockIn.getTime()) / (1000 * 60)
-   * - Math.floor() redondea hacia abajo para evitar fracciones de minuto
-   * 
-   * CASOS DE USO:
-   * - Clock-in: solo clockIn, clockOut = null, totalHours = null
-   * - Clock-out: clockIn y clockOut ambos presentes, totalHours calculado
-   * - Corrección manual: ambos timestamps + cálculo automático
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * INSERT INTO time_entries (employeeId, clockIn, clockOut, date, totalHours)
-   * VALUES ($1, $2, $3, $4, $5)
-   * RETURNING *;
-   * 
-   * @param insertTimeEntry - Datos del registro (clockIn requerido, clockOut opcional)
-   * @returns Registro creado con totalHours calculado automáticamente
+   * @param timeEntry - Datos del registro de tiempo
+   * @returns Registro de tiempo creado
    */
-  async createTimeEntry(insertTimeEntry: InsertTimeEntry): Promise<TimeEntry> {
-    // [OBSOLETO] Esta función ya no funciona con el nuevo sistema de eventos
-    // TODO: Migrar a usar fichajesService.crearFichaje
-    throw new Error("createTimeEntry is deprecated. Use fichajesService.crearFichaje instead");
+  async createTimeEntry(timeEntry: InsertTimeEntry): Promise<TimeEntry> {
+    const date = timeEntry.date;
+    
+    const [existingWorkday] = await db
+      .select()
+      .from(dailyWorkday)
+      .where(
+        and(
+          eq(dailyWorkday.employeeId, timeEntry.employeeId),
+          eq(dailyWorkday.date, date)
+        )
+      );
+    
+    let workday: DailyWorkday;
+    
+    if (existingWorkday) {
+      const updateData: any = {};
+      
+      if (!existingWorkday.startTime || timeEntry.clockIn < existingWorkday.startTime) {
+        updateData.startTime = timeEntry.clockIn;
+      }
+      
+      if (timeEntry.clockOut) {
+        if (!existingWorkday.endTime || timeEntry.clockOut > existingWorkday.endTime) {
+          updateData.endTime = timeEntry.clockOut;
+        }
+        
+        if (existingWorkday.startTime && timeEntry.clockOut) {
+          const startMs = (existingWorkday.startTime || timeEntry.clockIn).getTime();
+          const endMs = timeEntry.clockOut.getTime();
+          const workedMinutes = Math.floor((endMs - startMs) / 60000);
+          updateData.workedMinutes = workedMinutes;
+        }
+        
+        updateData.status = 'closed';
+      }
+      
+      [workday] = await db
+        .update(dailyWorkday)
+        .set(updateData)
+        .where(eq(dailyWorkday.id, existingWorkday.id))
+        .returning();
+    } else {
+      const workedMinutes = timeEntry.clockOut 
+        ? Math.floor((timeEntry.clockOut.getTime() - timeEntry.clockIn.getTime()) / 60000)
+        : 0;
+      
+      [workday] = await db
+        .insert(dailyWorkday)
+        .values({
+          employeeId: timeEntry.employeeId,
+          date: date,
+          startTime: timeEntry.clockIn,
+          endTime: timeEntry.clockOut || null,
+          workedMinutes: workedMinutes,
+          breakMinutes: 0,
+          overtimeMinutes: 0,
+          status: timeEntry.clockOut ? 'closed' : 'open',
+        })
+        .returning();
+    }
+    
+    const totalMinutes = workday.workedMinutes - workday.breakMinutes;
+    const totalHours = totalMinutes / 60;
+    
+    return {
+      id: workday.id,
+      employeeId: workday.employeeId,
+      clockIn: workday.startTime || timeEntry.clockIn,
+      clockOut: workday.endTime,
+      totalHours: totalHours,
+      date: workday.date,
+    };
   }
 
   /**
-   * ACTUALIZAR REGISTRO DE TIEMPO CON RECÁLCULO
-   * =========================================
+   * ACTUALIZAR REGISTRO DE TIEMPO
+   * ============================
    * 
-   * Actualiza un registro existente y recalcula automáticamente las horas trabajadas.
-   * 
-   * PROCESO COMPLEJO EN 3 ETAPAS:
-   * 1. RECUPERAR: Busca el registro actual en base de datos
-   * 2. COMBINAR: Mezcla datos existentes con cambios proporcionados
-   * 3. RECALCULAR: Recalcula totalHours con los datos combinados
-   * 4. ACTUALIZAR: Guarda en base de datos con nuevo cálculo
-   * 
-   * LÓGICA DE RECÁLCULO:
-   * - Si ambos clockIn y clockOut están presentes después de la mezcla: calcular
-   * - Si alguno falta: totalHours = null
-   * - Siempre usa los valores FINALES (existentes + actualizaciones)
-   * 
-   * CASOS COMUNES:
-   * - Agregar clockOut a entrada existente (clock-out)
-   * - Corregir timestamps incorrectos
-   * - Cambiar fecha del registro
-   * - Ajustes manuales por administrador
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * UPDATE time_entries 
-   * SET clockOut = $1, totalHours = $2 
-   * WHERE id = $3 
-   * RETURNING *;
+   * Actualiza un registro de tiempo existente.
    * 
    * @param id - ID del registro a actualizar
-   * @param timeEntryData - Campos a modificar (actualización parcial)
-   * @returns Registro actualizado con horas recalculadas o undefined si no existía
+   * @param timeEntryData - Campos a modificar
+   * @returns Registro actualizado o undefined si no existía
    */
   async updateTimeEntry(id: string, timeEntryData: Partial<InsertTimeEntry>): Promise<TimeEntry | undefined> {
-    // [OBSOLETO] Esta función ya no funciona con el nuevo sistema de eventos
-    // TODO: Migrar a usar fichajesService
-    throw new Error("updateTimeEntry is deprecated. Use fichajesService instead");
+    const [existing] = await db
+      .select()
+      .from(dailyWorkday)
+      .where(eq(dailyWorkday.id, id));
+    
+    if (!existing) return undefined;
+    
+    const updateData: any = {};
+    
+    if (timeEntryData.clockIn) {
+      updateData.startTime = timeEntryData.clockIn;
+    }
+    
+    if (timeEntryData.clockOut) {
+      updateData.endTime = timeEntryData.clockOut;
+      updateData.status = 'closed';
+    }
+    
+    const startTime = timeEntryData.clockIn || existing.startTime;
+    const endTime = timeEntryData.clockOut !== undefined ? timeEntryData.clockOut : existing.endTime;
+    
+    if (startTime && endTime) {
+      const workedMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / 60000);
+      updateData.workedMinutes = workedMinutes;
+    }
+    
+    const [updatedWorkday] = await db
+      .update(dailyWorkday)
+      .set(updateData)
+      .where(eq(dailyWorkday.id, id))
+      .returning();
+    
+    const totalMinutes = updatedWorkday.workedMinutes - updatedWorkday.breakMinutes;
+    const totalHours = totalMinutes / 60;
+    
+    return {
+      id: updatedWorkday.id,
+      employeeId: updatedWorkday.employeeId,
+      clockIn: updatedWorkday.startTime || new Date(),
+      clockOut: updatedWorkday.endTime,
+      totalHours: totalHours,
+      date: updatedWorkday.date,
+    };
   }
 
   /**
    * ELIMINAR REGISTRO DE TIEMPO
    * ==========================
    * 
-   * Elimina permanentemente un registro de tiempo de la base de datos.
+   * Elimina permanentemente un registro de tiempo del sistema.
    * 
-   * CONSULTA SQL EQUIVALENTE:
-   * DELETE FROM time_entries WHERE id = $1;
-   * 
-   * CONSIDERACIONES IMPORTANTES:
-   * - Esta operación es IRREVERSIBLE
-   * - Se pierde historial de horas trabajadas
-   * - Puede afectar cálculos de nómina si ya se procesaron
-   * - En producción, considerar audit logs antes de eliminar
-   * 
-   * CASOS DE USO VÁLIDOS:
-   * - Corrección de errores de captura
-   * - Registros duplicados accidentales
-   * - Limpieza de datos de prueba
-   * 
-   * RESPUESTA:
-   * - true: El registro existía y se eliminó correctamente
-   * - false: El registro no existía (ID inválido)
-   * 
-   * @param id - ID del registro de tiempo a eliminar
+   * @param id - ID del registro a eliminar
    * @returns true si se eliminó, false si no existía
    */
   async deleteTimeEntry(id: string): Promise<boolean> {
-    // [OBSOLETO] Esta función ya no funciona con el nuevo sistema de eventos
-    // TODO: Migrar a usar fichajesService
-    return false;
+    const result = await db.delete(dailyWorkday).where(eq(dailyWorkday.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // ==========================================
@@ -986,15 +902,16 @@ export class DatabaseStorage implements IStorage {
    * 
    * Recupera una incidencia específica por su identificador único.
    * 
-   * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM incidents WHERE id = $1 LIMIT 1;
-   * 
    * @param id - ID único de la incidencia
    * @returns Incidencia encontrada o undefined si no existe
    */
   async getIncident(id: string): Promise<Incident | undefined> {
-    const [incidencia] = await db.select().from(incidencias).where(eq(incidencias.idIncidencia, id));
-    return incidencia ? mapIncidenciaToIncident(incidencia) : undefined;
+    const [incident] = await db
+      .select()
+      .from(incidents)
+      .where(eq(incidents.id, id));
+    
+    return incident;
   }
 
   /**
@@ -1002,28 +919,11 @@ export class DatabaseStorage implements IStorage {
    * ============================
    * 
    * Recupera todas las incidencias registradas en el sistema.
-   * Incluye incidencias de todos los empleados y todos los estados.
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM incidents ORDER BY incidentDate DESC;
-   * 
-   * TIPOS DE INCIDENCIA:
-   * - Tardanza: Llegada fuera de horario establecido
-   * - Falta: Ausencia sin justificar
-   * - Accidente: Incidente de seguridad laboral
-   * - Disciplinaria: Violación de políticas
-   * - Other: Otros tipos de incidencia
-   * 
-   * USO TÍPICO:
-   * - Dashboard de recursos humanos
-   * - Reportes de incidencias generales
-   * - Análisis de tendencias de comportamiento
    * 
    * @returns Array con todas las incidencias del sistema
    */
   async getIncidents(): Promise<Incident[]> {
-    const incidenciasList = await db.select().from(incidencias);
-    return incidenciasList.map(mapIncidenciaToIncident);
+    return await db.select().from(incidents);
   }
 
   /**
@@ -1031,29 +931,15 @@ export class DatabaseStorage implements IStorage {
    * ===============================
    * 
    * Recupera todas las incidencias de un empleado específico.
-   * Útil para evaluar el historial individual.
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM incidents WHERE employeeId = $1 ORDER BY incidentDate DESC;
-   * 
-   * USO TÍPICO:
-   * - Historial disciplinario del empleado
-   * - Evaluación de desempeño
-   * - Procesos administrativos
-   * - Documentación para escalaciones
-   * 
-   * CASOS DE ANÁLISIS:
-   * - Frecuencia de tardanzas
-   * - Patrones de comportamiento
-   * - Progreso en medidas correctivas
-   * - Justificación para acciones disciplinarias
    * 
    * @param employeeId - ID del empleado
-   * @returns Array con incidencias del empleado ordenadas por fecha
+   * @returns Array con incidencias del empleado
    */
   async getIncidentsByEmployee(employeeId: string): Promise<Incident[]> {
-    const incidenciasList = await db.select().from(incidencias).where(eq(incidencias.idUsuario, employeeId));
-    return incidenciasList.map(mapIncidenciaToIncident);
+    return await db
+      .select()
+      .from(incidents)
+      .where(eq(incidents.userId, employeeId));
   }
 
   /**
@@ -1062,43 +948,23 @@ export class DatabaseStorage implements IStorage {
    * 
    * Registra una nueva incidencia en el sistema.
    * 
-   * CONSULTA SQL EQUIVALENTE:
-   * INSERT INTO incidents (employeeId, incidentType, incidentDate, description, status)
-   * VALUES ($1, $2, $3, $4, $5)
-   * RETURNING *;
-   * 
-   * DATOS REQUERIDOS:
-   * - employeeId: ID del empleado involucrado
-   * - incidentType: Tipo de incidencia (enum)
-   * - incidentDate: Fecha del incidente
-   * - description: Descripción detallada
-   * - status: Estado (pending, resolved, escalated)
-   * 
-   * FLUJO TÍPICO:
-   * 1. Se detecta incidencia (manual o automático)
-   * 2. Se documenta con detalles
-   * 3. Se asigna estado inicial (pending)
-   * 4. Se almacena para seguimiento
-   * 
-   * CASOS AUTOMÁTICOS:
-   * - Tardanza detectada por sistema de asistencia
-   * - Ausencia sin justificar
-   * 
-   * CASOS MANUALES:
-   * - Reportes de supervisores
-   * - Incidentes de seguridad
-   * - Violaciones disciplinarias
-   * 
    * @param insertIncident - Datos de la incidencia
    * @returns Incidencia creada con ID asignado
    */
   async createIncident(insertIncident: InsertIncident): Promise<Incident> {
-    const incidenciaData = toIncidenciaInsert(insertIncident);
-    const [incidencia] = await db
-      .insert(incidencias)
-      .values(incidenciaData)
+    const [incident] = await db
+      .insert(incidents)
+      .values({
+        userId: insertIncident.userId,
+        entryId: insertIncident.entryId || null,
+        incidentType: insertIncident.incidentType,
+        description: insertIncident.description,
+        registeredBy: insertIncident.registeredBy || null,
+        status: insertIncident.status || "pending",
+      })
       .returning();
-    return mapIncidenciaToIncident(incidencia);
+    
+    return incident;
   }
 
   /**
@@ -1107,69 +973,27 @@ export class DatabaseStorage implements IStorage {
    * 
    * Actualiza el estado o detalles de una incidencia existente.
    * 
-   * CONSULTA SQL EQUIVALENTE:
-   * UPDATE incidents 
-   * SET status = $1, description = $2 
-   * WHERE id = $3 
-   * RETURNING *;
-   * 
-   * CAMPOS ACTUALIZABLES:
-   * - status: Cambio de estado (pending → resolved → escalated)
-   * - description: Añadir detalles o aclaraciones
-   * - incidentDate: Corrección de fecha (casos excepcionales)
-   * 
-   * FLUJO DE ESTADOS:
-   * pending → under_review → resolved
-   *     ↓
-   * escalated (casos graves)
-   * 
-   * USO TÍPICO:
-   * - Seguimiento por parte de RRHH
-   * - Documentación de acciones tomadas
-   * - Actualización de progreso
-   * - Cierre de casos resueltos
-   * 
    * @param id - ID de la incidencia a actualizar
    * @param incidentData - Campos a modificar
    * @returns Incidencia actualizada o undefined si no existía
    */
   async updateIncident(id: string, incidentData: Partial<InsertIncident>): Promise<Incident | undefined> {
-    // Preparar datos para actualización en incidencias
     const updateData: any = {};
     
-    if (incidentData.employeeId !== undefined) updateData.idUsuario = incidentData.employeeId;
-    if (incidentData.description !== undefined) updateData.descripcion = incidentData.description;
-    if (incidentData.date !== undefined) updateData.fechaRegistro = incidentData.date;
+    if (incidentData.userId !== undefined) updateData.userId = incidentData.userId;
+    if (incidentData.description !== undefined) updateData.description = incidentData.description;
+    if (incidentData.incidentType !== undefined) updateData.incidentType = incidentData.incidentType;
+    if (incidentData.status !== undefined) updateData.status = incidentData.status;
+    if (incidentData.entryId !== undefined) updateData.entryId = incidentData.entryId;
+    if (incidentData.registeredBy !== undefined) updateData.registeredBy = incidentData.registeredBy;
     
-    // Mapear tipo de incidencia
-    if (incidentData.type !== undefined) {
-      const typeMap: Record<string, string> = {
-        "late": "retraso",
-        "absence": "ausencia",
-        "early_departure": "otro",
-        "forgot_clock_in": "olvido_fichar",
-        "forgot_clock_out": "olvido_fichar",
-      };
-      updateData.tipoIncidencia = typeMap[incidentData.type] || "otro";
-    }
-    
-    // Mapear estado
-    if (incidentData.status !== undefined) {
-      const statusMap: Record<string, string> = {
-        "pending": "pendiente",
-        "approved": "justificada",
-        "rejected": "no_justificada",
-      };
-      updateData.estado = statusMap[incidentData.status] || "pendiente";
-    }
-    
-    const [updatedIncidencia] = await db
-      .update(incidencias)
+    const [updatedIncident] = await db
+      .update(incidents)
       .set(updateData)
-      .where(eq(incidencias.idIncidencia, id))
+      .where(eq(incidents.id, id))
       .returning();
     
-    return updatedIncidencia ? mapIncidenciaToIncident(updatedIncidencia) : undefined;
+    return updatedIncident;
   }
 
   /**
@@ -1178,29 +1002,11 @@ export class DatabaseStorage implements IStorage {
    * 
    * Elimina permanentemente una incidencia del sistema.
    * 
-   * CONSULTA SQL EQUIVALENTE:
-   * DELETE FROM incidents WHERE id = $1;
-   * 
-   * CONSIDERACIONES LEGALES:
-   * - Las incidencias pueden ser documentación legal importante
-   * - En muchas jurisdicciones, los registros laborales deben conservarse
-   * - Considerar archivo en lugar de eliminación
-   * - Verificar políticas de retención de datos
-   * 
-   * CASOS VÁLIDOS PARA ELIMINACIÓN:
-   * - Registros duplicados
-   * - Errores de captura
-   * - Datos de prueba
-   * - Incidencias registradas por error
-   * 
-   * ALTERNATIVA RECOMENDADA:
-   * updateIncident(id, { status: 'archived' })
-   * 
    * @param id - ID de la incidencia a eliminar
    * @returns true si se eliminó, false si no existía
    */
   async deleteIncident(id: string): Promise<boolean> {
-    const result = await db.delete(incidencias).where(eq(incidencias.idIncidencia, id));
+    const result = await db.delete(incidents).where(eq(incidents.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -1225,7 +1031,6 @@ export class DatabaseStorage implements IStorage {
     const startMinutes = startHour * 60 + startMin;
     const endMinutes = endHour * 60 + endMin;
     
-    // Validar que la hora de fin sea posterior a la de inicio
     const workMinutes = endMinutes - startMinutes;
     if (workMinutes < 0) {
       throw new Error(`Hora de fin (${endTime}) debe ser posterior a hora de inicio (${startTime})`);
@@ -1243,21 +1048,29 @@ export class DatabaseStorage implements IStorage {
    * ===================================
    * 
    * Recupera todos los horarios específicos por fecha del sistema.
-   * Estos horarios sobrescriben los horarios semanales normales.
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM date_schedules ORDER BY employeeId, date;
-   * 
-   * USO TÍPICO:
-   * - Vista global de excepciones de horarios
-   * - Reportes de cobertura por fecha
-   * - Dashboard administrativo de calendario
    * 
    * @returns Array con todos los horarios por fecha del sistema
    */
   async getDateSchedules(): Promise<DateSchedule[]> {
-    const horarios = await db.select().from(horariosPlanificados);
-    return horarios.map(mapHorarioPlanificadoToDateSchedule);
+    const shifts = await db.select().from(scheduledShifts);
+    
+    return shifts.map(shift => {
+      const [startHour, startMin] = shift.expectedStartTime.split(':').map(Number);
+      const [endHour, endMin] = shift.expectedEndTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      const workMinutes = endMinutes - startMinutes;
+      
+      return {
+        id: shift.id,
+        employeeId: shift.employeeId,
+        date: shift.date,
+        startTime: shift.expectedStartTime,
+        endTime: shift.expectedEndTime,
+        workHours: workMinutes,
+        isActive: shift.status === 'scheduled' || shift.status === 'confirmed' || shift.status === 'completed',
+      };
+    });
   }
 
   /**
@@ -1265,22 +1078,33 @@ export class DatabaseStorage implements IStorage {
    * =====================================
    * 
    * Recupera horarios específicos por fecha de un empleado.
-   * Útil para mostrar calendario personalizado del empleado.
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * SELECT * FROM date_schedules WHERE employeeId = $1 ORDER BY date;
-   * 
-   * USO TÍPICO:
-   * - Calendario personal del empleado
-   * - Vista de horarios excepcionales
-   * - Validación de asistencia vs horario esperado
    * 
    * @param employeeId - ID del empleado
    * @returns Array con horarios por fecha del empleado
    */
   async getDateSchedulesByEmployee(employeeId: string): Promise<DateSchedule[]> {
-    const horarios = await db.select().from(horariosPlanificados).where(eq(horariosPlanificados.idEmpleado, employeeId));
-    return horarios.map(mapHorarioPlanificadoToDateSchedule);
+    const shifts = await db
+      .select()
+      .from(scheduledShifts)
+      .where(eq(scheduledShifts.employeeId, employeeId));
+    
+    return shifts.map(shift => {
+      const [startHour, startMin] = shift.expectedStartTime.split(':').map(Number);
+      const [endHour, endMin] = shift.expectedEndTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      const workMinutes = endMinutes - startMinutes;
+      
+      return {
+        id: shift.id,
+        employeeId: shift.employeeId,
+        date: shift.date,
+        startTime: shift.expectedStartTime,
+        endTime: shift.expectedEndTime,
+        workHours: workMinutes,
+        isActive: shift.status === 'scheduled' || shift.status === 'confirmed' || shift.status === 'completed',
+      };
+    });
   }
 
   /**
@@ -1295,20 +1119,39 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con horarios filtrados por fecha
    */
   async getDateSchedulesByEmployeeAndRange(employeeId: string, startDate?: string, endDate?: string): Promise<DateSchedule[]> {
-    const conditions = [eq(horariosPlanificados.idEmpleado, employeeId)];
+    const conditions = [eq(scheduledShifts.employeeId, employeeId)];
     
-    // Agregar filtros de fecha si están presentes
     if (startDate && endDate) {
-      conditions.push(gte(horariosPlanificados.fecha, startDate));
-      conditions.push(lte(horariosPlanificados.fecha, endDate));
+      conditions.push(gte(scheduledShifts.date, startDate));
+      conditions.push(lte(scheduledShifts.date, endDate));
     } else if (startDate) {
-      conditions.push(gte(horariosPlanificados.fecha, startDate));
+      conditions.push(gte(scheduledShifts.date, startDate));
     } else if (endDate) {
-      conditions.push(lte(horariosPlanificados.fecha, endDate));
+      conditions.push(lte(scheduledShifts.date, endDate));
     }
     
-    const horarios = await db.select().from(horariosPlanificados).where(and(...conditions));
-    return horarios.map(mapHorarioPlanificadoToDateSchedule);
+    const shifts = await db
+      .select()
+      .from(scheduledShifts)
+      .where(and(...conditions));
+    
+    return shifts.map(shift => {
+      const [startHour, startMin] = shift.expectedStartTime.split(':').map(Number);
+      const [endHour, endMin] = shift.expectedEndTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      const workMinutes = endMinutes - startMinutes;
+      
+      return {
+        id: shift.id,
+        employeeId: shift.employeeId,
+        date: shift.date,
+        startTime: shift.expectedStartTime,
+        endTime: shift.expectedEndTime,
+        workHours: workMinutes,
+        isActive: shift.status === 'scheduled' || shift.status === 'confirmed' || shift.status === 'completed',
+      };
+    });
   }
 
   /**
@@ -1323,70 +1166,88 @@ export class DatabaseStorage implements IStorage {
    */
   async getDateSchedulesByRange(startDate?: string, endDate?: string): Promise<DateSchedule[]> {
     if (!startDate && !endDate) {
-      const horarios = await db.select().from(horariosPlanificados);
-      return horarios.map(mapHorarioPlanificadoToDateSchedule);
+      return this.getDateSchedules();
     }
     
     const conditions = [];
     
-    // Agregar filtros de fecha si están presentes
     if (startDate && endDate) {
-      conditions.push(gte(horariosPlanificados.fecha, startDate));
-      conditions.push(lte(horariosPlanificados.fecha, endDate));
+      conditions.push(gte(scheduledShifts.date, startDate));
+      conditions.push(lte(scheduledShifts.date, endDate));
     } else if (startDate) {
-      conditions.push(gte(horariosPlanificados.fecha, startDate));
+      conditions.push(gte(scheduledShifts.date, startDate));
     } else if (endDate) {
-      conditions.push(lte(horariosPlanificados.fecha, endDate));
+      conditions.push(lte(scheduledShifts.date, endDate));
     }
     
-    const horarios = await db.select().from(horariosPlanificados).where(and(...conditions));
-    return horarios.map(mapHorarioPlanificadoToDateSchedule);
+    const shifts = await db
+      .select()
+      .from(scheduledShifts)
+      .where(and(...conditions));
+    
+    return shifts.map(shift => {
+      const [startHour, startMin] = shift.expectedStartTime.split(':').map(Number);
+      const [endHour, endMin] = shift.expectedEndTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      const workMinutes = endMinutes - startMinutes;
+      
+      return {
+        id: shift.id,
+        employeeId: shift.employeeId,
+        date: shift.date,
+        startTime: shift.expectedStartTime,
+        endTime: shift.expectedEndTime,
+        workHours: workMinutes,
+        isActive: shift.status === 'scheduled' || shift.status === 'confirmed' || shift.status === 'completed',
+      };
+    });
   }
 
   /**
    * CREAR HORARIO ESPECÍFICO POR FECHA
    * =================================
    * 
-   * Crea un horario para una fecha específica (sobrescribe horario semanal).
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * INSERT INTO date_schedules (employeeId, date, startTime, endTime, workHours, isActive)
-   * VALUES ($1, $2, $3, $4, $5, $6)
-   * RETURNING *;
-   * 
-   * DATOS REQUERIDOS:
-   * - employeeId: ID del empleado
-   * - date: Fecha específica (formato YYYY-MM-DD)
-   * - startTime: Hora de inicio (formato HH:MM)
-   * - endTime: Hora de finalización (formato HH:MM)
-   * - workHours: Se calcula automáticamente en minutos
-   * - isActive: Si el horario está activo (default: true)
-   * 
-   * USO TÍPICO:
-   * - Horarios de días festivos
-   * - Horas extras programadas
-   * - Turnos especiales por eventos
-   * - Excepciones temporales de horario
+   * Crea un horario para una fecha específica.
    * 
    * @param insertDateSchedule - Datos del horario para fecha específica
    * @returns Horario por fecha creado con ID asignado
    */
   async createDateSchedule(insertDateSchedule: InsertDateSchedule): Promise<DateSchedule> {
-    // Calcular workHours automáticamente si no está presente
-    const scheduleWithHours = {
-      ...insertDateSchedule,
-      workHours: (insertDateSchedule as any).workHours ?? this.calculateWorkHours(insertDateSchedule.startTime, insertDateSchedule.endTime)
-    };
+    const workHours = (insertDateSchedule as any).workHours ?? this.calculateWorkHours(
+      insertDateSchedule.startTime, 
+      insertDateSchedule.endTime
+    );
     
-    // Convertir a formato HorarioPlanificado
-    const horarioPlanificadoData = toHorarioPlanificadoInsert(scheduleWithHours);
+    const [startHour] = insertDateSchedule.startTime.split(':').map(Number);
+    let shiftType: 'morning' | 'afternoon' | 'night' = 'morning';
+    if (startHour >= 14 && startHour < 22) {
+      shiftType = 'afternoon';
+    } else if (startHour >= 22 || startHour < 6) {
+      shiftType = 'night';
+    }
     
-    const [horario] = await db
-      .insert(horariosPlanificados)
-      .values(horarioPlanificadoData)
+    const [shift] = await db
+      .insert(scheduledShifts)
+      .values({
+        employeeId: insertDateSchedule.employeeId,
+        date: insertDateSchedule.date,
+        expectedStartTime: insertDateSchedule.startTime,
+        expectedEndTime: insertDateSchedule.endTime,
+        shiftType: shiftType,
+        status: insertDateSchedule.isActive === false ? 'cancelled' : 'scheduled',
+      })
       .returning();
     
-    return mapHorarioPlanificadoToDateSchedule(horario);
+    return {
+      id: shift.id,
+      employeeId: shift.employeeId,
+      date: shift.date,
+      startTime: shift.expectedStartTime,
+      endTime: shift.expectedEndTime,
+      workHours: workHours,
+      isActive: shift.status === 'scheduled' || shift.status === 'confirmed' || shift.status === 'completed',
+    };
   }
 
   /**
@@ -1395,57 +1256,55 @@ export class DatabaseStorage implements IStorage {
    * 
    * Actualiza campos específicos de un horario por fecha existente.
    * 
-   * CONSULTA SQL EQUIVALENTE:
-   * UPDATE date_schedules 
-   * SET startTime = $1, endTime = $2, isActive = $3, workHours = $4
-   * WHERE id = $5 
-   * RETURNING *;
-   * 
-   * CAMPOS ACTUALIZABLES:
-   * - startTime: Cambiar hora de inicio
-   * - endTime: Cambiar hora de finalización
-   * - date: Mover a otra fecha (cuidado con duplicados)
-   * - isActive: Activar/desactivar horario
-   * - workHours: Se recalcula automáticamente
-   * 
-   * CASOS COMUNES:
-   * - Ajustar horarios por cambios de última hora
-   * - Extender/reducir jornada específica
-   * - Desactivar temporalmente un horario especial
-   * 
    * @param id - ID del horario por fecha a actualizar
    * @param dateScheduleData - Campos a modificar
    * @returns Horario por fecha actualizado o undefined si no existía
    */
   async updateDateSchedule(id: string, dateScheduleData: Partial<InsertDateSchedule>): Promise<DateSchedule | undefined> {
-    // Preparar datos para actualización en horariosPlanificados
     const updateData: any = {};
     
-    if (dateScheduleData.employeeId !== undefined) updateData.idEmpleado = dateScheduleData.employeeId;
-    if (dateScheduleData.date !== undefined) updateData.fecha = dateScheduleData.date;
-    if (dateScheduleData.startTime !== undefined) updateData.horaInicioPrevista = dateScheduleData.startTime;
-    if (dateScheduleData.endTime !== undefined) updateData.horaFinPrevista = dateScheduleData.endTime;
-    if (dateScheduleData.isActive !== undefined) updateData.estado = dateScheduleData.isActive ? 'programado' : 'cancelado';
+    if (dateScheduleData.employeeId !== undefined) updateData.employeeId = dateScheduleData.employeeId;
+    if (dateScheduleData.date !== undefined) updateData.date = dateScheduleData.date;
+    if (dateScheduleData.startTime !== undefined) updateData.expectedStartTime = dateScheduleData.startTime;
+    if (dateScheduleData.endTime !== undefined) updateData.expectedEndTime = dateScheduleData.endTime;
+    if (dateScheduleData.isActive !== undefined) {
+      updateData.status = dateScheduleData.isActive ? 'scheduled' : 'cancelled';
+    }
     
-    // Determinar tipo de turno si cambia la hora de inicio
     if (dateScheduleData.startTime !== undefined) {
       const [startHour] = dateScheduleData.startTime.split(':').map(Number);
       if (startHour >= 14 && startHour < 22) {
-        updateData.tipoTurno = 'tarde';
+        updateData.shiftType = 'afternoon';
       } else if (startHour >= 22 || startHour < 6) {
-        updateData.tipoTurno = 'noche';
+        updateData.shiftType = 'night';
       } else {
-        updateData.tipoTurno = 'manana';
+        updateData.shiftType = 'morning';
       }
     }
     
-    const [updatedHorario] = await db
-      .update(horariosPlanificados)
+    const [updatedShift] = await db
+      .update(scheduledShifts)
       .set(updateData)
-      .where(eq(horariosPlanificados.idTurno, id))
+      .where(eq(scheduledShifts.id, id))
       .returning();
     
-    return updatedHorario ? mapHorarioPlanificadoToDateSchedule(updatedHorario) : undefined;
+    if (!updatedShift) return undefined;
+    
+    const [startHour, startMin] = updatedShift.expectedStartTime.split(':').map(Number);
+    const [endHour, endMin] = updatedShift.expectedEndTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    const workMinutes = endMinutes - startMinutes;
+    
+    return {
+      id: updatedShift.id,
+      employeeId: updatedShift.employeeId,
+      date: updatedShift.date,
+      startTime: updatedShift.expectedStartTime,
+      endTime: updatedShift.expectedEndTime,
+      workHours: workMinutes,
+      isActive: updatedShift.status === 'scheduled' || updatedShift.status === 'confirmed' || updatedShift.status === 'completed',
+    };
   }
 
   /**
@@ -1453,22 +1312,12 @@ export class DatabaseStorage implements IStorage {
    * =========================
    * 
    * Elimina permanentemente un horario específico por fecha.
-   * Al eliminarlo, se vuelve al horario semanal normal para esa fecha.
-   * 
-   * CONSULTA SQL EQUIVALENTE:
-   * DELETE FROM date_schedules WHERE id = $1;
-   * 
-   * CONSIDERACIONES:
-   * - Operación irreversible
-   * - El empleado usará el horario semanal normal para esa fecha
-   * - Puede afectar cálculos de horas programadas
-   * - Alternativa: updateDateSchedule(id, { isActive: false })
    * 
    * @param id - ID del horario por fecha a eliminar
    * @returns true si se eliminó, false si no existía
    */
   async deleteDateSchedule(id: string): Promise<boolean> {
-    const result = await db.delete(horariosPlanificados).where(eq(horariosPlanificados.idTurno, id));
+    const result = await db.delete(scheduledShifts).where(eq(scheduledShifts.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -1477,46 +1326,6 @@ export class DatabaseStorage implements IStorage {
    * ===================================================
    * 
    * Crea múltiples horarios específicos por fecha en una operación.
-   * Ideal para planificación de calendario anual con lógica anti-duplicados.
-   * 
-   * PROCESO EN 4 ETAPAS:
-   * 
-   * 1. VALIDACIÓN: Verifica que hay horarios para crear
-   * 2. CONSULTA EXISTENTES: Busca horarios existentes para evitar duplicados
-   * 3. FILTRADO: Identifica cuáles horarios NO existen ya
-   * 4. INSERCIÓN MASIVA: Crea solo los horarios únicos
-   * 
-   * LÓGICA ANTI-DUPLICADOS:
-   * Un horario se considera duplicado si COINCIDEN:
-   * - employeeId (mismo empleado)
-   * - date (misma fecha específica)
-   * - startTime (misma hora inicio)
-   * - endTime (misma hora fin)
-   * - isActive = true (solo horarios activos)
-   * 
-   * EJEMPLO DE USO:
-   * bulkData = {
-   *   schedules: [
-   *     {
-   *       employeeId: "123",
-   *       date: "2024-12-25",
-   *       startTime: "08:00",
-   *       endTime: "14:00"
-   *     },
-   *     {
-   *       employeeId: "123",
-   *       date: "2024-12-26",
-   *       startTime: "09:00",
-   *       endTime: "15:00"
-   *     }
-   *   ]
-   * }
-   * 
-   * VENTAJAS:
-   * - Una sola operación de insert para múltiples horarios
-   * - Prevención automática de duplicados
-   * - Ideal para calendarios anuales
-   * - Manejo eficiente de grandes volúmenes
    * 
    * @param bulkData - Datos con array de horarios por fecha
    * @returns Array de horarios por fecha creados (solo los nuevos)
@@ -1526,52 +1335,82 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
 
-    // PASO 1: Transformar datos bulk en array de horarios individuales con horas calculadas
     const schedulesToCreate = bulkData.schedules.map(schedule => {
-      const workHours = (schedule as any).workHours ?? this.calculateWorkHours(schedule.startTime, schedule.endTime);
+      const workHours = this.calculateWorkHours(
+        schedule.expectedStartTime, 
+        schedule.expectedEndTime
+      );
+      
+      const [startHour] = schedule.expectedStartTime.split(':').map(Number);
+      let shiftType: 'morning' | 'afternoon' | 'night' = 'morning';
+      if (startHour >= 14 && startHour < 22) {
+        shiftType = 'afternoon';
+      } else if (startHour >= 22 || startHour < 6) {
+        shiftType = 'night';
+      }
+      
       return {
         employeeId: schedule.employeeId,
         date: schedule.date,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
+        expectedStartTime: schedule.expectedStartTime,
+        expectedEndTime: schedule.expectedEndTime,
         workHours: workHours,
-        isActive: schedule.isActive ?? true
+        shiftType: shiftType,
+        status: schedule.status ?? 'scheduled'
       };
     });
 
-    // PASO 2: Obtener todos los empleados únicos de los horarios a crear
     const employeeIds = Array.from(new Set(schedulesToCreate.map(s => s.employeeId)));
     
-    // PASO 3: Obtener horarios existentes para todos los empleados
-    const existingSchedules = await db.select()
-      .from(horariosPlanificados)
-      .where(inArray(horariosPlanificados.idEmpleado, employeeIds));
+    const existingShifts = await db
+      .select()
+      .from(scheduledShifts)
+      .where(inArray(scheduledShifts.employeeId, employeeIds));
 
-    // PASO 4: Filtrar horarios que NO existen (evitar duplicados)
     const uniqueSchedules = schedulesToCreate.filter(newSchedule => {
-      return !existingSchedules.some(existing => 
-        existing.idEmpleado === newSchedule.employeeId &&
-        existing.fecha === newSchedule.date &&
-        existing.horaInicioPrevista === newSchedule.startTime &&
-        existing.horaFinPrevista === newSchedule.endTime
+      return !existingShifts.some(existing => 
+        existing.employeeId === newSchedule.employeeId &&
+        existing.date === newSchedule.date &&
+        existing.expectedStartTime === newSchedule.expectedStartTime &&
+        existing.expectedEndTime === newSchedule.expectedEndTime
       );
     });
 
-    // PASO 5: Si no hay horarios únicos que crear, retornar array vacío
     if (uniqueSchedules.length === 0) {
       return [];
     }
 
-    // PASO 6: Convertir a formato HorarioPlanificado para inserción
-    const horariosToInsert = uniqueSchedules.map(schedule => toHorarioPlanificadoInsert(schedule));
+    const shiftsToInsert = uniqueSchedules.map(schedule => ({
+      employeeId: schedule.employeeId,
+      date: schedule.date,
+      expectedStartTime: schedule.expectedStartTime,
+      expectedEndTime: schedule.expectedEndTime,
+      shiftType: schedule.shiftType,
+      status: schedule.status,
+    }));
 
-    // PASO 7: Inserción masiva de horarios únicos
-    const createdHorarios = await db
-      .insert(horariosPlanificados)
-      .values(horariosToInsert)
+    const createdShifts = await db
+      .insert(scheduledShifts)
+      .values(shiftsToInsert)
       .returning();
 
-    return createdHorarios.map(mapHorarioPlanificadoToDateSchedule);
+    return createdShifts.map(shift => {
+      const [startHour, startMin] = shift.expectedStartTime.split(':').map(Number);
+      const [endHour, endMin] = shift.expectedEndTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      const workMinutes = endMinutes - startMinutes;
+      
+      return {
+        id: shift.id,
+        employeeId: shift.employeeId,
+        date: shift.date,
+        startTime: shift.expectedStartTime,
+        endTime: shift.expectedEndTime,
+        workHours: workMinutes,
+        isActive: shift.status === 'scheduled' || shift.status === 'confirmed' || shift.status === 'completed',
+      };
+    });
   }
 }
 
@@ -1581,350 +1420,155 @@ export class DatabaseStorage implements IStorage {
  * ============================================================================
  * 
  * Sistema basado en eventos individuales de fichaje que actualiza
- * automáticamente la tabla jornada_diaria consolidada.
+ * automáticamente la tabla dailyWorkday consolidada.
  */
 
 /**
  * Calcula y actualiza la jornada diaria basándose en todos los fichajes del día
  */
 async function calcularYActualizarJornada(employeeId: string, fecha: string): Promise<void> {
-  // 1. Obtener todos los fichajes del día ordenados por timestamp
-  const fichajesDelDia = await db
+  const entriesOfDay = await db
     .select()
-    .from(fichajes)
+    .from(clockEntries)
     .where(
-      sql`DATE(${fichajes.timestampRegistro}) = ${fecha} AND ${fichajes.idEmpleado} = ${employeeId}`
+      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
     )
-    .orderBy(fichajes.timestampRegistro);
+    .orderBy(clockEntries.timestamp);
 
-  // 2. Calcular valores consolidados
-  let horaInicio: Date | null = null;
-  let horaFin: Date | null = null;
-  let horasTrabajadas = 0; // en minutos
-  let horasPausas = 0; // en minutos
-  let estado: 'abierta' | 'cerrada' = 'abierta';
+  let startTime: Date | null = null;
+  let endTime: Date | null = null;
+  let workedMinutes = 0;
+  let breakMinutes = 0;
+  let status: 'open' | 'closed' = 'open';
 
-  // Variables para emparejar entradas/salidas y pausas
-  let ultimaEntrada: Date | null = null;
-  let ultimaPausaInicio: Date | null = null;
+  let lastClockIn: Date | null = null;
+  let lastBreakStart: Date | null = null;
 
-  for (const fichaje of fichajesDelDia) {
-    const timestamp = fichaje.timestampRegistro;
+  for (const entry of entriesOfDay) {
+    switch (entry.entryType) {
+      case 'clock_in':
+        if (!startTime) startTime = entry.timestamp;
+        lastClockIn = entry.timestamp;
+        break;
 
-    if (fichaje.tipoRegistro === 'entrada') {
-      if (!horaInicio) horaInicio = timestamp;
-      ultimaEntrada = timestamp;
-    } else if (fichaje.tipoRegistro === 'salida') {
-      horaFin = timestamp;
-      // Si hay una entrada previa, calcular tiempo trabajado
-      if (ultimaEntrada) {
-        const minutos = Math.floor((timestamp.getTime() - ultimaEntrada.getTime()) / (1000 * 60));
-        horasTrabajadas += minutos;
-        ultimaEntrada = null;
-      }
-    } else if (fichaje.tipoRegistro === 'pausa_inicio') {
-      ultimaPausaInicio = timestamp;
-    } else if (fichaje.tipoRegistro === 'pausa_fin') {
-      // Si hay un inicio de pausa previo, calcular tiempo de pausa
-      if (ultimaPausaInicio) {
-        const minutos = Math.floor((timestamp.getTime() - ultimaPausaInicio.getTime()) / (1000 * 60));
-        horasPausas += minutos;
-        ultimaPausaInicio = null;
-      }
+      case 'clock_out':
+        endTime = entry.timestamp;
+        if (lastClockIn) {
+          const minutes = Math.floor((endTime.getTime() - lastClockIn.getTime()) / 60000);
+          workedMinutes += minutes;
+          lastClockIn = null;
+        }
+        status = 'closed';
+        break;
+
+      case 'break_start':
+        lastBreakStart = entry.timestamp;
+        break;
+
+      case 'break_end':
+        if (lastBreakStart) {
+          const minutes = Math.floor((entry.timestamp.getTime() - lastBreakStart.getTime()) / 60000);
+          breakMinutes += minutes;
+          lastBreakStart = null;
+        }
+        break;
     }
   }
 
-  // Determinar estado (abierta si hay entrada sin salida o pausa sin fin)
-  if (ultimaEntrada !== null || ultimaPausaInicio !== null) {
-    estado = 'abierta';
-  } else if (horaFin !== null) {
-    estado = 'cerrada';
-  }
-
-  // 3. Calcular horas extra (si hay turno asignado)
-  let horasExtra = 0;
-  const turnoDelDia = await db
+  const [existingWorkday] = await db
     .select()
-    .from(horariosPlanificados)
+    .from(dailyWorkday)
     .where(
       and(
-        eq(horariosPlanificados.idEmpleado, employeeId),
-        eq(horariosPlanificados.fecha, fecha)
+        eq(dailyWorkday.employeeId, employeeId),
+        eq(dailyWorkday.date, fecha)
       )
-    )
-    .limit(1);
+    );
 
-  if (turnoDelDia.length > 0 && horasTrabajadas > 0) {
-    const turno = turnoDelDia[0];
-    const [startHour, startMin] = turno.horaInicioPrevista.split(':').map(Number);
-    const [endHour, endMin] = turno.horaFinPrevista.split(':').map(Number);
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    const minutosPrevistos = endMinutes - startMinutes;
-
-    if (horasTrabajadas > minutosPrevistos) {
-      horasExtra = horasTrabajadas - minutosPrevistos;
-    }
-  }
-
-  // 4. Hacer upsert en jornada_diaria
-  const existingJornada = await db
-    .select()
-    .from(jornadaDiaria)
-    .where(
-      and(
-        eq(jornadaDiaria.idEmpleado, employeeId),
-        eq(jornadaDiaria.fecha, fecha)
-      )
-    )
-    .limit(1);
-
-  const jornadaData = {
-    idEmpleado: employeeId,
-    fecha,
-    horaInicio,
-    horaFin,
-    horasTrabajadas,
-    horasPausas,
-    horasExtra,
-    estado,
-  };
-
-  if (existingJornada.length > 0) {
-    // Update
+  if (existingWorkday) {
     await db
-      .update(jornadaDiaria)
-      .set(jornadaData)
-      .where(eq(jornadaDiaria.idJornada, existingJornada[0].idJornada));
+      .update(dailyWorkday)
+      .set({
+        startTime,
+        endTime,
+        workedMinutes,
+        breakMinutes,
+        status,
+      })
+      .where(eq(dailyWorkday.id, existingWorkday.id));
   } else {
-    // Insert
     await db
-      .insert(jornadaDiaria)
-      .values(jornadaData);
+      .insert(dailyWorkday)
+      .values({
+        employeeId,
+        date: fecha,
+        startTime,
+        endTime,
+        workedMinutes,
+        breakMinutes,
+        overtimeMinutes: 0,
+        status,
+      });
   }
 }
 
 /**
- * Adaptador: Convierte JornadaDiaria a TimeEntry (para compatibilidad con API antigua)
- * IMPORTANTE: Si jornada.horaInicio es null (caso raro), se debe consultar el primer fichaje
- */
-async function mapJornadaToTimeEntry(jornada: JornadaDiaria, employeeId: string): Promise<TimeEntry> {
-  const id = `${jornada.idJornada}`;
-  let clockIn = jornada.horaInicio;
-  
-  // Si no hay hora de inicio en jornada, buscar el primer fichaje de entrada del día
-  if (!clockIn) {
-    const primerFichaje = await db
-      .select()
-      .from(fichajes)
-      .where(
-        and(
-          eq(fichajes.idEmpleado, employeeId),
-          eq(fichajes.tipoRegistro, 'entrada'),
-          sql`DATE(${fichajes.timestampRegistro}) = ${jornada.fecha}`
-        )
-      )
-      .orderBy(fichajes.timestampRegistro)
-      .limit(1);
-    
-    if (primerFichaje.length > 0) {
-      clockIn = primerFichaje[0].timestampRegistro;
-    } else {
-      // No hay fichajes de entrada - usar inicio del día como fallback mínimo
-      clockIn = new Date(`${jornada.fecha}T00:00:00`);
-    }
-  }
-  
-  return {
-    id,
-    employeeId,
-    clockIn,
-    clockOut: jornada.horaFin || null,
-    totalHours: jornada.horasTrabajadas || null,
-    date: jornada.fecha,
-  };
-}
-
-/**
- * Funciones públicas exportadas para fichajes y jornadas
+ * Servicio de fichajes - Crea un evento de fichaje individual
  */
 export const fichajesService = {
-  /**
-   * Crear un nuevo fichaje y actualizar jornada automáticamente
-   * NUEVA FUNCIONALIDAD: Asigna automáticamente id_turno del horario planificado para esa fecha
-   */
-  async crearFichaje(data: InsertFichaje & { timestampRegistro?: Date }): Promise<Fichaje> {
-    // 1. Preparar datos del fichaje
-    const timestampRegistro = data.timestampRegistro || new Date();
-    const fecha = timestampRegistro.toISOString().split('T')[0];
-    
-    // 2. NUEVO: Buscar horario planificado para esta fecha si no se proporcionó id_turno
-    let idTurno = data.idTurno;
-    if (!idTurno) {
-      const horarioMatch = await db
-        .select()
-        .from(horariosPlanificados)
-        .where(
-          and(
-            eq(horariosPlanificados.idEmpleado, data.idEmpleado),
-            eq(horariosPlanificados.fecha, fecha)
-          )
-        )
-        .limit(1);
-      
-      if (horarioMatch.length > 0) {
-        idTurno = horarioMatch[0].idTurno;
-      }
-    }
-    
-    // 3. Insertar fichaje con id_turno asignado automáticamente
-    const fichajeData = {
-      ...data,
-      timestampRegistro,
-      idTurno
-    };
-    
-    const [nuevoFichaje] = await db
-      .insert(fichajes)
-      .values(fichajeData)
+  async crearFichaje(
+    employeeId: string,
+    entryType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end',
+    shiftId: string | null = null,
+    source: 'mobile_app' | 'physical_terminal' | 'web' = 'web',
+    notes: string | null = null
+  ): Promise<ClockEntry> {
+    const [entry] = await db
+      .insert(clockEntries)
+      .values({
+        employeeId,
+        shiftId,
+        entryType,
+        source,
+        notes,
+      })
       .returning();
 
-    // 4. Actualizar jornada diaria
-    await calcularYActualizarJornada(nuevoFichaje.idEmpleado, fecha);
+    const fecha = entry.timestamp.toISOString().split('T')[0];
+    await calcularYActualizarJornada(employeeId, fecha);
 
-    return nuevoFichaje;
+    return entry;
   },
 
-  /**
-   * Obtener fichajes de un empleado en un rango de fechas
-   */
-  async obtenerFichajes(employeeId: string, startDate?: string, endDate?: string): Promise<Fichaje[]> {
-    let conditions = [eq(fichajes.idEmpleado, employeeId)];
-
-    if (startDate) {
-      conditions.push(sql`DATE(${fichajes.timestampRegistro}) >= ${startDate}`);
-    }
-    if (endDate) {
-      conditions.push(sql`DATE(${fichajes.timestampRegistro}) <= ${endDate}`);
-    }
-
+  async obtenerFichajesDelDia(employeeId: string, fecha: string): Promise<ClockEntry[]> {
     return await db
       .select()
-      .from(fichajes)
-      .where(and(...conditions))
-      .orderBy(fichajes.timestampRegistro);
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
+      )
+      .orderBy(clockEntries.timestamp);
   },
 
-  /**
-   * Obtener jornadas de un empleado en un rango de fechas
-   */
-  async obtenerJornadas(employeeId: string, startDate?: string, endDate?: string): Promise<JornadaDiaria[]> {
-    let conditions = [eq(jornadaDiaria.idEmpleado, employeeId)];
-
-    if (startDate) {
-      conditions.push(gte(jornadaDiaria.fecha, startDate));
-    }
-    if (endDate) {
-      conditions.push(lte(jornadaDiaria.fecha, endDate));
-    }
-
-    return await db
+  async obtenerJornadaDiaria(employeeId: string, fecha: string): Promise<DailyWorkday | undefined> {
+    const [workday] = await db
       .select()
-      .from(jornadaDiaria)
-      .where(and(...conditions))
-      .orderBy(jornadaDiaria.fecha);
-  },
-
-  /**
-   * Obtener jornada actual (hoy) de un empleado
-   */
-  async obtenerJornadaActual(employeeId: string): Promise<JornadaDiaria | null> {
-    const hoy = new Date().toISOString().split('T')[0];
-    
-    const jornadas = await db
-      .select()
-      .from(jornadaDiaria)
+      .from(dailyWorkday)
       .where(
         and(
-          eq(jornadaDiaria.idEmpleado, employeeId),
-          eq(jornadaDiaria.fecha, hoy)
+          eq(dailyWorkday.employeeId, employeeId),
+          eq(dailyWorkday.date, fecha)
         )
-      )
-      .limit(1);
-
-    return jornadas[0] || null;
+      );
+    return workday;
   },
-
-  /**
-   * Obtener último fichaje de un empleado (para determinar si debe fichar entrada o salida)
-   */
-  async obtenerUltimoFichaje(employeeId: string): Promise<Fichaje | null> {
-    const hoy = new Date().toISOString().split('T')[0];
-    
-    const fichajesHoy = await db
-      .select()
-      .from(fichajes)
-      .where(
-        and(
-          eq(fichajes.idEmpleado, employeeId),
-          sql`DATE(${fichajes.timestampRegistro}) = ${hoy}`
-        )
-      )
-      .orderBy(sql`${fichajes.timestampRegistro} DESC`)
-      .limit(1);
-
-    return fichajesHoy[0] || null;
-  },
-
-  /**
-   * ADAPTADOR DE COMPATIBILIDAD: Obtener TimeEntries desde jornadas
-   * Esta función mantiene compatibilidad con el frontend actual que espera TimeEntry[]
-   */
-  async obtenerTimeEntriesDesdeJornadas(employeeId?: string, startDate?: string, endDate?: string): Promise<TimeEntry[]> {
-    let conditions = [];
-
-    if (employeeId) {
-      conditions.push(eq(jornadaDiaria.idEmpleado, employeeId));
-    }
-    if (startDate) {
-      conditions.push(gte(jornadaDiaria.fecha, startDate));
-    }
-    if (endDate) {
-      conditions.push(lte(jornadaDiaria.fecha, endDate));
-    }
-
-    const jornadas = await db
-      .select()
-      .from(jornadaDiaria)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(jornadaDiaria.fecha);
-
-    // Mapear jornadas a TimeEntries en paralelo
-    return Promise.all(jornadas.map(j => mapJornadaToTimeEntry(j, j.idEmpleado)));
-  }
 };
 
 /**
- * INSTANCIA GLOBAL DE ALMACENAMIENTO
- * =================================
+ * INSTANCIA SINGLETON DE STORAGE
+ * ==============================
  * 
- * Se exporta una instancia única de DatabaseStorage para usar en todo el sistema.
- * Esta instancia mantiene la configuración de conexión y proporciona acceso
- * centralizado a todas las operaciones de base de datos.
- * 
- * PATRÓN SINGLETON:
- * - Una sola instancia para toda la aplicación
- * - Evita múltiples conexiones innecesarias
- * - Facilita el testing (se puede mockear esta instancia)
- * - Consistencia en el acceso a datos
- * 
- * USO EN EL SISTEMA:
- * - Las rutas API importan esta instancia
- * - Los procesos de semilla la utilizan
- * - Tests pueden crear mocks sobre esta instancia
- * 
- * CONFIGURACIÓN:
- * La conexión a base de datos se configura en './db' y se
- * inyecta automáticamente al crear la instancia.
+ * Esta es la instancia única de DatabaseStorage que se exporta y usa en toda la aplicación.
+ * Se crea automáticamente al importar este módulo.
  */
 export const storage = new DatabaseStorage();
