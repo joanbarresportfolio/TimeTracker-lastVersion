@@ -6,9 +6,42 @@ This is a comprehensive employee time tracking and management system built as a 
 
 ## Recent Changes
 
-### October 2, 2025 - Event-Based Fichajes System Migration
+### October 2, 2025 - Complete Backend Migration to English Schema
 
-**MAJOR RESTRUCTURING**: Migrated from single time entry records to event-based fichaje system with automatic jornada consolidation.
+**MAJOR REFACTORING**: Completed full migration of database schema and backend codebase from Spanish to English naming conventions. All tables, columns, functions, and types now use consistent English terminology throughout the backend.
+
+#### Database Schema Changes
+All database tables and columns renamed to English:
+- **departments** (formerly departamentos): id, name, description
+- **users** (formerly usuarios): id, username, email, password_hash, first_name, last_name, phone, role, department_id, is_active
+- **scheduled_shifts** (formerly horarios_planificados): id, employee_id, date, start_time, end_time, shift_type, status
+- **clock_entries** (formerly fichajes): id, employee_id, entry_type (clock_in/clock_out/break_start/break_end), entry_timestamp, source, notes, shift_id
+- **daily_workday** (formerly jornada_diaria): id, employee_id, date, start_time, end_time, hours_worked, break_hours, overtime_hours, status
+- **incidents** (formerly incidencias): id, employee_id, incident_date, incident_type, severity, description, status, reported_by, resolution_notes, resolved_at
+
+#### Backend Code Migration
+- **shared/schema.ts**: Completely redesigned with English table/column definitions, updated Zod validation schemas
+- **server/storage.ts**: Removed ALL Spanish-English mapping functions, now uses English schema directly from shared/schema.ts
+- **server/routes.ts**: Updated to use English field names throughout all API endpoints
+- **server/seed.ts**: Updated to seed data using English schema
+
+#### Architecture Simplification
+- **Eliminated complexity**: Removed entire layer of Spanish→English mapping/adapter functions
+- **Direct schema usage**: Backend now imports and uses English types directly from shared/schema.ts
+- **Cleaner codebase**: Significantly reduced code duplication and maintenance burden
+
+#### Migration Results
+- ✅ Database schema migrated successfully with `npm run db:push --force`
+- ✅ All backend code compiles without LSP errors
+- ✅ Server running successfully on port 5000
+- ✅ Seed data created: 13 employees with 3 days of clock entries each
+- ✅ Event-based clock entry system with automatic daily workday calculation working correctly
+- ⚠️ Frontend: Needs update to use new English schema exports (currently references removed `insertDateScheduleSchema`)
+- ⏳ Mobile app: May need update to align with new English API field names
+
+### Previous: Event-Based Clock Entries System
+
+**Event-based time tracking**: System uses individual clock events (clock_in, clock_out, break_start, break_end) with automatic daily workday consolidation.
 
 #### Database Changes
 - **fichajes table**: Now stores individual events (entrada, salida, pausa_inicio, pausa_fin) instead of paired clock-in/clock-out
@@ -107,13 +140,17 @@ Preferred communication style: Simple, everyday language.
 - **API Design**: RESTful endpoints with proper HTTP status codes and error handling
 
 ### Database Design
-- **Primary Database**: PostgreSQL (configured but currently using in-memory storage)
+- **Primary Database**: PostgreSQL with Neon serverless driver
 - **ORM**: Drizzle with schema-first approach
+- **Schema Language**: All tables and columns use English naming conventions
 - **Key Entities**:
-  - Employees: Core employee information with departments and positions
-  - Time Entries: Clock-in/clock-out records with calculated hours
-  - Schedules: Recurring weekly schedule definitions
-  - Incidents: Workplace incidents and attendance issues
+  - **users**: Employee records with role-based access (admin, manager, employee)
+  - **departments**: Organizational departments
+  - **scheduled_shifts**: Planned work shifts with date, time, and shift type
+  - **clock_entries**: Event-based time tracking (clock_in, clock_out, break_start, break_end)
+  - **daily_workday**: Automatically calculated daily work summaries from clock entries
+  - **incidents**: Workplace incidents and attendance issues with severity tracking
+- **Architecture Pattern**: Event-based time tracking with automatic workday consolidation
 
 ### Development Architecture
 - **Monorepo Structure**: Shared schemas and types between frontend and backend
