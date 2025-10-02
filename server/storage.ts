@@ -46,7 +46,7 @@
  * PROPÓSITO: Refactorización con buenas prácticas y documentación exhaustiva
  */
 
-import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type BulkScheduleCreate, type DateSchedule, type InsertDateSchedule, type BulkDateScheduleCreate, usuarios, departamentos, horariosPlanificados, fichajes, incidencias, type Usuario, type Departamento, type HorarioPlanificado, type Fichaje, type Incidencia } from "@shared/schema";
+import { type Employee, type InsertEmployee, type TimeEntry, type InsertTimeEntry, type Schedule, type InsertSchedule, type Incident, type InsertIncident, type CreateEmployee, type User, type DateSchedule, type InsertDateSchedule, type BulkDateScheduleCreate, usuarios, departamentos, horariosPlanificados, fichajes, incidencias, jornadaDiaria, type Usuario, type Departamento, type HorarioPlanificado, type Fichaje, type Incidencia, type JornadaDiaria, type InsertFichaje, type InsertJornadaDiaria } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -1651,6 +1651,240 @@ export class DatabaseStorage implements IStorage {
     return createdHorarios.map(mapHorarioPlanificadoToDateSchedule);
   }
 }
+
+/**
+ * ============================================================================
+ * NUEVA LÓGICA DE FICHAJES Y JORNADA DIARIA
+ * ============================================================================
+ * 
+ * Sistema basado en eventos individuales de fichaje que actualiza
+ * automáticamente la tabla jornada_diaria consolidada.
+ */
+
+/**
+ * Calcula y actualiza la jornada diaria basándose en todos los fichajes del día
+ */
+async function calcularYActualizarJornada(employeeId: string, fecha: string): Promise<void> {
+  // 1. Obtener todos los fichajes del día ordenados por timestamp
+  const fichajesDelDia = await db
+    .select()
+    .from(fichajes)
+    .where(
+      sql`DATE(${fichajes.timestampRegistro}) = ${fecha} AND ${fichajes.idEmpleado} = ${employeeId}`
+    )
+    .orderBy(fichajes.timestampRegistro);
+
+  // 2. Calcular valores consolidados
+  let horaInicio: Date | null = null;
+  let horaFin: Date | null = null;
+  let horasTrabajadas = 0; // en minutos
+  let horasPausas = 0; // en minutos
+  let estado: 'abierta' | 'cerrada' = 'abierta';
+
+  // Variables para emparejar entradas/salidas y pausas
+  let ultimaEntrada: Date | null = null;
+  let ultimaPausaInicio: Date | null = null;
+
+  for (const fichaje of fichajesDelDia) {
+    const timestamp = fichaje.timestampRegistro;
+
+    if (fichaje.tipoRegistro === 'entrada') {
+      if (!horaInicio) horaInicio = timestamp;
+      ultimaEntrada = timestamp;
+    } else if (fichaje.tipoRegistro === 'salida') {
+      horaFin = timestamp;
+      // Si hay una entrada previa, calcular tiempo trabajado
+      if (ultimaEntrada) {
+        const minutos = Math.floor((timestamp.getTime() - ultimaEntrada.getTime()) / (1000 * 60));
+        horasTrabajadas += minutos;
+        ultimaEntrada = null;
+      }
+    } else if (fichaje.tipoRegistro === 'pausa_inicio') {
+      ultimaPausaInicio = timestamp;
+    } else if (fichaje.tipoRegistro === 'pausa_fin') {
+      // Si hay un inicio de pausa previo, calcular tiempo de pausa
+      if (ultimaPausaInicio) {
+        const minutos = Math.floor((timestamp.getTime() - ultimaPausaInicio.getTime()) / (1000 * 60));
+        horasPausas += minutos;
+        ultimaPausaInicio = null;
+      }
+    }
+  }
+
+  // Determinar estado (abierta si hay entrada sin salida o pausa sin fin)
+  if (ultimaEntrada !== null || ultimaPausaInicio !== null) {
+    estado = 'abierta';
+  } else if (horaFin !== null) {
+    estado = 'cerrada';
+  }
+
+  // 3. Calcular horas extra (si hay turno asignado)
+  let horasExtra = 0;
+  const turnoDelDia = await db
+    .select()
+    .from(horariosPlanificados)
+    .where(
+      and(
+        eq(horariosPlanificados.idEmpleado, employeeId),
+        eq(horariosPlanificados.fecha, fecha)
+      )
+    )
+    .limit(1);
+
+  if (turnoDelDia.length > 0 && horasTrabajadas > 0) {
+    const turno = turnoDelDia[0];
+    const [startHour, startMin] = turno.horaInicioPrevista.split(':').map(Number);
+    const [endHour, endMin] = turno.horaFinPrevista.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    const minutosPrevistos = endMinutes - startMinutes;
+
+    if (horasTrabajadas > minutosPrevistos) {
+      horasExtra = horasTrabajadas - minutosPrevistos;
+    }
+  }
+
+  // 4. Hacer upsert en jornada_diaria
+  const existingJornada = await db
+    .select()
+    .from(jornadaDiaria)
+    .where(
+      and(
+        eq(jornadaDiaria.idEmpleado, employeeId),
+        eq(jornadaDiaria.fecha, fecha)
+      )
+    )
+    .limit(1);
+
+  const jornadaData = {
+    idEmpleado: employeeId,
+    fecha,
+    horaInicio,
+    horaFin,
+    horasTrabajadas,
+    horasPausas,
+    horasExtra,
+    estado,
+  };
+
+  if (existingJornada.length > 0) {
+    // Update
+    await db
+      .update(jornadaDiaria)
+      .set(jornadaData)
+      .where(eq(jornadaDiaria.idJornada, existingJornada[0].idJornada));
+  } else {
+    // Insert
+    await db
+      .insert(jornadaDiaria)
+      .values(jornadaData);
+  }
+}
+
+/**
+ * Funciones públicas exportadas para fichajes y jornadas
+ */
+export const fichajesService = {
+  /**
+   * Crear un nuevo fichaje y actualizar jornada automáticamente
+   */
+  async crearFichaje(data: InsertFichaje): Promise<Fichaje> {
+    // 1. Insertar fichaje
+    const [nuevoFichaje] = await db
+      .insert(fichajes)
+      .values(data)
+      .returning();
+
+    // 2. Obtener fecha del fichaje
+    const fecha = nuevoFichaje.timestampRegistro.toISOString().split('T')[0];
+
+    // 3. Actualizar jornada diaria
+    await calcularYActualizarJornada(nuevoFichaje.idEmpleado, fecha);
+
+    return nuevoFichaje;
+  },
+
+  /**
+   * Obtener fichajes de un empleado en un rango de fechas
+   */
+  async obtenerFichajes(employeeId: string, startDate?: string, endDate?: string): Promise<Fichaje[]> {
+    let conditions = [eq(fichajes.idEmpleado, employeeId)];
+
+    if (startDate) {
+      conditions.push(sql`DATE(${fichajes.timestampRegistro}) >= ${startDate}`);
+    }
+    if (endDate) {
+      conditions.push(sql`DATE(${fichajes.timestampRegistro}) <= ${endDate}`);
+    }
+
+    return await db
+      .select()
+      .from(fichajes)
+      .where(and(...conditions))
+      .orderBy(fichajes.timestampRegistro);
+  },
+
+  /**
+   * Obtener jornadas de un empleado en un rango de fechas
+   */
+  async obtenerJornadas(employeeId: string, startDate?: string, endDate?: string): Promise<JornadaDiaria[]> {
+    let conditions = [eq(jornadaDiaria.idEmpleado, employeeId)];
+
+    if (startDate) {
+      conditions.push(gte(jornadaDiaria.fecha, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(jornadaDiaria.fecha, endDate));
+    }
+
+    return await db
+      .select()
+      .from(jornadaDiaria)
+      .where(and(...conditions))
+      .orderBy(jornadaDiaria.fecha);
+  },
+
+  /**
+   * Obtener jornada actual (hoy) de un empleado
+   */
+  async obtenerJornadaActual(employeeId: string): Promise<JornadaDiaria | null> {
+    const hoy = new Date().toISOString().split('T')[0];
+    
+    const jornadas = await db
+      .select()
+      .from(jornadaDiaria)
+      .where(
+        and(
+          eq(jornadaDiaria.idEmpleado, employeeId),
+          eq(jornadaDiaria.fecha, hoy)
+        )
+      )
+      .limit(1);
+
+    return jornadas[0] || null;
+  },
+
+  /**
+   * Obtener último fichaje de un empleado (para determinar si debe fichar entrada o salida)
+   */
+  async obtenerUltimoFichaje(employeeId: string): Promise<Fichaje | null> {
+    const hoy = new Date().toISOString().split('T')[0];
+    
+    const fichajesHoy = await db
+      .select()
+      .from(fichajes)
+      .where(
+        and(
+          eq(fichajes.idEmpleado, employeeId),
+          sql`DATE(${fichajes.timestampRegistro}) = ${hoy}`
+        )
+      )
+      .orderBy(sql`${fichajes.timestampRegistro} DESC`)
+      .limit(1);
+
+    return fichajesHoy[0] || null;
+  }
+};
 
 /**
  * INSTANCIA GLOBAL DE ALMACENAMIENTO
