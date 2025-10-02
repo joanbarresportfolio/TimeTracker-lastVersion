@@ -7,20 +7,17 @@
  * 
  * DATOS CREADOS:
  * - 1 usuario administrador (admin@admin.com / admin)
- * - 12 empleados de muestra en 4 departamentos (3 por departamento)
- * - Registros de tiempo históricos para los últimos 3 días
- * - Un registro de entrada para el día actual
+ * - 12 empleados de muestra en 2 departamentos (Grupo Chova Felix y Marina Fruit)
  * 
  * ESTRATEGIA IDEMPOTENTE:
  * - Verifica existencia por employeeNumber Y email antes de crear
- * - Verifica registros de tiempo por employeeId + date antes de crear
  * - Si existe algún dato, lo omite y continúa con el siguiente
  */
 
 import { db } from "./db";
-import { users, clockEntries, scheduledShifts, incidents } from "@shared/schema";
+import { users } from "@shared/schema";
 import { storage } from "./storage";
-import { and, eq, or } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 /**
  * FUNCIÓN PRINCIPAL DE SEMILLA
@@ -54,6 +51,7 @@ export async function seedDatabase() {
         department: "Administración",
         position: "Administrador del Sistema",
         hireDate: new Date("2024-01-01"),
+        conventionHours: 1752,
         isActive: true,
       });
       console.log("✅ Usuario administrador creado exitosamente");
@@ -250,90 +248,6 @@ export async function seedDatabase() {
         // Ya existe, usar el existente
         createdEmployees.push(existingEmployee);
         console.log(`ℹ️  Empleado ya existe: ${employeeData.firstName} ${employeeData.lastName}`);
-      }
-    }
-
-    // PASO 3: Crear fichajes históricos (sistema de eventos)
-    // Crea 3 días de historial de fichajes para todos los empleados
-    const { fichajesService } = await import("./storage");
-    const today = new Date();
-    const dates = [
-      new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000), // Hace 3 días
-      new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000), // Hace 2 días
-      new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000), // Ayer
-    ];
-
-    for (const employee of createdEmployees) {
-      for (const workDate of dates) {
-        const workDateStr = workDate.toISOString().split('T')[0];
-        
-        // Verificar si ya existen fichajes para este empleado en esta fecha
-        const existingFichajes = await fichajesService.obtenerFichajesDelDia(
-          employee.id,
-          workDateStr
-        );
-
-        if (existingFichajes.length === 0) {
-          // No existen fichajes, crear entrada y salida
-          const startHour = 8 + Math.floor(Math.random() * 2); // 8:00 o 9:00 AM
-          const startMinute = Math.floor(Math.random() * 4) * 15; // 00, 15, 30, o 45 minutos
-          const endHour = 17 + Math.floor(Math.random() * 2); // 5:00 o 6:00 PM
-          const endMinute = Math.floor(Math.random() * 4) * 15; // 00, 15, 30, o 45 minutos
-
-          const clockIn = new Date(`${workDateStr}T${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}:00`);
-          const clockOut = new Date(`${workDateStr}T${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}:00`);
-
-          // Crear fichaje de entrada
-          // crearFichaje ahora acepta parámetros separados: (employeeId, entryType, shiftId, source, notes)
-          await fichajesService.crearFichaje(
-            employee.id,
-            'clock_in',
-            null,
-            'web',
-            null
-          );
-
-          // Crear fichaje de salida
-          await fichajesService.crearFichaje(
-            employee.id,
-            'clock_out',
-            null,
-            'web',
-            null
-          );
-
-          console.log(`⏰ Fichajes creados para ${employee.firstName} ${employee.lastName} el ${workDateStr}`);
-        }
-      }
-    }
-
-    // PASO 4: Crear entrada del día actual para simular empleado presente
-    const todayStr = today.toISOString().split('T')[0];
-    if (createdEmployees.length > 0) {
-      // Verificar si ya hay fichajes para hoy
-      const existingTodayFichajes = await db.select()
-        .from(clockEntries)
-        .where(
-          eq(clockEntries.employeeId, createdEmployees[0].id)
-        )
-        .limit(1);
-
-      // Filtrar por fecha usando SQL raw
-      const fichajesToday = existingTodayFichajes.filter(f => 
-        f.timestamp.toISOString().split('T')[0] === todayStr
-      );
-
-      if (fichajesToday.length === 0) {
-        // Crear fichaje de entrada para el primer empleado (simula que está presente)
-        // crearFichaje ahora acepta parámetros separados: (employeeId, entryType, shiftId, source, notes)
-        await fichajesService.crearFichaje(
-          createdEmployees[0].id,
-          'clock_in',
-          null,
-          'web',
-          null
-        );
-        console.log(`📍 Fichaje de entrada de hoy creado para ${createdEmployees[0].firstName}`);
       }
     }
 
