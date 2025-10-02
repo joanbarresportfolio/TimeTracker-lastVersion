@@ -314,7 +314,7 @@ function EmployeeTimeTracking() {
                         <Clock className="w-5 h-5 text-primary" />
                         <div>
                           <p className="font-medium">
-                            {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
+                            {formatTime(schedule.expectedStartTime || schedule.startTime)} - {formatTime(schedule.expectedEndTime || schedule.endTime)}
                           </p>
                           <p className="text-sm text-muted-foreground">
                             Turno programado
@@ -402,7 +402,7 @@ function EmployeeTimeTracking() {
                         {new Date(scheduleDate).toLocaleDateString('es-ES')}
                       </td>
                       <td className="py-3 px-4 text-foreground">
-                        {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
+                        {formatTime(schedule.expectedStartTime || schedule.startTime)} - {formatTime(schedule.expectedEndTime || schedule.endTime)}
                       </td>
                       <td className="py-3 px-4">
                         <Badge className={scheduleStatus.color}>

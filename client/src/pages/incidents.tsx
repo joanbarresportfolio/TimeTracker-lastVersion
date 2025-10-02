@@ -160,10 +160,9 @@ export default function Incidents() {
   const form = useForm<InsertIncident>({
     resolver: zodResolver(insertIncidentSchema),
     defaultValues: {
-      employeeId: "",
-      type: "late",
+      userId: "",
+      incidentType: "late",
       description: "",
-      date: new Date(),
       status: "pending",
     },
   });
@@ -179,10 +178,9 @@ export default function Incidents() {
   const handleEdit = (incident: Incident) => {
     setEditingIncident(incident);
     form.reset({
-      employeeId: incident.employeeId,
-      type: incident.type,
+      userId: incident.userId,
+      incidentType: incident.incidentType,
       description: incident.description,
-      date: incident.date,
       status: incident.status,
     });
     setIsDialogOpen(true);
@@ -222,7 +220,7 @@ export default function Incidents() {
   };
 
   const filteredIncidents = incidents?.filter(incident => {
-    const employee = getEmployeeInfo(incident.employeeId);
+    const employee = getEmployeeInfo(incident.userId);
     if (!employee) return false;
     
     const matchesSearch = 
@@ -232,7 +230,7 @@ export default function Incidents() {
       incident.description.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = selectedStatus === "all" || incident.status === selectedStatus;
-    const matchesType = selectedType === "all" || incident.type === selectedType;
+    const matchesType = selectedType === "all" || incident.incidentType === selectedType;
     
     return matchesSearch && matchesStatus && matchesType;
   }) || [];
@@ -329,10 +327,9 @@ export default function Incidents() {
                   onClick={() => {
                     setEditingIncident(null);
                     form.reset({
-                      employeeId: "",
-                      type: "late",
+                      userId: "",
+                      incidentType: "late",
                       description: "",
-                      date: new Date(),
                       status: "pending",
                     });
                   }}
@@ -352,7 +349,7 @@ export default function Incidents() {
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="employeeId"
+                      name="userId"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Empleado</FormLabel>
@@ -376,7 +373,7 @@ export default function Incidents() {
                     />
                     <FormField
                       control={form.control}
-                      name="type"
+                      name="incidentType"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tipo de Incidencia</FormLabel>
@@ -408,25 +405,6 @@ export default function Incidents() {
                             <Textarea 
                               {...field} 
                               data-testid="textarea-description"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fecha</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="datetime-local" 
-                              {...field} 
-                              value={field.value instanceof Date ? field.value.toISOString().slice(0, 16) : field.value}
-                              onChange={(e) => field.onChange(new Date(e.target.value))}
-                              data-testid="input-incident-date"
                             />
                           </FormControl>
                           <FormMessage />
@@ -485,7 +463,7 @@ export default function Incidents() {
       {/* Lista de incidencias */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredIncidents.map((incident) => {
-          const employee = getEmployeeInfo(incident.employeeId);
+          const employee = getEmployeeInfo(incident.userId);
           if (!employee) return null;
 
           const statusInfo = getStatusInfo(incident.status);
@@ -515,12 +493,12 @@ export default function Incidents() {
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Tipo:</span>
-                    <span className="font-medium">{getIncidentTypeLabel(incident.type)}</span>
+                    <span className="font-medium">{getIncidentTypeLabel(incident.incidentType)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Fecha:</span>
                     <span className="font-medium">
-                      {new Date(incident.date).toLocaleDateString('es-ES')} {new Date(incident.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(incident.createdAt).toLocaleDateString('es-ES')} {new Date(incident.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                   <div className="text-sm">

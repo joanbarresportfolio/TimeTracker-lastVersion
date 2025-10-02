@@ -74,7 +74,7 @@ export default function Schedules() {
 
   // ⚠️ HOOKS DE MUTACIÓN - DEBEN estar SIEMPRE antes de returns condicionales
   const createDateScheduleMutation = useMutation({
-    mutationFn: (data: { employeeId: string; date: string; startTime: string; endTime: string }) => 
+    mutationFn: (data: { employeeId: string; date: string; expectedStartTime: string; expectedEndTime: string }) => 
       apiRequest("POST", "/api/date-schedules", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
@@ -110,7 +110,7 @@ export default function Schedules() {
   });
 
   const createBulkDateScheduleMutation = useMutation({
-    mutationFn: (data: { schedules: Array<{ employeeId: string; date: string; startTime: string; endTime: string }> }) => 
+    mutationFn: (data: { schedules: Array<{ employeeId: string; date: string; expectedStartTime: string; expectedEndTime: string }> }) => 
       apiRequest("POST", "/api/date-schedules/bulk", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
@@ -526,16 +526,16 @@ export default function Schedules() {
         await createDateScheduleMutation.mutateAsync({
           employeeId: selectedEmployee.id,
           date: selectedDates[0].dateStr,
-          startTime: scheduleForm.startTime,
-          endTime: scheduleForm.endTime,
+          expectedStartTime: scheduleForm.startTime,
+          expectedEndTime: scheduleForm.endTime,
         });
       } else {
         await createBulkDateScheduleMutation.mutateAsync({
           schedules: selectedDates.map(selected => ({
             employeeId: selectedEmployee.id,
             date: selected.dateStr,
-            startTime: scheduleForm.startTime,
-            endTime: scheduleForm.endTime,
+            expectedStartTime: scheduleForm.startTime,
+            expectedEndTime: scheduleForm.endTime,
           }))
         });
       }

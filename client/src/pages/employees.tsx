@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
-import { createEmployeeSchema } from "@shared/schema";
-import type { Employee, InsertEmployee } from "@shared/schema";
+import { createUserSchema } from "@shared/schema";
+import type { Employee, CreateUser } from "@shared/schema";
 import { z } from "zod";
 
 // Tipos específicos para las llamadas a la API (con fechas como strings)
@@ -21,14 +21,14 @@ type CreateEmployeePayload = {
   firstName: string;
   lastName: string;
   email: string;
-  department: string;
-  position: string;
+  departmentId?: string;
   hireDate: string; // String para el backend
   isActive?: boolean;
-  password: string;
+  passwordHash: string;
+  role: "admin" | "employee";
 };
 
-type UpdateEmployeePayload = Omit<CreateEmployeePayload, 'password'>;
+type UpdateEmployeePayload = Omit<CreateEmployeePayload, 'passwordHash' | 'role'>;
 
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -113,7 +113,7 @@ export default function Employees() {
   });
 
   // Esquema para el formulario (frontend - usa Date objects)
-  const employeeFormSchema = createEmployeeSchema.extend({
+  const employeeFormSchema = createUserSchema.extend({
     hireDate: z.date() // El formulario usa Date objects
   });
   
@@ -126,18 +126,18 @@ export default function Employees() {
       firstName: "",
       lastName: "",
       email: "",
-      department: "",
-      position: "",
+      departmentId: "",
       hireDate: new Date(),
       isActive: true,
-      password: "",
+      passwordHash: "",
+      role: "employee",
     },
   });
 
   const onSubmit = (data: EmployeeFormData) => {
     if (editingEmployee) {
-      // Para actualizar, omitimos el password y convertimos fecha
-      const { password, ...updateData } = data;
+      // Para actualizar, omitimos el passwordHash y role, y convertimos fecha
+      const { passwordHash, role, ...updateData } = data;
       const updatePayload = {
         ...updateData,
         hireDate: updateData.hireDate.toISOString()
@@ -161,11 +161,11 @@ export default function Employees() {
       firstName: employee.firstName,
       lastName: employee.lastName,
       email: employee.email,
-      department: employee.department,
-      position: employee.position,
+      departmentId: employee.department, // Mapear department a departmentId
       hireDate: new Date(employee.hireDate), // Convertir string a Date object
       isActive: employee.isActive,
-      password: "password123", // Password dummy para validación del formulario
+      passwordHash: "password123", // Password dummy para validación del formulario
+      role: employee.role as "admin" | "employee",
     });
     setIsDialogOpen(true);
   };
@@ -269,11 +269,11 @@ export default function Employees() {
                       firstName: "",
                       lastName: "",
                       email: "",
-                      department: "",
-                      position: "",
+                      departmentId: "",
                       hireDate: new Date(),
                       isActive: true,
-                      password: "",
+                      passwordHash: "",
+                      role: "employee",
                     });
                   }}
                   data-testid="button-add-employee"
@@ -347,7 +347,7 @@ export default function Employees() {
                     {!editingEmployee && (
                       <FormField
                         control={form.control}
-                        name="password"
+                        name="passwordHash"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Contraseña</FormLabel>
@@ -361,20 +361,19 @@ export default function Employees() {
                     )}
                     <FormField
                       control={form.control}
-                      name="department"
+                      name="role"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Departamento</FormLabel>
+                          <FormLabel>Rol</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger data-testid="select-department">
+                              <SelectTrigger data-testid="select-role">
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="Administración">Administración</SelectItem>
-                              <SelectItem value="Grupo Chova Felix">Grupo Chova Felix</SelectItem>
-                              <SelectItem value="Marina Fruit">Marina Fruit</SelectItem>
+                              <SelectItem value="employee">Empleado</SelectItem>
+                              <SelectItem value="admin">Administrador</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -383,13 +382,23 @@ export default function Employees() {
                     />
                     <FormField
                       control={form.control}
-                      name="position"
+                      name="departmentId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Posición</FormLabel>
-                          <FormControl>
-                            <Input {...field} data-testid="input-position" />
-                          </FormControl>
+                          <FormLabel>Departamento (opcional)</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-department">
+                                <SelectValue placeholder="Seleccionar..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="">Ninguno</SelectItem>
+                              <SelectItem value="Administración">Administración</SelectItem>
+                              <SelectItem value="Grupo Chova Felix">Grupo Chova Felix</SelectItem>
+                              <SelectItem value="Marina Fruit">Marina Fruit</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
