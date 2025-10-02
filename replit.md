@@ -4,24 +4,35 @@
 
 This is a comprehensive employee time tracking and management system built as a full-stack application with both web and mobile interfaces. The system allows organizations to manage employee records, track work hours with clock-in/clock-out functionality, manage schedules and shifts, handle workplace incidents, and generate detailed reports. The application features modern, responsive interfaces with real-time updates and comprehensive CRUD operations for all major entities.
 
-## Recent Changes (October 1, 2025)
+## Recent Changes (October 2, 2025)
 
-### Mobile App Integration
+### Database Restructure with Spanish Schema
+- **New Table Structure**: Completely restructured database with Spanish table names:
+  - `empleado`: Employee records (replaces old `usuarios` table)
+  - `horario_planificado`: Scheduled work hours by date
+  - `fichaje`: Individual clock records (entrada/salida/pausa_inicio/pausa_fin)
+  - `jornada_diaria`: Daily work summary with automatic calculations
+- **Database Trigger**: Implemented PostgreSQL trigger that automatically updates `jornada_diaria` after each `fichaje` insert:
+  - Calculates `hora_inicio` (first entrada of the day)
+  - Calculates `hora_fin` (last salida of the day)
+  - Automatically computes `horas_trabajadas` (worked hours minus breaks)
+  - Tracks `horas_pausas` (total break time)
+  - Updates `estado` (abierta/cerrada based on whether salida exists)
+- **Data Migration**: Successfully migrated all existing employee data from old schema to new Spanish structure
+- **Storage Layer**: Completely rewrote storage.ts to use new tables while maintaining API backward compatibility:
+  - Maps between Spanish database structure and English API types
+  - Implements individual clock records (separate entrada and salida fichajes)
+  - Uses database trigger for automatic hour calculations instead of manual computation
+- **Clock-in/Clock-out**: Updated to use new fichaje system:
+  - Clock-in creates fichaje with tipo_registro='entrada'
+  - Clock-out creates fichaje with tipo_registro='salida'  
+  - Trigger automatically updates jornada_diaria with calculated totals
+
+### Previous Changes (October 1, 2025)
 - **JWT Authentication**: Implemented JWT token-based authentication in backend to support mobile app alongside session-based auth for web app
-- **History Screen**: Created HistoryScreen component for mobile app to display time entry history with filtering capabilities
-- **Navigation Integration**: Integrated History screen into mobile app navigation stack
-- **API Configuration**: Configured mobile app to connect to correct backend server URL (workspace.joanbarresportf.repl.co in production, localhost in development)
-- **Authentication Fix**: Updated middleware (requireAuth, requireAdmin, requireEmployeeAccess) to support both session and token authentication methods
-- **CORS Configuration**: Added CORS middleware to backend server to allow cross-origin requests from Expo web app running on different subdomain
-- **Expo Web Fix**: Fixed mobile app web version to correctly detect Replit environment and use appropriate backend URL
-
-### Mobile App Features
-- Dashboard with clock-in/clock-out functionality
-- Schedules viewing
-- Incidents reporting
-- Time entry history with date filtering
-- Real-time status updates
-- Full web compatibility with Expo web platform
+- **Mobile App Integration**: Added History screen, navigation, and proper API configuration
+- **Authentication Fix**: Updated middleware to support both session and token authentication methods
+- **CORS Configuration**: Added CORS middleware for cross-origin requests from mobile app
 
 ## User Preferences
 
