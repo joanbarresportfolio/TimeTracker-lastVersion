@@ -55,7 +55,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIncidentSchema, loginSchema, createEmployeeSchema, updateEmployeeSchema, bulkDateScheduleCreateSchema, insertDateScheduleSchema } from "@shared/schema";
+import { insertIncidentSchema, loginSchema, createUserSchema as createEmployeeSchema, updateUserSchema as updateEmployeeSchema, bulkScheduledShiftCreateSchema, insertScheduledShiftSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess, generateToken } from "./middleware/auth";
 import { z } from "zod";
 
@@ -342,17 +342,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Datos recibidos en backend:", req.body);
       
-      // PASO 1: Validar datos de entrada
-      const employeeData = createEmployeeSchema.parse(req.body);
-      console.log("Datos después de validación:", employeeData);
+      // PASO 1: Validar datos de entrada con el nuevo schema
+      const userData = createEmployeeSchema.parse(req.body);
+      console.log("Datos después de validación:", userData);
       
-      // PASO 2: Crear empleado (password se encripta automáticamente)
+      // PASO 2: Convertir al formato legacy que espera el storage
+      // El storage espera CreateEmployee con department, position, conventionHours
+      const employeeData = {
+        employeeNumber: userData.employeeNumber,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        password: userData.passwordHash,
+        role: userData.role,
+        department: req.body.department || "", // Mantener compatibilidad con frontend antiguo
+        position: req.body.position || "", // Mantener compatibilidad con frontend antiguo
+        hireDate: userData.hireDate,
+        conventionHours: req.body.conventionHours || 1752, // Valor por defecto
+        isActive: userData.isActive ?? true,
+      };
+      
+      // PASO 3: Crear empleado (password se encripta automáticamente)
       const employee = await storage.createEmployeeWithPassword(employeeData);
       
-      // PASO 3: SEGURIDAD - Eliminar password de respuesta
+      // PASO 4: SEGURIDAD - Eliminar password de respuesta
       const { password, ...safeEmployee } = employee;
       
-      // PASO 4: Responder con empleado creado
+      // PASO 5: Responder con empleado creado
       res.status(201).json(safeEmployee);
       
     } catch (error) {
@@ -522,7 +538,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get("/api/time-entries", requireAuth, async (req, res) => {
     try {
-      const { fichajesService } = await import("./storage");
       const { employeeId, date } = req.query;
       
       // CONTROL DE ACCESO: Employees solo ven sus registros, admins todos
@@ -530,125 +545,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? req.user!.id 
         : (employeeId as string | undefined);
 
-      // Usar el nuevo adaptador que convierte jornadas a TimeEntries
-      const timeEntries = await fichajesService.obtenerTimeEntriesDesdeJornadas(
-        targetEmployeeId,
-        date as string | undefined,
-        date as string | undefined
-      );
-      
-      res.json(timeEntries);
+      // Usar getTimeEntriesByEmployee del storage
+      if (targetEmployeeId) {
+        const timeEntries = await storage.getTimeEntriesByEmployee(targetEmployeeId);
+        
+        // Filtrar por fecha si se especifica
+        const filteredEntries = date 
+          ? timeEntries.filter(entry => entry.date === date)
+          : timeEntries;
+        
+        res.json(filteredEntries);
+      } else {
+        // Admin sin filtro de empleado: obtener todos
+        const allEntries = await storage.getTimeEntries();
+        
+        // Filtrar por fecha si se especifica
+        const filteredEntries = date 
+          ? allEntries.filter(entry => entry.date === date)
+          : allEntries;
+        
+        res.json(filteredEntries);
+      }
     } catch (error) {
       res.status(500).json({ message: "Error al obtener registros de tiempo" });
     }
   });
 
   /**
-   * POST /api/time-entries
-   * ======================
-   * 
-   * Crea un registro de tiempo manual (solo administradores).
-   * 
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden crear registros manuales
-   * 
-   * DIFERENCIA CON CLOCK-IN/OUT:
-   * - Esta ruta es para registros manuales/correcciones
-   * - clock-in/clock-out tienen validación de horarios
-   * - Esta ruta omite validaciones de ventana de tiempo
-   * 
-   * FUNCIONALIDAD:
-   * - Cálculo automático de totalHours si clockIn y clockOut presentes
-   * - Permite crear registros completos o parciales
-   * - Validación de esquema con Zod
-   * 
-   * REQUEST BODY:
-   * {
-   *   "employeeId": "emp-id",
-   *   "clockIn": "2024-03-15T08:00:00Z",
-   *   "clockOut": "2024-03-15T17:00:00Z", // opcional
-   *   "date": "2024-03-15"
-   * }
-   * 
-   * RESPONSES:
-   * - 201: Registro creado exitosamente
-   * - 400: Datos inválidos
-   * - 401: No autorizado (no admin)
-   * - 500: Error interno del servidor
+   * NOTA: Las rutas POST /api/time-entries y PUT /api/time-entries/:id
+   * han sido eliminadas porque el schema insertTimeEntrySchema ya no existe.
+   * El nuevo sistema usa fichajes individuales (clock_entries) que se gestionan
+   * a través de /api/fichajes.
    */
-  app.post("/api/time-entries", requireAdmin, async (req, res) => {
-    try {
-      // PASO 1: Validar datos de entrada
-      const timeEntryData = insertTimeEntrySchema.parse(req.body);
-      
-      // PASO 2: Crear registro (con cálculo automático de horas)
-      const timeEntry = await storage.createTimeEntry(timeEntryData);
-      
-      // PASO 3: Responder con registro creado
-      res.status(201).json(timeEntry);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Datos de registro de tiempo inválidos", errors: error.errors });
-      }
-      res.status(500).json({ message: "Error al crear registro de tiempo" });
-    }
-  });
-
-  /**
-   * PUT /api/time-entries/:id
-   * =========================
-   * 
-   * Actualiza un registro de tiempo existente (solo administradores).
-   * 
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden modificar registros
-   * 
-   * FUNCIONALIDAD AUTOMÁTICA:
-   * - Recalcula totalHours automáticamente si se cambian timestamps
-   * - Permite actualización parcial de campos
-   * - Mantiene integridad de datos
-   * 
-   * CASOS DE USO:
-   * - Correcciones de timestamps incorrectos
-   * - Agregar clockOut a registros pendientes
-   * - Ajustes por solicitudes de empleados
-   * - Corrección de errores de captura
-   * 
-   * REQUEST BODY (todos los campos opcionales):
-   * {
-   *   "clockIn": "2024-03-15T08:15:00Z",
-   *   "clockOut": "2024-03-15T17:30:00Z",
-   *   "date": "2024-03-15"
-   * }
-   * 
-   * RESPONSES:
-   * - 200: Registro actualizado con horas recalculadas
-   * - 400: Datos inválidos
-   * - 401: No autorizado
-   * - 404: Registro no encontrado
-   * - 500: Error interno del servidor
-   */
-  app.put("/api/time-entries/:id", requireAdmin, async (req, res) => {
-    try {
-      // PASO 1: Validar datos (schema parcial para actualización)
-      const timeEntryData = insertTimeEntrySchema.partial().parse(req.body);
-      
-      // PASO 2: Actualizar registro (con recálculo automático)
-      const timeEntry = await storage.updateTimeEntry(req.params.id, timeEntryData);
-      
-      if (!timeEntry) {
-        return res.status(404).json({ message: "Registro de tiempo no encontrado" });
-      }
-      
-      // PASO 3: Responder con registro actualizado
-      res.json(timeEntry);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Datos de registro de tiempo inválidos", errors: error.errors });
-      }
-      res.status(500).json({ message: "Error al actualizar registro de tiempo" });
-    }
-  });
 
   /**
    * POST /api/time-entries/clock-in
@@ -823,16 +751,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const tipoRegistro = req.body.tipoRegistro || req.body.tipo_registro;
       
-      const fichajeData = {
-        idEmpleado: employeeId,
-        tipoRegistro: tipoRegistro,
-        timestampRegistro: req.body.timestampRegistro ? new Date(req.body.timestampRegistro) : new Date(),
-        origen: req.body.origen || 'web',
-        observaciones: req.body.observaciones || null,
-        idTurno: req.body.idTurno || null
-      };
+      // crearFichaje ahora acepta parámetros separados: (employeeId, entryType, shiftId, source, notes)
+      const entryType = tipoRegistro as 'clock_in' | 'clock_out' | 'break_start' | 'break_end';
+      const shiftId = req.body.idTurno || null;
+      const source = (req.body.origen || 'web') as 'mobile_app' | 'physical_terminal' | 'web';
+      const notes = req.body.observaciones || null;
 
-      const fichaje = await fichajesService.crearFichaje(fichajeData);
+      const fichaje = await fichajesService.crearFichaje(
+        employeeId,
+        entryType,
+        shiftId,
+        source,
+        notes
+      );
       res.status(201).json(fichaje);
     } catch (error) {
       console.error("Error al crear fichaje:", error);
@@ -849,12 +780,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/fichajes/:employeeId", requireEmployeeAccess, async (req, res) => {
     try {
       const { fichajesService } = await import("./storage");
-      const { startDate, endDate } = req.query;
+      const { date } = req.query;
       
-      const fichajes = await fichajesService.obtenerFichajes(
+      if (!date) {
+        return res.status(400).json({ message: "El parámetro 'date' es requerido (formato YYYY-MM-DD)" });
+      }
+      
+      // obtenerFichajesDelDia solo acepta employeeId y fecha (no rango)
+      const fichajes = await fichajesService.obtenerFichajesDelDia(
         req.params.employeeId,
-        startDate as string,
-        endDate as string
+        date as string
       );
       
       res.json(fichajes);
@@ -873,15 +808,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/jornadas/:employeeId", requireEmployeeAccess, async (req, res) => {
     try {
       const { fichajesService } = await import("./storage");
-      const { startDate, endDate } = req.query;
+      const { date } = req.query;
       
-      const jornadas = await fichajesService.obtenerJornadas(
+      if (!date) {
+        return res.status(400).json({ message: "El parámetro 'date' es requerido (formato YYYY-MM-DD)" });
+      }
+      
+      // obtenerJornadaDiaria obtiene una sola jornada por fecha
+      const jornada = await fichajesService.obtenerJornadaDiaria(
         req.params.employeeId,
-        startDate as string,
-        endDate as string
+        date as string
       );
       
-      res.json(jornadas);
+      res.json(jornada || null);
     } catch (error) {
       console.error("Error al obtener jornadas:", error);
       res.status(500).json({ message: "Error al obtener jornadas" });
@@ -898,9 +837,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { fichajesService } = await import("./storage");
       
-      const jornada = await fichajesService.obtenerJornadaActual(req.params.employeeId);
+      // obtenerJornadaDiaria con fecha de hoy
+      const today = new Date().toISOString().split('T')[0];
+      const jornada = await fichajesService.obtenerJornadaDiaria(req.params.employeeId, today);
       
-      res.json(jornada);
+      res.json(jornada || null);
     } catch (error) {
       console.error("Error al obtener jornada actual:", error);
       res.status(500).json({ message: "Error al obtener jornada actual" });
@@ -912,14 +853,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
    * =====================================
    * 
    * Obtiene el último fichaje del empleado (para determinar próxima acción)
+   * NOTA: obtenerUltimoFichaje ya no existe, se obtiene el fichaje de hoy
    */
   app.get("/api/fichajes/:employeeId/ultimo", requireEmployeeAccess, async (req, res) => {
     try {
       const { fichajesService } = await import("./storage");
       
-      const fichaje = await fichajesService.obtenerUltimoFichaje(req.params.employeeId);
+      // Obtener fichajes de hoy y devolver el último
+      const today = new Date().toISOString().split('T')[0];
+      const fichajes = await fichajesService.obtenerFichajesDelDia(req.params.employeeId, today);
       
-      res.json(fichaje);
+      const ultimoFichaje = fichajes.length > 0 ? fichajes[fichajes.length - 1] : null;
+      
+      res.json(ultimoFichaje);
     } catch (error) {
       console.error("Error al obtener último fichaje:", error);
       res.status(500).json({ message: "Error al obtener último fichaje" });
@@ -1036,8 +982,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const incidentData = insertIncidentSchema.parse(req.body);
       
       // PASO 2: SEGURIDAD - Empleados solo pueden crear incidencias sobre sí mismos
+      // NOTA: El schema ahora usa 'userId' en lugar de 'employeeId'
       if (req.user!.role === "employee") {
-        incidentData.employeeId = req.user!.id; // Forzar al ID del usuario actual
+        incidentData.userId = req.user!.id; // Forzar al ID del usuario actual
       }
       
       // PASO 3: Crear incidencia en base de datos
@@ -1390,8 +1337,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/date-schedules", requireAdmin, async (req, res) => {
     try {
-      const dateSchedule = insertDateScheduleSchema.parse(req.body);
-      const newDateSchedule = await storage.createDateSchedule(dateSchedule);
+      // El schema correcto es insertScheduledShiftSchema
+      const shiftData = insertScheduledShiftSchema.parse(req.body);
+      
+      // Convertir al formato legacy que espera el storage (InsertDateSchedule)
+      const [startHour, startMin] = shiftData.expectedStartTime.split(':').map(Number);
+      const [endHour, endMin] = shiftData.expectedEndTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      const workMinutes = endMinutes - startMinutes;
+      
+      const dateScheduleData = {
+        employeeId: shiftData.employeeId,
+        date: shiftData.date,
+        startTime: shiftData.expectedStartTime,
+        endTime: shiftData.expectedEndTime,
+        workHours: workMinutes,
+        isActive: shiftData.status === 'scheduled' || shiftData.status === 'confirmed',
+      };
+      
+      const newDateSchedule = await storage.createDateSchedule(dateScheduleData);
       res.json(newDateSchedule);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1436,7 +1401,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/date-schedules/bulk", requireAdmin, async (req, res) => {
     try {
-      const bulkData = bulkDateScheduleCreateSchema.parse(req.body);
+      // El schema correcto es bulkScheduledShiftCreateSchema
+      const bulkData = bulkScheduledShiftCreateSchema.parse(req.body);
+      
+      // El storage ya está adaptado para trabajar con el nuevo formato
       const createdSchedules = await storage.createBulkDateSchedules(bulkData);
       res.json({ 
         message: "Horarios por fecha creados exitosamente",
@@ -1468,7 +1436,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/date-schedules/:id", requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const updateData = insertDateScheduleSchemaBase.partial().parse(req.body);
+      // El schema correcto es insertScheduledShiftSchema
+      const shiftUpdateData = insertScheduledShiftSchema.partial().parse(req.body);
+      
+      // Convertir al formato legacy si hay campos de tiempo
+      const updateData: any = {};
+      
+      if (shiftUpdateData.employeeId) updateData.employeeId = shiftUpdateData.employeeId;
+      if (shiftUpdateData.date) updateData.date = shiftUpdateData.date;
+      if (shiftUpdateData.expectedStartTime) updateData.startTime = shiftUpdateData.expectedStartTime;
+      if (shiftUpdateData.expectedEndTime) updateData.endTime = shiftUpdateData.expectedEndTime;
+      
+      // Calcular workHours si se especifican ambos tiempos
+      if (shiftUpdateData.expectedStartTime && shiftUpdateData.expectedEndTime) {
+        const [startHour, startMin] = shiftUpdateData.expectedStartTime.split(':').map(Number);
+        const [endHour, endMin] = shiftUpdateData.expectedEndTime.split(':').map(Number);
+        const startMinutes = startHour * 60 + startMin;
+        const endMinutes = endHour * 60 + endMin;
+        updateData.workHours = endMinutes - startMinutes;
+      }
+      
+      if (shiftUpdateData.status !== undefined) {
+        updateData.isActive = shiftUpdateData.status === 'scheduled' || shiftUpdateData.status === 'confirmed';
+      }
+      
       const updatedSchedule = await storage.updateDateSchedule(id, updateData);
       
       if (!updatedSchedule) {

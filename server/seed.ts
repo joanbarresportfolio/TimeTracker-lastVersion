@@ -18,7 +18,7 @@
  */
 
 import { db } from "./db";
-import { usuarios, fichajes, horariosPlanificados, incidencias } from "@shared/schema";
+import { users, clockEntries, scheduledShifts, incidents } from "@shared/schema";
 import { storage } from "./storage";
 import { and, eq, or } from "drizzle-orm";
 
@@ -33,11 +33,11 @@ export async function seedDatabase() {
     // PASO 1: Crear usuario administrador si no existe
     // Verifica por email Y employeeNumber para evitar duplicados
     let adminEmployee = await db.select()
-      .from(usuarios)
+      .from(users)
       .where(
         or(
-          eq(usuarios.numEmpleado, "ADMIN001"),
-          eq(usuarios.email, "admin@admin.com")
+          eq(users.employeeNumber, "ADMIN001"),
+          eq(users.email, "admin@admin.com")
         )
       )
       .limit(1);
@@ -285,24 +285,23 @@ export async function seedDatabase() {
           const clockOut = new Date(`${workDateStr}T${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}:00`);
 
           // Crear fichaje de entrada
-          await fichajesService.crearFichaje({
-            idEmpleado: employee.id,
-            tipoRegistro: 'entrada',
-            timestampRegistro: clockIn,
-            origen: 'web',
-            observaciones: null,
-            idTurno: null
-          });
+          // crearFichaje ahora acepta parámetros separados: (employeeId, entryType, shiftId, source, notes)
+          await fichajesService.crearFichaje(
+            employee.id,
+            'clock_in',
+            null,
+            'web',
+            null
+          );
 
           // Crear fichaje de salida
-          await fichajesService.crearFichaje({
-            idEmpleado: employee.id,
-            tipoRegistro: 'salida',
-            timestampRegistro: clockOut,
-            origen: 'web',
-            observaciones: null,
-            idTurno: null
-          });
+          await fichajesService.crearFichaje(
+            employee.id,
+            'clock_out',
+            null,
+            'web',
+            null
+          );
 
           console.log(`⏰ Fichajes creados para ${employee.firstName} ${employee.lastName} el ${workDateStr}`);
         }
@@ -314,27 +313,27 @@ export async function seedDatabase() {
     if (createdEmployees.length > 0) {
       // Verificar si ya hay fichajes para hoy
       const existingTodayFichajes = await db.select()
-        .from(fichajes)
+        .from(clockEntries)
         .where(
-          eq(fichajes.idEmpleado, createdEmployees[0].id)
+          eq(clockEntries.employeeId, createdEmployees[0].id)
         )
         .limit(1);
 
       // Filtrar por fecha usando SQL raw
       const fichajesToday = existingTodayFichajes.filter(f => 
-        f.timestampRegistro.toISOString().split('T')[0] === todayStr
+        f.timestamp.toISOString().split('T')[0] === todayStr
       );
 
       if (fichajesToday.length === 0) {
         // Crear fichaje de entrada para el primer empleado (simula que está presente)
-        await fichajesService.crearFichaje({
-          idEmpleado: createdEmployees[0].id,
-          tipoRegistro: 'entrada',
-          timestampRegistro: new Date(`${todayStr}T08:00:00`),
-          origen: 'web',
-          observaciones: null,
-          idTurno: null
-        });
+        // crearFichaje ahora acepta parámetros separados: (employeeId, entryType, shiftId, source, notes)
+        await fichajesService.crearFichaje(
+          createdEmployees[0].id,
+          'clock_in',
+          null,
+          'web',
+          null
+        );
         console.log(`📍 Fichaje de entrada de hoy creado para ${createdEmployees[0].firstName}`);
       }
     }
