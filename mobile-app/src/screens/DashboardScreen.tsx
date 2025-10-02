@@ -25,6 +25,8 @@ import {
   getCurrentTimeEntry,
   clockIn,
   clockOut,
+  startBreak,
+  endBreak,
   getTimeStats,
   logoutUser,
 } from '../services/api';
@@ -49,8 +51,10 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
   const { user } = route.params;
   const [currentEntry, setCurrentEntry] = useState<TimeEntry | null>(null);
   const [isWorking, setIsWorking] = useState(false);
+  const [isOnBreak, setIsOnBreak] = useState(false);
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
+  const [breakLoading, setBreakLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<TimeStats | null>(null);
 
@@ -113,6 +117,7 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
       const entry = await clockOut();
       setCurrentEntry(entry);
       setIsWorking(false);
+      setIsOnBreak(false); // Al salir, ya no está en pausa
       
       Alert.alert('¡Salida Registrada!', 'Tu salida ha sido registrada correctamente');
       
@@ -128,6 +133,52 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
       Alert.alert('Error de Fichaje', errorMessage);
     } finally {
       setClockLoading(false);
+    }
+  };
+
+  /**
+   * Maneja el inicio de pausa
+   */
+  const handleStartBreak = async () => {
+    try {
+      setBreakLoading(true);
+      
+      await startBreak();
+      setIsOnBreak(true);
+      
+      Alert.alert('¡Pausa Iniciada!', 'Tu pausa ha sido registrada correctamente');
+      
+    } catch (error) {
+      console.error('Error al iniciar pausa:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Error al iniciar pausa';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setBreakLoading(false);
+    }
+  };
+
+  /**
+   * Maneja el fin de pausa
+   */
+  const handleEndBreak = async () => {
+    try {
+      setBreakLoading(true);
+      
+      await endBreak();
+      setIsOnBreak(false);
+      
+      Alert.alert('¡Pausa Finalizada!', 'Has vuelto al trabajo');
+      
+    } catch (error) {
+      console.error('Error al finalizar pausa:', error);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Error al finalizar pausa';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setBreakLoading(false);
     }
   };
 
@@ -234,8 +285,11 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
           
           {currentEntry ? (
             <View style={styles.timeEntryInfo}>
-              <Text style={[styles.statusText, isWorking ? styles.working : styles.notWorking]}>
-                {isWorking ? 'TRABAJANDO' : 'FUERA DE SERVICIO'}
+              <Text style={[
+                styles.statusText, 
+                isOnBreak ? styles.onBreak : (isWorking ? styles.working : styles.notWorking)
+              ]}>
+                {isOnBreak ? 'EN PAUSA' : (isWorking ? 'TRABAJANDO' : 'FUERA DE SERVICIO')}
               </Text>
               <Text style={styles.clockInText}>
                 Entrada: {formatTime(currentEntry.clockIn)}
@@ -270,6 +324,29 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
               </Text>
             )}
           </TouchableOpacity>
+
+          {/* Botones de pausa - solo mostrar cuando está trabajando */}
+          {isWorking && !currentEntry?.clockOut && (
+            <View style={styles.breakButtonsContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.breakButton,
+                  isOnBreak ? styles.endBreakButton : styles.startBreakButton,
+                  breakLoading && styles.clockButtonDisabled
+                ]}
+                onPress={isOnBreak ? handleEndBreak : handleStartBreak}
+                disabled={breakLoading}
+              >
+                {breakLoading ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text style={styles.breakButtonText}>
+                    {isOnBreak ? 'Finalizar Pausa' : 'Iniciar Pausa'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Tarjeta de estadísticas */}
@@ -413,6 +490,9 @@ const styles = StyleSheet.create({
   notWorking: {
     color: '#ef4444',
   },
+  onBreak: {
+    color: '#f59e0b',
+  },
   clockInText: {
     fontSize: 16,
     color: '#374151',
@@ -445,6 +525,25 @@ const styles = StyleSheet.create({
   clockButtonText: {
     color: '#ffffff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  breakButtonsContainer: {
+    marginTop: 12,
+  },
+  breakButton: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  startBreakButton: {
+    backgroundColor: '#f59e0b',
+  },
+  endBreakButton: {
+    backgroundColor: '#10b981',
+  },
+  breakButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
     fontWeight: '600',
   },
   statsGrid: {

@@ -276,6 +276,40 @@ export async function clockOut(): Promise<TimeEntry> {
 }
 
 /**
+ * Inicia una pausa (break-start)
+ */
+export async function startBreak(): Promise<void> {
+  try {
+    await apiRequest('/fichajes', {
+      method: 'POST',
+      body: {
+        tipoRegistro: 'break_start'
+      }
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Error al iniciar pausa';
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Finaliza una pausa (break-end)
+ */
+export async function endBreak(): Promise<void> {
+  try {
+    await apiRequest('/fichajes', {
+      method: 'POST',
+      body: {
+        tipoRegistro: 'break_end'
+      }
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Error al finalizar pausa';
+    throw new Error(errorMessage);
+  }
+}
+
+/**
  * Obtiene registros de tiempo del empleado
  */
 export async function getTimeEntries(
@@ -311,9 +345,10 @@ export async function getMySchedules(): Promise<ScheduledShift[]> {
 
 /**
  * Obtiene horarios por fecha específica del empleado actual
+ * El backend filtra automáticamente por el usuario autenticado si es employee
  */
 export async function getMyDateSchedules(startDate?: string, endDate?: string): Promise<DateSchedule[]> {
-  let endpoint = '/date-schedules/my';
+  let endpoint = '/date-schedules';
   const params = new URLSearchParams();
   
   if (startDate) params.append('startDate', startDate);
@@ -323,7 +358,12 @@ export async function getMyDateSchedules(startDate?: string, endDate?: string): 
     endpoint += `?${params.toString()}`;
   }
   
-  return apiRequest<DateSchedule[]>(endpoint);
+  try {
+    return await apiRequest<DateSchedule[]>(endpoint);
+  } catch (error) {
+    console.error('Error fetching date schedules:', error);
+    throw new Error(error instanceof Error ? error.message : 'Error al cargar horarios');
+  }
 }
 
 /**
