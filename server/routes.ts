@@ -522,29 +522,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get("/api/time-entries", requireAuth, async (req, res) => {
     try {
+      const { fichajesService } = await import("./storage");
       const { employeeId, date } = req.query;
-      let timeEntries;
       
       // CONTROL DE ACCESO: Employees solo ven sus registros, admins todos
-      if (req.user!.role === "employee") {
-        // EMPLOYEE: Solo registros propios
-        timeEntries = await storage.getTimeEntriesByEmployee(req.user!.id);
-        
-        // Filtro adicional por fecha si se proporciona
-        if (date) {
-          timeEntries = timeEntries.filter(entry => entry.date === date);
-        }
-        
-      } else {
-        // ADMIN: Puede filtrar por empleado o fecha
-        if (employeeId) {
-          timeEntries = await storage.getTimeEntriesByEmployee(employeeId as string);
-        } else if (date) {
-          timeEntries = await storage.getTimeEntriesByDate(date as string);
-        } else {
-          timeEntries = await storage.getTimeEntries();
-        }
-      }
+      const targetEmployeeId = req.user!.role === "employee" 
+        ? req.user!.id 
+        : (employeeId as string | undefined);
+
+      // Usar el nuevo adaptador que convierte jornadas a TimeEntries
+      const timeEntries = await fichajesService.obtenerTimeEntriesDesdeJornadas(
+        targetEmployeeId,
+        date as string | undefined,
+        date as string | undefined
+      );
       
       res.json(timeEntries);
     } catch (error) {

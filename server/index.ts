@@ -17,34 +17,7 @@ const app = express();
 
 // Configurar CORS para permitir requests desde app móvil web (Expo)
 app.use(cors({
-  origin: (origin, callback) => {
-    // Permitir requests sin origin (como desde Postman o requests del servidor)
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // Lista de orígenes permitidos
-    const allowedOrigins = [
-      'http://localhost:3000', // Desarrollo local
-      'http://localhost:19006', // Expo web local
-      /^https?:\/\/.*\.replit\.dev(:\d+)?$/, // Cualquier subdominio de replit.dev con puerto opcional
-      /^https?:\/\/.*\.repl\.co(:\d+)?$/, // Cualquier subdominio de repl.co con puerto opcional
-    ];
-    
-    // Verificar si el origin está permitido
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (typeof allowed === 'string') {
-        return allowed === origin;
-      }
-      return allowed.test(origin);
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // En desarrollo, permitir todos los orígenes
   credentials: true, // Permitir cookies y headers de autenticación
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

@@ -4,7 +4,56 @@
 
 This is a comprehensive employee time tracking and management system built as a full-stack application with both web and mobile interfaces. The system allows organizations to manage employee records, track work hours with clock-in/clock-out functionality, manage schedules and shifts, handle workplace incidents, and generate detailed reports. The application features modern, responsive interfaces with real-time updates and comprehensive CRUD operations for all major entities.
 
-## Recent Changes (October 1, 2025)
+## Recent Changes
+
+### October 2, 2025 - Event-Based Fichajes System Migration
+
+**MAJOR RESTRUCTURING**: Migrated from single time entry records to event-based fichaje system with automatic jornada consolidation.
+
+#### Database Changes
+- **fichajes table**: Now stores individual events (entrada, salida, pausa_inicio, pausa_fin) instead of paired clock-in/clock-out
+  - Primary key: `id_registro` (varchar with UUID)
+  - Fields: `id_empleado`, `tipo_registro`, `timestamp_registro`, `origen`, `observaciones`, `id_turno`
+  - Each fichaje is a single timestamped event, not a complete workday record
+  
+- **jornada_diaria table**: NEW - Consolidated daily work summary
+  - Auto-calculated from fichajes events
+  - Fields: `id_jornada`, `id_empleado`, `fecha`, `hora_inicio`, `hora_fin`, `horas_trabajadas`, `horas_pausas`, `horas_extra`, `estado`
+  - Updated transactionally with each fichaje insertion
+
+- **horarios_planificados table**: Structure updated
+  - Renamed: `id_horario` → `id_turno`, `id_usuario` → `id_empleado`, `hora_inicio_programada` → `hora_inicio_prevista`, `hora_fin_programada` → `hora_fin_prevista`
+  - Added: `tipo_turno` ('manana', 'tarde', 'noche'), `estado` ('programado', 'cancelado', 'modificado')
+
+#### Backend Implementation
+- **server/storage.ts**: 
+  - Added `fichajesService` with functions: crearFichaje, obtenerFichajes, obtenerJornadas, obtenerJornadaActual, obtenerUltimoFichaje
+  - Implemented `calcularYActualizarJornada()` that recalculates jornada_diaria transactionally on each fichaje
+  - Logic pairs entrada↔salida events and pausa_inicio↔pausa_fin to calculate worked hours and break time
+  - Added compatibility adapter `obtenerTimeEntriesDesdeJornadas()` to support legacy API
+
+- **server/routes.ts**: 
+  - Added new routes: POST `/api/fichajes`, GET `/api/fichajes/:employeeId`, GET `/api/jornadas/:employeeId`, GET `/api/jornadas/:employeeId/actual`, GET `/api/fichajes/:employeeId/ultimo`
+  - Updated GET `/api/time-entries` to use jornada_diaria adapter for backwards compatibility
+  - Legacy time-entries routes maintained but adapted to work with new event system
+
+- **server/seed.ts**: 
+  - Updated to create fichajes as individual entrada/salida events
+  - Uses fichajesService to ensure jornadas are auto-calculated during seeding
+
+#### CORS Configuration
+- Simplified CORS to allow all origins in development (origin: true)
+- Resolves compatibility issues with Replit's multi-port architecture
+
+#### Migration Status
+- ✅ Database schema migrated and populated
+- ✅ Backend logic implemented with automatic jornada calculation
+- ✅ API routes created and adapted
+- ✅ Seed data working with new structure
+- ⏳ Frontend web app - needs adaptation to use new APIs
+- ⏳ Mobile app - needs adaptation to use new APIs
+
+### October 1, 2025 - Mobile App Integration
 
 ### Mobile App Integration
 - **JWT Authentication**: Implemented JWT token-based authentication in backend to support mobile app alongside session-based auth for web app

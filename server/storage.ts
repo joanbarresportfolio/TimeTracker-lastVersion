@@ -1782,17 +1782,63 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
 }
 
 /**
+ * Adaptador: Convierte JornadaDiaria a TimeEntry (para compatibilidad con API antigua)
+ * IMPORTANTE: Si jornada.horaInicio es null (caso raro), se debe consultar el primer fichaje
+ */
+async function mapJornadaToTimeEntry(jornada: JornadaDiaria, employeeId: string): Promise<TimeEntry> {
+  const id = `${jornada.idJornada}`;
+  let clockIn = jornada.horaInicio;
+  
+  // Si no hay hora de inicio en jornada, buscar el primer fichaje de entrada del día
+  if (!clockIn) {
+    const primerFichaje = await db
+      .select()
+      .from(fichajes)
+      .where(
+        and(
+          eq(fichajes.idEmpleado, employeeId),
+          eq(fichajes.tipoRegistro, 'entrada'),
+          sql`DATE(${fichajes.timestampRegistro}) = ${jornada.fecha}`
+        )
+      )
+      .orderBy(fichajes.timestampRegistro)
+      .limit(1);
+    
+    if (primerFichaje.length > 0) {
+      clockIn = primerFichaje[0].timestampRegistro;
+    } else {
+      // No hay fichajes de entrada - usar inicio del día como fallback mínimo
+      clockIn = new Date(`${jornada.fecha}T00:00:00`);
+    }
+  }
+  
+  return {
+    id,
+    employeeId,
+    clockIn,
+    clockOut: jornada.horaFin || null,
+    totalHours: jornada.horasTrabajadas || null,
+    date: jornada.fecha,
+  };
+}
+
+/**
  * Funciones públicas exportadas para fichajes y jornadas
  */
 export const fichajesService = {
   /**
    * Crear un nuevo fichaje y actualizar jornada automáticamente
    */
-  async crearFichaje(data: InsertFichaje): Promise<Fichaje> {
+  async crearFichaje(data: InsertFichaje & { timestampRegistro?: Date }): Promise<Fichaje> {
     // 1. Insertar fichaje
+    const fichajeData = {
+      ...data,
+      timestampRegistro: data.timestampRegistro || new Date()
+    };
+    
     const [nuevoFichaje] = await db
       .insert(fichajes)
-      .values(data)
+      .values(fichajeData)
       .returning();
 
     // 2. Obtener fecha del fichaje
@@ -1883,6 +1929,33 @@ export const fichajesService = {
       .limit(1);
 
     return fichajesHoy[0] || null;
+  },
+
+  /**
+   * ADAPTADOR DE COMPATIBILIDAD: Obtener TimeEntries desde jornadas
+   * Esta función mantiene compatibilidad con el frontend actual que espera TimeEntry[]
+   */
+  async obtenerTimeEntriesDesdeJornadas(employeeId?: string, startDate?: string, endDate?: string): Promise<TimeEntry[]> {
+    let conditions = [];
+
+    if (employeeId) {
+      conditions.push(eq(jornadaDiaria.idEmpleado, employeeId));
+    }
+    if (startDate) {
+      conditions.push(gte(jornadaDiaria.fecha, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(jornadaDiaria.fecha, endDate));
+    }
+
+    const jornadas = await db
+      .select()
+      .from(jornadaDiaria)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(jornadaDiaria.fecha);
+
+    // Mapear jornadas a TimeEntries en paralelo
+    return Promise.all(jornadas.map(j => mapJornadaToTimeEntry(j, j.idEmpleado)));
   }
 };
 
