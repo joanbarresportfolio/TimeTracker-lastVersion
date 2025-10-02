@@ -13,8 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Clock, Users, TrendingUp, AlertTriangle, Eye, Calendar, Plus } from "lucide-react";
-import type { Employee, TimeEntry, InsertIncident, InsertDateSchedule } from "@shared/schema";
-import { insertIncidentSchema, insertDateScheduleSchema } from "@shared/schema";
+import type { Employee, TimeEntry, InsertIncident, InsertScheduledShift } from "@shared/schema";
+import { insertIncidentSchema, insertScheduledShiftSchema } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -59,22 +59,22 @@ export default function Dashboard() {
   const incidentForm = useForm<InsertIncident>({
     resolver: zodResolver(insertIncidentSchema),
     defaultValues: {
-      employeeId: "",
-      type: "",
+      userId: "",
+      incidentType: "late",
       description: "",
-      date: new Date().toISOString().split('T')[0] as any, // Use string date for form
       status: "pending",
     },
   });
 
-  const scheduleForm = useForm<InsertDateSchedule>({
-    resolver: zodResolver(insertDateScheduleSchema),
+  const scheduleForm = useForm<InsertScheduledShift>({
+    resolver: zodResolver(insertScheduledShiftSchema),
     defaultValues: {
       employeeId: "",
       date: new Date().toISOString().split('T')[0], // today
-      startTime: "09:00",
-      endTime: "17:00",
-      isActive: true,
+      expectedStartTime: "09:00",
+      expectedEndTime: "17:00",
+      shiftType: "morning",
+      status: "scheduled",
     },
   });
 
@@ -102,7 +102,7 @@ export default function Dashboard() {
   });
 
   const createScheduleMutation = useMutation({
-    mutationFn: (data: InsertDateSchedule) => apiRequest("/api/date-schedules", "POST", data),
+    mutationFn: (data: InsertScheduledShift) => apiRequest("/api/scheduled-shifts", "POST", data),
     onSuccess: () => {
       toast({
         title: "Horario creado",
@@ -185,9 +185,10 @@ export default function Dashboard() {
     scheduleForm.reset({
       employeeId: employee.id,
       date: new Date().toISOString().split('T')[0], // today
-      startTime: "09:00",
-      endTime: "17:00",
-      isActive: true,
+      expectedStartTime: "09:00",
+      expectedEndTime: "17:00",
+      shiftType: "morning",
+      status: "scheduled",
     });
     setIsScheduleDialogOpen(true);
   };
@@ -195,10 +196,9 @@ export default function Dashboard() {
   const handleReportIncident = (employee: Employee) => {
     setSelectedEmployeeIncident(employee);
     incidentForm.reset({
-      employeeId: employee.id,
-      type: "",
+      userId: employee.id,
+      incidentType: "late",
       description: "",
-      date: new Date().toISOString().split('T')[0] as any, // Use string date for form
       status: "pending",
     });
     setIsIncidentDialogOpen(true);
@@ -208,7 +208,7 @@ export default function Dashboard() {
     createIncidentMutation.mutate(data);
   };
 
-  const onScheduleSubmit = (data: InsertDateSchedule) => {
+  const onScheduleSubmit = (data: InsertScheduledShift) => {
     createScheduleMutation.mutate(data);
   };
 
@@ -706,7 +706,7 @@ export default function Dashboard() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={scheduleForm.control}
-                      name="startTime"
+                      name="expectedStartTime"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hora de inicio</FormLabel>
@@ -724,7 +724,7 @@ export default function Dashboard() {
                     
                     <FormField
                       control={scheduleForm.control}
-                      name="endTime"
+                      name="expectedEndTime"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hora de fin</FormLabel>
@@ -790,7 +790,7 @@ export default function Dashboard() {
                 <form onSubmit={incidentForm.handleSubmit(onIncidentSubmit)} className="space-y-4">
                   <FormField
                     control={incidentForm.control}
-                    name="type"
+                    name="incidentType"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Tipo de incidencia</FormLabel>
@@ -803,31 +803,12 @@ export default function Dashboard() {
                           <SelectContent>
                             <SelectItem value="late">Tardanza</SelectItem>
                             <SelectItem value="absence">Ausencia</SelectItem>
-                            <SelectItem value="early_departure">Salida temprana</SelectItem>
+                            <SelectItem value="sick_leave">Baja médica</SelectItem>
+                            <SelectItem value="vacation">Vacaciones</SelectItem>
                             <SelectItem value="forgot_clock_in">Olvido fichar entrada</SelectItem>
-                            <SelectItem value="forgot_clock_out">Olvido fichar salida</SelectItem>
+                            <SelectItem value="other">Otro</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={incidentForm.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Fecha de la incidencia</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="date" 
-                            {...field}
-                            value={typeof field.value === 'string' ? field.value : field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            data-testid="input-incident-date"
-                          />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
