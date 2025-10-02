@@ -47,7 +47,7 @@ export default function Employees() {
 
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: CreateEmployeePayload) => {
-      const response = await apiRequest("POST", "/api/employees", data);
+      const response = await apiRequest("/api/employees", "POST", data);
       return response.json();
     },
     onSuccess: () => {
@@ -70,7 +70,7 @@ export default function Employees() {
 
   const updateEmployeeMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateEmployeePayload }) => {
-      const response = await apiRequest("PUT", `/api/employees/${id}`, data);
+      const response = await apiRequest(`/api/employees/${id}`, "PUT", data);
       return response.json();
     },
     onSuccess: () => {
@@ -94,7 +94,7 @@ export default function Employees() {
 
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/employees/${id}`);
+      await apiRequest(`/api/employees/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
