@@ -797,8 +797,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // PASO 4: Registrar salida (crea fichaje tipo "salida")
-      const updatedEntry = await storage.clockOut(employeeId, today);
+      // PASO 4: Completar registro agregando clockOut
+      const updatedEntry = await storage.updateTimeEntry(todayEntry.id, {
+        clockOut: new Date(),
+        // totalHours se calcula automáticamente en updateTimeEntry
+      });
 
       // PASO 5: Responder con registro completo
       res.json(updatedEntry);
