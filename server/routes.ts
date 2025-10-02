@@ -810,6 +810,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==========================================
+  // NUEVAS RUTAS DE FICHAJES (Sistema de Eventos)
+  // ==========================================
+
+  /**
+   * POST /api/fichajes
+   * ==================
+   * 
+   * Crea un nuevo fichaje (entrada, salida, pausa_inicio, pausa_fin)
+   * y actualiza automáticamente la jornada diaria.
+   */
+  app.post("/api/fichajes", requireAuth, async (req, res) => {
+    try {
+      const { fichajesService } = await import("./storage");
+      
+      let employeeId = req.user!.id;
+      if (req.user!.role === "admin" && req.body.employeeId) {
+        employeeId = req.body.employeeId;
+      }
+
+      const tipoRegistro = req.body.tipoRegistro || req.body.tipo_registro;
+      
+      const fichajeData = {
+        idEmpleado: employeeId,
+        tipoRegistro: tipoRegistro,
+        timestampRegistro: req.body.timestampRegistro ? new Date(req.body.timestampRegistro) : new Date(),
+        origen: req.body.origen || 'web',
+        observaciones: req.body.observaciones || null,
+        idTurno: req.body.idTurno || null
+      };
+
+      const fichaje = await fichajesService.crearFichaje(fichajeData);
+      res.status(201).json(fichaje);
+    } catch (error) {
+      console.error("Error al crear fichaje:", error);
+      res.status(500).json({ message: "Error al crear fichaje" });
+    }
+  });
+
+  /**
+   * GET /api/fichajes/:employeeId
+   * ==============================
+   * 
+   * Obtiene fichajes de un empleado
+   */
+  app.get("/api/fichajes/:employeeId", requireEmployeeAccess, async (req, res) => {
+    try {
+      const { fichajesService } = await import("./storage");
+      const { startDate, endDate } = req.query;
+      
+      const fichajes = await fichajesService.obtenerFichajes(
+        req.params.employeeId,
+        startDate as string,
+        endDate as string
+      );
+      
+      res.json(fichajes);
+    } catch (error) {
+      console.error("Error al obtener fichajes:", error);
+      res.status(500).json({ message: "Error al obtener fichajes" });
+    }
+  });
+
+  /**
+   * GET /api/jornadas/:employeeId
+   * ==============================
+   * 
+   * Obtiene jornadas consolidadas de un empleado
+   */
+  app.get("/api/jornadas/:employeeId", requireEmployeeAccess, async (req, res) => {
+    try {
+      const { fichajesService } = await import("./storage");
+      const { startDate, endDate } = req.query;
+      
+      const jornadas = await fichajesService.obtenerJornadas(
+        req.params.employeeId,
+        startDate as string,
+        endDate as string
+      );
+      
+      res.json(jornadas);
+    } catch (error) {
+      console.error("Error al obtener jornadas:", error);
+      res.status(500).json({ message: "Error al obtener jornadas" });
+    }
+  });
+
+  /**
+   * GET /api/jornadas/:employeeId/actual
+   * =====================================
+   * 
+   * Obtiene la jornada actual (hoy) de un empleado
+   */
+  app.get("/api/jornadas/:employeeId/actual", requireEmployeeAccess, async (req, res) => {
+    try {
+      const { fichajesService } = await import("./storage");
+      
+      const jornada = await fichajesService.obtenerJornadaActual(req.params.employeeId);
+      
+      res.json(jornada);
+    } catch (error) {
+      console.error("Error al obtener jornada actual:", error);
+      res.status(500).json({ message: "Error al obtener jornada actual" });
+    }
+  });
+
+  /**
+   * GET /api/fichajes/:employeeId/ultimo
+   * =====================================
+   * 
+   * Obtiene el último fichaje del empleado (para determinar próxima acción)
+   */
+  app.get("/api/fichajes/:employeeId/ultimo", requireEmployeeAccess, async (req, res) => {
+    try {
+      const { fichajesService } = await import("./storage");
+      
+      const fichaje = await fichajesService.obtenerUltimoFichaje(req.params.employeeId);
+      
+      res.json(fichaje);
+    } catch (error) {
+      console.error("Error al obtener último fichaje:", error);
+      res.status(500).json({ message: "Error al obtener último fichaje" });
+    }
+  });
+
   
   // ==========================================
   // RUTAS DE GESTIÓN DE HORARIOS
