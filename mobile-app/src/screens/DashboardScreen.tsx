@@ -185,7 +185,7 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
   /**
    * Maneja el logout del usuario
    */
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
       'Cerrar Sesión',
       '¿Estás seguro que quieres cerrar sesión?',
@@ -196,12 +196,18 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Llamar al servidor para logout
               await logoutUser();
-              (global as any).handleLogout?.();
             } catch (error) {
-              console.warn('Error en logout:', error);
-              // Hacer logout local aunque falle el servidor
-              (global as any).handleLogout?.();
+              console.warn('Error al hacer logout en el servidor:', error);
+              // Continuar con el logout local aunque el servidor falle
+            }
+            
+            // Siempre hacer logout local
+            if ((global as any).handleLogout) {
+              (global as any).handleLogout();
+            } else {
+              Alert.alert('Error', 'No se pudo cerrar sesión. Por favor, reinicia la aplicación.');
             }
           },
         },
