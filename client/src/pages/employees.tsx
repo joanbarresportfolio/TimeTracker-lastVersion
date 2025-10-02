@@ -140,6 +140,7 @@ export default function Employees() {
       const { passwordHash, role, ...updateData } = data;
       const updatePayload = {
         ...updateData,
+        departmentId: updateData.departmentId === 'none' ? undefined : updateData.departmentId,
         hireDate: updateData.hireDate.toISOString()
       };
       
@@ -148,6 +149,7 @@ export default function Employees() {
       // Para crear, incluimos todos los datos y convertimos fecha
       const createPayload = {
         ...data,
+        departmentId: data.departmentId === 'none' ? undefined : data.departmentId,
         hireDate: data.hireDate.toISOString()
       };
       createEmployeeMutation.mutate(createPayload);
@@ -161,7 +163,7 @@ export default function Employees() {
       firstName: employee.firstName,
       lastName: employee.lastName,
       email: employee.email,
-      departmentId: employee.department, // Mapear department a departmentId
+      departmentId: employee.department || "none", // Mapear department a departmentId, usar "none" si está vacío
       hireDate: new Date(employee.hireDate), // Convertir string a Date object
       isActive: employee.isActive,
       passwordHash: "password123", // Password dummy para validación del formulario
@@ -393,7 +395,7 @@ export default function Employees() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">Ninguno</SelectItem>
+                              <SelectItem value="none">Ninguno</SelectItem>
                               <SelectItem value="Administración">Administración</SelectItem>
                               <SelectItem value="Grupo Chova Felix">Grupo Chova Felix</SelectItem>
                               <SelectItem value="Marina Fruit">Marina Fruit</SelectItem>
