@@ -36,8 +36,8 @@ All database tables and columns renamed to English:
 - ✅ Server running successfully on port 5000
 - ✅ Seed data created: 13 employees with 3 days of clock entries each
 - ✅ Event-based clock entry system with automatic daily workday calculation working correctly
-- ⚠️ Frontend: Needs update to use new English schema exports (currently references removed `insertDateScheduleSchema`)
-- ⏳ Mobile app: May need update to align with new English API field names
+- ✅ **Frontend web app**: Updated to use new English schema exports
+- ✅ **Mobile app**: Updated to use English schema (userId, incidentType, expectedStartTime, expectedEndTime)
 
 ### Previous: Event-Based Clock Entries System
 
@@ -109,12 +109,13 @@ All database tables and columns renamed to English:
 - **Expo Web Fix**: Fixed mobile app web version to correctly detect Replit environment and use appropriate backend URL
 
 ### Mobile App Features
-- Dashboard with clock-in/clock-out functionality
-- Schedules viewing
-- Incidents reporting
+- Dashboard with clock-in/clock-out functionality using legacy time-entries endpoints
+- Schedules viewing with ScheduledShift types (expectedStartTime, expectedEndTime)
+- Incidents reporting with updated types (userId, incidentType)
 - Time entry history with date filtering
 - Real-time status updates
 - Full web compatibility with Expo web platform
+- **Updated to English schema**: All types now use English field names matching backend
 
 ## User Preferences
 
