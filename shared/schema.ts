@@ -332,50 +332,52 @@ export const usuarios = pgTable("usuarios", {
  * TABLA: horarios_planificados
  * =============================
  * 
- * Horarios planificados a futuro para cada empleado.
- * Un empleado puede tener miles de registros (todo un año de turnos).
+ * Horarios/turnos planificados para cada empleado por fecha específica.
  */
 export const horariosPlanificados = pgTable("horarios_planificados", {
-  idHorario: varchar("id_horario").primaryKey().default(sql`gen_random_uuid()`),
-  idUsuario: varchar("id_usuario").notNull().references(() => usuarios.idUsuario),
+  idTurno: varchar("id_turno").primaryKey().default(sql`gen_random_uuid()`),
+  idEmpleado: varchar("id_empleado").notNull().references(() => usuarios.idUsuario),
   fecha: text("fecha").notNull(), // YYYY-MM-DD
-  horaInicioProgramada: text("hora_inicio_programada").notNull(), // HH:MM
-  horaFinProgramada: text("hora_fin_programada").notNull(), // HH:MM
-  descansoMinutos: integer("descanso_minutos").notNull().default(0),
-  creadoPor: varchar("creado_por").references(() => usuarios.idUsuario),
-  fechaCreacion: timestamp("fecha_creacion").notNull().default(sql`now()`),
-  observaciones: text("observaciones"),
+  horaInicioPrevista: text("hora_inicio_prevista").notNull(), // HH:MM
+  horaFinPrevista: text("hora_fin_prevista").notNull(), // HH:MM
+  tipoTurno: varchar("tipo_turno").notNull(), // 'mañana', 'tarde', 'noche'
+  estado: varchar("estado").notNull().default('pendiente'), // 'pendiente', 'confirmado', 'completado', 'cancelado'
 });
 
 /**
  * TABLA: fichajes
  * ===============
  * 
- * Registros reales de fichaje (clock-in/clock-out) de cada jornada laboral.
+ * Registros individuales de fichaje (entrada, salida, pausas).
+ * Cada fichaje es un evento único que actualiza la jornada_diaria.
  */
 export const fichajes = pgTable("fichajes", {
-  idFichaje: varchar("id_fichaje").primaryKey().default(sql`gen_random_uuid()`),
-  idUsuario: varchar("id_usuario").notNull().references(() => usuarios.idUsuario),
-  idHorario: varchar("id_horario").references(() => horariosPlanificados.idHorario),
-  fecha: text("fecha").notNull(), // YYYY-MM-DD
-  horaEntrada: timestamp("hora_entrada").notNull(),
-  horaSalida: timestamp("hora_salida"),
-  horasTrabajadas: integer("horas_trabajadas"), // en minutos
-  estado: text("estado").notNull().default("pendiente"), // "completo", "incompleto", "pendiente", "fuera_de_horario"
+  idRegistro: varchar("id_registro").primaryKey().default(sql`gen_random_uuid()`),
+  idEmpleado: varchar("id_empleado").notNull().references(() => usuarios.idUsuario),
+  idTurno: varchar("id_turno").references(() => horariosPlanificados.idTurno), // NULL si no hay turno asignado
+  tipoRegistro: varchar("tipo_registro").notNull(), // 'entrada', 'salida', 'pausa_inicio', 'pausa_fin'
+  timestampRegistro: timestamp("timestamp_registro").notNull().default(sql`now()`),
+  origen: varchar("origen"), // 'app_movil', 'terminal_fisico', 'web'
+  observaciones: text("observaciones"),
 });
 
 /**
- * TABLA: pausas
- * =============
+ * TABLA: jornada_diaria
+ * =====================
  * 
- * Registro de pausas durante un fichaje/turno.
+ * Resumen consolidado de cada jornada laboral de un empleado.
+ * Se actualiza automáticamente con cada fichaje del día.
  */
-export const pausas = pgTable("pausas", {
-  idPausa: varchar("id_pausa").primaryKey().default(sql`gen_random_uuid()`),
-  idFichaje: varchar("id_fichaje").notNull().references(() => fichajes.idFichaje),
-  horaInicioPausa: timestamp("hora_inicio_pausa").notNull(),
-  horaFinPausa: timestamp("hora_fin_pausa"),
-  duracionMinutos: integer("duracion_minutos"),
+export const jornadaDiaria = pgTable("jornada_diaria", {
+  idJornada: varchar("id_jornada").primaryKey().default(sql`gen_random_uuid()`),
+  idEmpleado: varchar("id_empleado").notNull().references(() => usuarios.idUsuario),
+  fecha: text("fecha").notNull(), // YYYY-MM-DD
+  horaInicio: timestamp("hora_inicio"), // Primer fichaje de entrada del día
+  horaFin: timestamp("hora_fin"), // Último fichaje de salida del día
+  horasTrabajadas: integer("horas_trabajadas").notNull().default(0), // en minutos
+  horasPausas: integer("horas_pausas").notNull().default(0), // en minutos
+  horasExtra: integer("horas_extra").notNull().default(0), // en minutos
+  estado: varchar("estado").notNull().default('abierta'), // 'abierta', 'cerrada'
 });
 
 /**
@@ -387,7 +389,7 @@ export const pausas = pgTable("pausas", {
 export const incidencias = pgTable("incidencias", {
   idIncidencia: varchar("id_incidencia").primaryKey().default(sql`gen_random_uuid()`),
   idUsuario: varchar("id_usuario").notNull().references(() => usuarios.idUsuario),
-  idFichaje: varchar("id_fichaje").references(() => fichajes.idFichaje),
+  idRegistro: varchar("id_registro").references(() => fichajes.idRegistro),
   tipoIncidencia: text("tipo_incidencia").notNull(), // "retraso", "ausencia", "baja_medica", "vacaciones", "olvido_fichar", "otro"
   descripcion: text("descripcion").notNull(),
   registradoPor: varchar("registrado_por").references(() => usuarios.idUsuario),
@@ -425,26 +427,33 @@ export const createUsuarioSchema = insertUsuarioSchema.extend({
  * ESQUEMAS PARA HORARIOS PLANIFICADOS
  */
 export const insertHorarioPlanificadoSchema = createInsertSchema(horariosPlanificados).omit({
-  idHorario: true,
-  fechaCreacion: true,
+  idTurno: true,
+}).extend({
+  tipoTurno: z.enum(['mañana', 'tarde', 'noche']),
+  estado: z.enum(['pendiente', 'confirmado', 'completado', 'cancelado']).default('pendiente'),
 });
 
 /**
  * ESQUEMAS PARA FICHAJES
  */
 export const insertFichajeSchema = createInsertSchema(fichajes).omit({
-  idFichaje: true,
-  horasTrabajadas: true,
+  idRegistro: true,
+  timestampRegistro: true,
 }).extend({
-  estado: z.enum(["completo", "incompleto", "pendiente", "fuera_de_horario"]).default("pendiente"),
+  tipoRegistro: z.enum(['entrada', 'salida', 'pausa_inicio', 'pausa_fin']),
+  origen: z.enum(['app_movil', 'terminal_fisico', 'web']).optional(),
 });
 
 /**
- * ESQUEMAS PARA PAUSAS
+ * ESQUEMAS PARA JORNADA DIARIA
  */
-export const insertPausaSchema = createInsertSchema(pausas).omit({
-  idPausa: true,
-  duracionMinutos: true,
+export const insertJornadaDiariaSchema = createInsertSchema(jornadaDiaria).omit({
+  idJornada: true,
+  horasTrabajadas: true,
+  horasPausas: true,
+  horasExtra: true,
+}).extend({
+  estado: z.enum(['abierta', 'cerrada']).default('abierta'),
 });
 
 /**
@@ -475,8 +484,8 @@ export type InsertHorarioPlanificado = z.infer<typeof insertHorarioPlanificadoSc
 export type Fichaje = typeof fichajes.$inferSelect;
 export type InsertFichaje = z.infer<typeof insertFichajeSchema>;
 
-export type Pausa = typeof pausas.$inferSelect;
-export type InsertPausa = z.infer<typeof insertPausaSchema>;
+export type JornadaDiaria = typeof jornadaDiaria.$inferSelect;
+export type InsertJornadaDiaria = z.infer<typeof insertJornadaDiariaSchema>;
 
 export type Incidencia = typeof incidencias.$inferSelect;
 export type InsertIncidencia = z.infer<typeof insertIncidenciaSchema>;
