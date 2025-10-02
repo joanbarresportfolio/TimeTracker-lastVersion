@@ -268,9 +268,8 @@ export async function seedDatabase() {
         const workDateStr = workDate.toISOString().split('T')[0];
         
         // Verificar si ya existen fichajes para este empleado en esta fecha
-        const existingFichajes = await fichajesService.obtenerFichajes(
+        const existingFichajes = await fichajesService.obtenerFichajesDelDia(
           employee.id,
-          workDateStr,
           workDateStr
         );
 
