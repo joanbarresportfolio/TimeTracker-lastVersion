@@ -1523,6 +1523,42 @@ export const fichajesService = {
     source: 'mobile_app' | 'physical_terminal' | 'web' = 'web',
     notes: string | null = null
   ): Promise<ClockEntry> {
+    // Obtener fecha actual
+    const hoy = new Date().toISOString().split('T')[0];
+    
+    // VALIDACIÓN: Verificar restricciones antes de crear el fichaje
+    if (entryType === 'clock_in') {
+      // 1. Verificar que no exista ya un clock_in hoy
+      const fichajesHoy = await this.obtenerFichajesDelDia(employeeId, hoy);
+      const yaHayClockIn = fichajesHoy.some(f => f.entryType === 'clock_in');
+      
+      if (yaHayClockIn) {
+        throw new Error('Ya has iniciado jornada hoy. No puedes iniciar jornada dos veces el mismo día.');
+      }
+      
+      // 2. Verificar que no exista una jornada cerrada hoy
+      const jornadaHoy = await this.obtenerJornadaDiaria(employeeId, hoy);
+      if (jornadaHoy && jornadaHoy.status === 'closed') {
+        throw new Error('Ya has finalizado tu jornada hoy. No puedes iniciar otra jornada el mismo día.');
+      }
+    }
+    
+    if (entryType === 'clock_out') {
+      // Verificar que exista un clock_in sin clock_out correspondiente
+      const fichajesHoy = await this.obtenerFichajesDelDia(employeeId, hoy);
+      const hayClockIn = fichajesHoy.some(f => f.entryType === 'clock_in');
+      const hayClockOut = fichajesHoy.some(f => f.entryType === 'clock_out');
+      
+      if (!hayClockIn) {
+        throw new Error('No has iniciado jornada hoy. Debes iniciar jornada antes de finalizar.');
+      }
+      
+      if (hayClockOut) {
+        throw new Error('Ya has finalizado tu jornada hoy.');
+      }
+    }
+    
+    // Crear el fichaje
     const [entry] = await db
       .insert(clockEntries)
       .values({
