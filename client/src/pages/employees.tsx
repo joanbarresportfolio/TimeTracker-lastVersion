@@ -59,10 +59,10 @@ export default function Employees() {
         description: "El empleado ha sido creado exitosamente.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo crear el empleado.",
+        description: error.message || "No se pudo crear el empleado.",
         variant: "destructive",
       });
     },
@@ -70,7 +70,7 @@ export default function Employees() {
 
   const updateEmployeeMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateEmployeePayload }) => {
-      const response = await apiRequest(`/api/employees/${id}`, "PUT", data);
+      const response = await apiRequest("PUT", `/api/employees/${id}`, data);
       return response.json();
     },
     onSuccess: () => {
@@ -83,10 +83,10 @@ export default function Employees() {
         description: "El empleado ha sido actualizado exitosamente.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo actualizar el empleado.",
+        description: error.message || "No se pudo actualizar el empleado.",
         variant: "destructive",
       });
     },
@@ -94,7 +94,7 @@ export default function Employees() {
 
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest(`/api/employees/${id}`, "DELETE");
+      await apiRequest("DELETE", `/api/employees/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
@@ -103,10 +103,10 @@ export default function Employees() {
         description: "El empleado ha sido eliminado exitosamente.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "No se pudo eliminar el empleado.",
+        description: error.message || "No se pudo eliminar el empleado.",
         variant: "destructive",
       });
     },
