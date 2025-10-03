@@ -1647,6 +1647,76 @@ export const fichajesService = {
       );
     return workday;
   },
+
+  /**
+   * Obtiene el historial completo de jornadas diarias con toda la información relacionada
+   * Incluye: clock_entries, scheduled_shift
+   */
+  async obtenerHistorialCompleto(employeeId: string, startDate?: string, endDate?: string) {
+    // Construir condiciones de filtrado
+    const conditions = [eq(dailyWorkday.employeeId, employeeId)];
+    
+    if (startDate && endDate) {
+      conditions.push(sql`${dailyWorkday.date} >= ${startDate} AND ${dailyWorkday.date} <= ${endDate}`);
+    }
+
+    const workdays = await db
+      .select()
+      .from(dailyWorkday)
+      .where(and(...conditions))
+      .orderBy(sql`${dailyWorkday.date} DESC`);
+
+    // Para cada jornada, obtener los clock_entries y scheduled_shift relacionados
+    const historialCompleto = await Promise.all(
+      workdays.map(async (workday) => {
+        // Obtener todos los clock_entries de esta jornada
+        const entries = await db
+          .select()
+          .from(clockEntries)
+          .where(
+            sql`${clockEntries.id} = ANY(${workday.clockEntryIds})`
+          )
+          .orderBy(clockEntries.timestamp);
+
+        // Obtener el scheduled_shift si existe
+        let scheduledShift = null;
+        if (workday.shiftId) {
+          const [shift] = await db
+            .select()
+            .from(scheduledShifts)
+            .where(eq(scheduledShifts.id, workday.shiftId));
+          scheduledShift = shift || null;
+        }
+
+        // Calcular pausas (break_start y break_end emparejados)
+        const breaks: Array<{ startTime: Date; endTime: Date; minutes: number }> = [];
+        let currentBreakStart: Date | null = null;
+
+        for (const entry of entries) {
+          if (entry.entryType === 'break_start') {
+            currentBreakStart = entry.timestamp;
+          } else if (entry.entryType === 'break_end' && currentBreakStart) {
+            const minutes = Math.floor((entry.timestamp.getTime() - currentBreakStart.getTime()) / 60000);
+            breaks.push({
+              startTime: currentBreakStart,
+              endTime: entry.timestamp,
+              minutes,
+            });
+            currentBreakStart = null;
+          }
+        }
+
+        return {
+          ...workday,
+          clockEntries: entries,
+          scheduledShift,
+          breaks,
+        };
+      })
+    );
+
+    return historialCompleto;
+  },
 };
 
 /**
