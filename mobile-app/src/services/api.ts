@@ -234,7 +234,7 @@ async function apiRequest<T>(
  */
 export async function loginUser(credentials: LoginRequest): Promise<LoginResponse> {
   try {
-    const response = await apiRequest<LoginResponse>('/auth/login', {
+    const response = await apiRequest<LoginResponse>('/api/auth/login', {
       method: 'POST',
       body: credentials,
       requireAuth: false,
@@ -257,7 +257,7 @@ export async function logoutUser(): Promise<void> {
   setAuthToken(null);
   
   try {
-    await apiRequest('/auth/logout', {
+    await apiRequest('/api/auth/logout', {
       method: 'POST',
     });
   } catch (error) {
@@ -271,7 +271,7 @@ export async function logoutUser(): Promise<void> {
  * Obtiene información del usuario actual
  */
 export async function getCurrentUser(): Promise<User> {
-  return apiRequest<User>('/auth/me');
+  return apiRequest<User>('/api/auth/me');
 }
 
 /**
@@ -284,7 +284,7 @@ export async function getCurrentUser(): Promise<User> {
  */
 export async function getCurrentTimeEntry(): Promise<TimeEntry | null> {
   try {
-    return await apiRequest<TimeEntry>('/time-entries/current');
+    return await apiRequest<TimeEntry>('/api/time-entries/current');
   } catch (error) {
     // Distinguir entre "no hay entrada hoy" (404) y otros errores
     if (error instanceof Error && error.message.includes('404')) {
@@ -300,7 +300,7 @@ export async function getCurrentTimeEntry(): Promise<TimeEntry | null> {
  */
 export async function clockIn(): Promise<void> {
   try {
-    await apiRequest('/fichajes', {
+    await apiRequest('/api/fichajes', {
       method: 'POST',
       body: {
         tipoRegistro: 'clock_in',
@@ -318,7 +318,7 @@ export async function clockIn(): Promise<void> {
  */
 export async function clockOut(): Promise<void> {
   try {
-    await apiRequest('/fichajes', {
+    await apiRequest('/api/fichajes', {
       method: 'POST',
       body: {
         tipoRegistro: 'clock_out',
@@ -336,7 +336,7 @@ export async function clockOut(): Promise<void> {
  */
 export async function startBreak(): Promise<void> {
   try {
-    await apiRequest('/fichajes', {
+    await apiRequest('/api/fichajes', {
       method: 'POST',
       body: {
         tipoRegistro: 'break_start',
@@ -354,7 +354,7 @@ export async function startBreak(): Promise<void> {
  */
 export async function endBreak(): Promise<void> {
   try {
-    await apiRequest('/fichajes', {
+    await apiRequest('/api/fichajes', {
       method: 'POST',
       body: {
         tipoRegistro: 'break_end',
@@ -374,7 +374,7 @@ export async function getTimeEntries(
   startDate?: string,
   endDate?: string
 ): Promise<TimeEntry[]> {
-  let endpoint = '/time-entries';
+  let endpoint = '/api/time-entries';
   const params = new URLSearchParams();
   
   if (startDate) params.append('startDate', startDate);
@@ -398,7 +398,7 @@ export async function getTimeEntries(
  * usa scheduled_shifts en vez de weekly schedules.
  */
 export async function getMySchedules(): Promise<ScheduledShift[]> {
-  return apiRequest<ScheduledShift[]>('/schedules/my');
+  return apiRequest<ScheduledShift[]>('/api/schedules/my');
 }
 
 /**
