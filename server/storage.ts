@@ -1558,12 +1558,32 @@ export const fichajesService = {
       }
     }
     
-    // Crear el fichaje
+    // BUSCAR AUTOMÁTICAMENTE EL HORARIO ASIGNADO (scheduled_shift) DEL DÍA
+    // Si no se proporciona shiftId, buscar el horario programado para hoy
+    let finalShiftId = shiftId;
+    if (!finalShiftId) {
+      const [scheduledShift] = await db
+        .select()
+        .from(scheduledShifts)
+        .where(
+          and(
+            eq(scheduledShifts.employeeId, employeeId),
+            eq(scheduledShifts.date, hoy)
+          )
+        )
+        .limit(1);
+      
+      if (scheduledShift) {
+        finalShiftId = scheduledShift.id;
+      }
+    }
+    
+    // Crear el fichaje con el shiftId encontrado (o null si no hay horario)
     const [entry] = await db
       .insert(clockEntries)
       .values({
         employeeId,
-        shiftId,
+        shiftId: finalShiftId,
         entryType,
         source,
         notes,
