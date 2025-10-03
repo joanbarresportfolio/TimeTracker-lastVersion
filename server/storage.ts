@@ -1443,6 +1443,31 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
 
   let lastClockIn: Date | null = null;
   let lastBreakStart: Date | null = null;
+  
+  // Recopilar todos los IDs de clock_entries para esta jornada
+  const clockEntryIds = entriesOfDay.map(entry => entry.id);
+  
+  // Obtener el shift_id (si existe un horario asignado para este día)
+  let shiftId: string | null = null;
+  if (entriesOfDay.length > 0 && entriesOfDay[0].shiftId) {
+    shiftId = entriesOfDay[0].shiftId;
+  } else {
+    // Buscar si hay un horario programado para este día
+    const [scheduledShift] = await db
+      .select()
+      .from(scheduledShifts)
+      .where(
+        and(
+          eq(scheduledShifts.employeeId, employeeId),
+          eq(scheduledShifts.date, fecha)
+        )
+      )
+      .limit(1);
+    
+    if (scheduledShift) {
+      shiftId = scheduledShift.id;
+    }
+  }
 
   for (const entry of entriesOfDay) {
     switch (entry.entryType) {
@@ -1494,6 +1519,8 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
         workedMinutes,
         breakMinutes,
         status,
+        clockEntryIds,
+        shiftId,
       })
       .where(eq(dailyWorkday.id, existingWorkday.id));
   } else {
@@ -1508,6 +1535,8 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
         breakMinutes,
         overtimeMinutes: 0,
         status,
+        clockEntryIds,
+        shiftId,
       });
   }
 }
