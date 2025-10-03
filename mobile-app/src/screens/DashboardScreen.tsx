@@ -90,9 +90,7 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
     try {
       setClockLoading(true);
       
-      await clockIn();
-      
-      const entry = await getCurrentTimeEntry();
+      const entry = await clockIn();
       setCurrentEntry(entry);
       setIsWorking(true);
       
@@ -116,9 +114,7 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
     try {
       setClockLoading(true);
       
-      await clockOut();
-      
-      const entry = await getCurrentTimeEntry();
+      const entry = await clockOut();
       setCurrentEntry(entry);
       setIsWorking(false);
       setIsOnBreak(false); // Al salir, ya no está en pausa

@@ -1435,23 +1435,6 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
     )
     .orderBy(clockEntries.timestamp);
 
-  // Recopilar IDs de todos los clock_entries del día
-  const clockEntryIds = entriesOfDay.map(entry => entry.id);
-
-  // Buscar el scheduled_shift asignado para este día
-  const [scheduledShift] = await db
-    .select()
-    .from(scheduledShifts)
-    .where(
-      and(
-        eq(scheduledShifts.employeeId, employeeId),
-        eq(scheduledShifts.date, fecha)
-      )
-    )
-    .limit(1);
-
-  const shiftId = scheduledShift ? scheduledShift.id : null;
-
   let startTime: Date | null = null;
   let endTime: Date | null = null;
   let workedMinutes = 0;
@@ -1506,8 +1489,6 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
     await db
       .update(dailyWorkday)
       .set({
-        shiftId,
-        clockEntryIds,
         startTime,
         endTime,
         workedMinutes,
@@ -1521,8 +1502,6 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
       .values({
         employeeId,
         date: fecha,
-        shiftId,
-        clockEntryIds,
         startTime,
         endTime,
         workedMinutes,
@@ -1638,43 +1617,6 @@ export const fichajesService = {
         )
       );
     return workday;
-  },
-
-  async obtenerHistorialCompleto(employeeId: string, fecha: string) {
-    // Obtener daily_workday
-    const workday = await this.obtenerJornadaDiaria(employeeId, fecha);
-    
-    if (!workday) {
-      return null;
-    }
-
-    // Obtener clock_entries usando los IDs guardados
-    let clockEntriesData: ClockEntry[] = [];
-    if (workday.clockEntryIds && workday.clockEntryIds.length > 0) {
-      clockEntriesData = await db
-        .select()
-        .from(clockEntries)
-        .where(
-          inArray(clockEntries.id, workday.clockEntryIds)
-        )
-        .orderBy(clockEntries.timestamp);
-    }
-
-    // Obtener scheduled_shift si existe
-    let scheduledShiftData = null;
-    if (workday.shiftId) {
-      const [shift] = await db
-        .select()
-        .from(scheduledShifts)
-        .where(eq(scheduledShifts.id, workday.shiftId));
-      scheduledShiftData = shift || null;
-    }
-
-    return {
-      ...workday,
-      clockEntries: clockEntriesData,
-      scheduledShift: scheduledShiftData,
-    };
   },
 };
 

@@ -96,8 +96,6 @@ export const dailyWorkday = pgTable("daily_workday", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   employeeId: varchar("employee_id").notNull().references(() => users.id),
   date: text("date").notNull(), // YYYY-MM-DD
-  shiftId: varchar("shift_id").references(() => scheduledShifts.id), // Reference to scheduled shift for this day
-  clockEntryIds: text("clock_entry_ids").array(), // Array of clock_entry IDs belonging to this workday
   startTime: timestamp("start_time"), // First clock-in entry of the day
   endTime: timestamp("end_time"), // Last clock-out entry of the day
   workedMinutes: integer("worked_minutes").notNull().default(0), // in minutes
