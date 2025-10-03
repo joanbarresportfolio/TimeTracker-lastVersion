@@ -1175,7 +1175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { employeeId, date } = req.query;
       
       if (!employeeId || !date) {
-        return handleApiError(res, 400, "employeeId y date son requeridos");
+        return res.status(400).json({ message: "employeeId y date son requeridos" });
       }
 
       const workday = await storage.getDailyWorkdayByEmployeeAndDate(employeeId as string, date as string);
@@ -1187,7 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         canEdit: !hasClockEntries
       });
     } catch (error) {
-      handleApiError(res, 500, "Error al obtener jornada laboral");
+      handleApiError(res, error, "Error al obtener jornada laboral");
     }
   });
 
@@ -1215,13 +1215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workday = await storage.createManualDailyWorkday(data);
       res.status(201).json(workday);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return handleApiError(res, 400, "Datos inválidos", error.errors);
-      }
-      if (error instanceof Error) {
-        return handleApiError(res, 409, error.message);
-      }
-      handleApiError(res, 500, "Error al crear jornada laboral");
+      handleApiError(res, error, "Error al crear jornada laboral");
     }
   });
 
@@ -1240,18 +1234,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const workday = await storage.updateManualDailyWorkday(req.params.id, data);
       
       if (!workday) {
-        return handleApiError(res, 404, "Jornada laboral no encontrada");
+        return res.status(404).json({ message: "Jornada laboral no encontrada" });
       }
       
       res.json(workday);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return handleApiError(res, 400, "Datos inválidos", error.errors);
-      }
-      if (error instanceof Error) {
-        return handleApiError(res, 409, error.message);
-      }
-      handleApiError(res, 500, "Error al actualizar jornada laboral");
+      handleApiError(res, error, "Error al actualizar jornada laboral");
     }
   });
 
@@ -1269,15 +1257,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const success = await storage.deleteDailyWorkday(req.params.id);
       
       if (!success) {
-        return handleApiError(res, 404, "Jornada laboral no encontrada");
+        return res.status(404).json({ message: "Jornada laboral no encontrada" });
       }
       
       res.status(204).send();
     } catch (error) {
-      if (error instanceof Error) {
-        return handleApiError(res, 409, error.message);
-      }
-      handleApiError(res, 500, "Error al eliminar jornada laboral");
+      handleApiError(res, error, "Error al eliminar jornada laboral");
     }
   });
 
