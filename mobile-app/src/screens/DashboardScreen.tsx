@@ -35,7 +35,6 @@ import {
   TimeEntry, 
   TimeStats 
 } from '../types/schema';
-import { useAuth } from '../hooks/useAuth';
 
 type DashboardNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Dashboard'>;
 
@@ -50,7 +49,6 @@ interface DashboardScreenProps {
 export default function DashboardScreen({ route }: DashboardScreenProps) {
   const navigation = useNavigation<DashboardNavigationProp>();
   const { user } = route.params;
-  const { logout } = useAuth();
   const [currentEntry, setCurrentEntry] = useState<TimeEntry | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [isOnBreak, setIsOnBreak] = useState(false);
@@ -209,8 +207,12 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
               // Continuar con el logout local aunque el servidor falle
             }
             
-            // Hacer logout local usando el hook de autenticación
-            logout();
+            // Siempre hacer logout local
+            if ((global as any).handleLogout) {
+              (global as any).handleLogout();
+            } else {
+              Alert.alert('Error', 'No se pudo cerrar sesión. Por favor, reinicia la aplicación.');
+            }
           },
         },
       ]
