@@ -433,14 +433,14 @@ export async function getMyDateSchedules(startDate?: string, endDate?: string): 
  * Obtiene incidencias del empleado actual
  */
 export async function getMyIncidents(): Promise<Incident[]> {
-  return apiRequest<Incident[]>('/incidents/my');
+  return apiRequest<Incident[]>('/api/incidents');
 }
 
 /**
  * Crea una nueva incidencia
  */
 export async function createIncident(incident: InsertIncident): Promise<Incident> {
-  return apiRequest<Incident>('/incidents', {
+  return apiRequest<Incident>('/api/incidents', {
     method: 'POST',
     body: incident,
   });
