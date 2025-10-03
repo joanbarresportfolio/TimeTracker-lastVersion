@@ -212,6 +212,31 @@ export const insertDailyWorkdaySchema = createInsertSchema(dailyWorkday).omit({
   status: z.enum(['open', 'closed']).default('open'),
 });
 
+export const manualDailyWorkdaySchema = z.object({
+  employeeId: z.string().min(1, "Employee ID is required"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
+  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Start time must be in HH:MM format"),
+  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "End time must be in HH:MM format"),
+  breakMinutes: z.number().int().min(0, "Break minutes cannot be negative"),
+}).refine(
+  (data) => data.startTime < data.endTime,
+  { message: "End time must be after start time", path: ["endTime"] }
+);
+
+export const updateManualDailyWorkdaySchema = z.object({
+  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Start time must be in HH:MM format").optional(),
+  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "End time must be in HH:MM format").optional(),
+  breakMinutes: z.number().int().min(0, "Break minutes cannot be negative").optional(),
+}).refine(
+  (data) => {
+    if (data.startTime && data.endTime) {
+      return data.startTime < data.endTime;
+    }
+    return true;
+  },
+  { message: "End time must be after start time", path: ["endTime"] }
+);
+
 /**
  * SCHEMAS FOR INCIDENTS
  */
@@ -244,6 +269,8 @@ export type InsertClockEntry = z.infer<typeof insertClockEntrySchema>;
 
 export type DailyWorkday = typeof dailyWorkday.$inferSelect;
 export type InsertDailyWorkday = z.infer<typeof insertDailyWorkdaySchema>;
+export type ManualDailyWorkday = z.infer<typeof manualDailyWorkdaySchema>;
+export type UpdateManualDailyWorkday = z.infer<typeof updateManualDailyWorkdaySchema>;
 
 export type Incident = typeof incidents.$inferSelect;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
