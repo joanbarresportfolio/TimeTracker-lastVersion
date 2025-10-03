@@ -80,6 +80,44 @@ async function validateClockingTime(employeeId: string, currentTime: Date, actio
 }
 
 /**
+ * HELPER PARA MANEJO CONSISTENTE DE ERRORES
+ * ==========================================
+ * 
+ * Maneja errores de manera consistente en todas las rutas.
+ * Determina el código de estado HTTP apropiado y formatea el mensaje.
+ */
+function handleApiError(res: any, error: unknown, defaultMessage: string) {
+  console.error(`${defaultMessage}:`, error);
+  
+  // Manejar errores de validación Zod
+  if (error instanceof z.ZodError) {
+    return res.status(400).json({ 
+      message: "Datos inválidos", 
+      errors: error.errors 
+    });
+  }
+  
+  // Extraer mensaje de error
+  const errorMessage = error instanceof Error ? error.message : defaultMessage;
+  
+  // Determinar código de estado basado en el mensaje
+  let statusCode = 500;
+  if (errorMessage.includes("no encontrado") || errorMessage.includes("not found")) {
+    statusCode = 404;
+  } else if (errorMessage.includes("ya existe") || errorMessage.includes("duplicado") || errorMessage.includes("duplicate")) {
+    statusCode = 409;
+  } else if (errorMessage.includes("no autorizado") || errorMessage.includes("unauthorized")) {
+    statusCode = 401;
+  } else if (errorMessage.includes("no permitido") || errorMessage.includes("forbidden")) {
+    statusCode = 403;
+  } else if (errorMessage.includes("inválido") || errorMessage.includes("invalid")) {
+    statusCode = 400;
+  }
+  
+  res.status(statusCode).json({ message: errorMessage });
+}
+
+/**
  * FUNCIÓN PRINCIPAL DE REGISTRO DE RUTAS
  * ====================================
  * 
@@ -372,12 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(safeEmployee);
       
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        console.log("Errores de validación Zod:", error.errors);
-        return res.status(400).json({ message: "Datos de empleado inválidos", errors: error.errors });
-      }
-      console.log("Error al crear empleado:", error);
-      res.status(500).json({ message: "Error al crear empleado" });
+      handleApiError(res, error, "Error al crear empleado");
     }
   });
 
@@ -449,12 +482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(safeEmployee);
       
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        console.log("❌ Errores de validación Zod en actualización:", error.errors);
-        return res.status(400).json({ message: "Datos de empleado inválidos", errors: error.errors });
-      }
-      console.log("❌ Error al actualizar empleado:", error);
-      res.status(500).json({ message: "Error al actualizar empleado" });
+      handleApiError(res, error, "Error al actualizar empleado");
     }
   });
 
@@ -751,6 +779,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const tipoRegistro = req.body.tipoRegistro || req.body.tipo_registro;
       
+      if (!tipoRegistro) {
+        return res.status(400).json({ message: "El campo 'tipoRegistro' es requerido. Valores válidos: clock_in, clock_out, break_start, break_end" });
+      }
+      
+      // Validar que el tipo de registro sea válido
+      const validTypes = ['clock_in', 'clock_out', 'break_start', 'break_end'];
+      if (!validTypes.includes(tipoRegistro)) {
+        return res.status(400).json({ message: `Tipo de registro inválido. Debe ser uno de: ${validTypes.join(', ')}` });
+      }
+      
       // crearFichaje ahora acepta parámetros separados: (employeeId, entryType, shiftId, source, notes)
       const entryType = tipoRegistro as 'clock_in' | 'clock_out' | 'break_start' | 'break_end';
       const shiftId = req.body.idTurno || null;
@@ -767,7 +805,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(fichaje);
     } catch (error) {
       console.error("Error al crear fichaje:", error);
-      res.status(500).json({ message: "Error al crear fichaje" });
+      const errorMessage = error instanceof Error ? error.message : "Error al crear fichaje";
+      res.status(500).json({ message: errorMessage });
     }
   });
 
