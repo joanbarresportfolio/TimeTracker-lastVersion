@@ -1475,6 +1475,20 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
     }
   }
 
+  // BUSCAR EL HORARIO PROGRAMADO (scheduled_shift) PARA ESTE DÍA
+  const [scheduledShift] = await db
+    .select()
+    .from(scheduledShifts)
+    .where(
+      and(
+        eq(scheduledShifts.employeeId, employeeId),
+        eq(scheduledShifts.date, fecha)
+      )
+    )
+    .limit(1);
+  
+  const shiftId = scheduledShift?.id || null;
+
   const [existingWorkday] = await db
     .select()
     .from(dailyWorkday)
@@ -1485,10 +1499,13 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
       )
     );
 
+  let workdayId: string;
+
   if (existingWorkday) {
     await db
       .update(dailyWorkday)
       .set({
+        shiftId,
         startTime,
         endTime,
         workedMinutes,
@@ -1496,20 +1513,34 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
         status,
       })
       .where(eq(dailyWorkday.id, existingWorkday.id));
+    
+    workdayId = existingWorkday.id;
   } else {
-    await db
+    const [newWorkday] = await db
       .insert(dailyWorkday)
       .values({
         employeeId,
         date: fecha,
+        shiftId,
         startTime,
         endTime,
         workedMinutes,
         breakMinutes,
         overtimeMinutes: 0,
         status,
-      });
+      })
+      .returning();
+    
+    workdayId = newWorkday.id;
   }
+
+  // ACTUALIZAR TODOS LOS CLOCK_ENTRIES DEL DÍA CON EL daily_workday_id
+  await db
+    .update(clockEntries)
+    .set({ dailyWorkdayId: workdayId })
+    .where(
+      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
+    );
 }
 
 /**
