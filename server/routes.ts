@@ -1280,32 +1280,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { employeeId, startDate, endDate } = queryResult.data;
-      let dateSchedules;
+      let scheduledShifts;
       
       // CONTROL DE ACCESO: Employees solo ven sus horarios, admins todos
+      // Usando scheduled_shifts table en lugar de date_schedules legacy
       if (req.user!.role === "employee") {
         // EMPLOYEE: Solo horarios propios por fecha
         if (startDate && endDate) {
-          dateSchedules = await storage.getDateSchedulesByEmployeeAndRange(req.user!.id, startDate, endDate);
+          scheduledShifts = await storage.getScheduledShiftsByEmployeeAndRange(req.user!.id, startDate, endDate);
         } else {
-          dateSchedules = await storage.getDateSchedulesByEmployee(req.user!.id);
+          scheduledShifts = await storage.getScheduledShiftsByEmployee(req.user!.id);
         }
       } else {
         // ADMIN: Puede filtrar por empleado o ver todos
         if (employeeId) {
           if (startDate && endDate) {
-            dateSchedules = await storage.getDateSchedulesByEmployeeAndRange(employeeId, startDate, endDate);
+            scheduledShifts = await storage.getScheduledShiftsByEmployeeAndRange(employeeId, startDate, endDate);
           } else {
-            dateSchedules = await storage.getDateSchedulesByEmployee(employeeId);
+            scheduledShifts = await storage.getScheduledShiftsByEmployee(employeeId);
           }
         } else {
           if (startDate && endDate) {
-            dateSchedules = await storage.getDateSchedulesByRange(startDate, endDate);
+            scheduledShifts = await storage.getScheduledShiftsByRange(startDate, endDate);
           } else {
-            dateSchedules = await storage.getDateSchedules();
+            scheduledShifts = await storage.getScheduledShifts();
           }
         }
       }
+      
+      // Convertir ScheduledShift a DateSchedule para compatibilidad con móvil
+      const dateSchedules = scheduledShifts.map(shift => {
+        // Calcular workHours en minutos
+        const [startHour, startMin] = shift.expectedStartTime.split(':').map(Number);
+        const [endHour, endMin] = shift.expectedEndTime.split(':').map(Number);
+        const startMinutes = startHour * 60 + startMin;
+        const endMinutes = endHour * 60 + endMin;
+        const workMinutes = endMinutes - startMinutes;
+        
+        return {
+          id: shift.id,
+          employeeId: shift.employeeId,
+          date: shift.date,
+          startTime: shift.expectedStartTime,
+          endTime: shift.expectedEndTime,
+          workHours: workMinutes,
+          isActive: shift.status === 'scheduled' || shift.status === 'confirmed',
+          // Campos adicionales para compatibilidad con mobile
+          expectedStartTime: shift.expectedStartTime,
+          expectedEndTime: shift.expectedEndTime,
+          status: shift.status,
+        };
+      });
       
       res.json(dateSchedules);
     } catch (error) {

@@ -194,6 +194,30 @@ export interface IStorage {
   
   /** Elimina una incidencia */
   deleteIncident(id: string): Promise<boolean>;
+
+  // Métodos de Horarios Programados (Scheduled Shifts)
+  // Gestión de turnos y horarios asignados a empleados por fecha
+  
+  /** Obtiene todos los turnos programados */
+  getScheduledShifts(): Promise<ScheduledShift[]>;
+  
+  /** Obtiene todos los turnos programados de un empleado */
+  getScheduledShiftsByEmployee(employeeId: string): Promise<ScheduledShift[]>;
+  
+  /** Obtiene todos los turnos programados en un rango de fechas */
+  getScheduledShiftsByRange(startDate: string, endDate: string): Promise<ScheduledShift[]>;
+  
+  /** Obtiene turnos programados de un empleado en un rango de fechas */
+  getScheduledShiftsByEmployeeAndRange(employeeId: string, startDate: string, endDate: string): Promise<ScheduledShift[]>;
+  
+  /** Crea un nuevo turno programado */
+  createScheduledShift(shift: Omit<ScheduledShift, 'id'>): Promise<ScheduledShift>;
+  
+  /** Actualiza el estado de un turno programado */
+  updateScheduledShiftStatus(id: string, status: string): Promise<ScheduledShift | undefined>;
+  
+  /** Elimina un turno programado */
+  deleteScheduledShift(id: string): Promise<boolean>;
 }
 
 /**
@@ -1089,6 +1113,100 @@ export class DatabaseStorage implements IStorage {
    */
   async deleteIncident(id: string): Promise<boolean> {
     const result = await db.delete(incidents).where(eq(incidents.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // ==========================================
+  // MÉTODOS DE HORARIOS PROGRAMADOS (SCHEDULED SHIFTS)
+  // ==========================================
+  
+  /**
+   * OBTENER TODOS LOS TURNOS PROGRAMADOS
+   * ====================================
+   */
+  async getScheduledShifts(): Promise<ScheduledShift[]> {
+    return await db.select().from(scheduledShifts);
+  }
+
+  /**
+   * OBTENER TURNOS PROGRAMADOS POR EMPLEADO
+   * =======================================
+   */
+  async getScheduledShiftsByEmployee(employeeId: string): Promise<ScheduledShift[]> {
+    return await db
+      .select()
+      .from(scheduledShifts)
+      .where(eq(scheduledShifts.employeeId, employeeId));
+  }
+
+  /**
+   * OBTENER TURNOS PROGRAMADOS POR RANGO DE FECHAS
+   * ==============================================
+   */
+  async getScheduledShiftsByRange(startDate: string, endDate: string): Promise<ScheduledShift[]> {
+    return await db
+      .select()
+      .from(scheduledShifts)
+      .where(
+        and(
+          gte(scheduledShifts.date, startDate),
+          lte(scheduledShifts.date, endDate)
+        )
+      );
+  }
+
+  /**
+   * OBTENER TURNOS PROGRAMADOS POR EMPLEADO Y RANGO DE FECHAS
+   * =========================================================
+   */
+  async getScheduledShiftsByEmployeeAndRange(
+    employeeId: string, 
+    startDate: string, 
+    endDate: string
+  ): Promise<ScheduledShift[]> {
+    return await db
+      .select()
+      .from(scheduledShifts)
+      .where(
+        and(
+          eq(scheduledShifts.employeeId, employeeId),
+          gte(scheduledShifts.date, startDate),
+          lte(scheduledShifts.date, endDate)
+        )
+      );
+  }
+
+  /**
+   * CREAR NUEVO TURNO PROGRAMADO
+   * ============================
+   */
+  async createScheduledShift(shift: Omit<ScheduledShift, 'id'>): Promise<ScheduledShift> {
+    const [newShift] = await db
+      .insert(scheduledShifts)
+      .values(shift)
+      .returning();
+    return newShift;
+  }
+
+  /**
+   * ACTUALIZAR ESTADO DE TURNO PROGRAMADO
+   * =====================================
+   */
+  async updateScheduledShiftStatus(id: string, status: string): Promise<ScheduledShift | undefined> {
+    const [updated] = await db
+      .update(scheduledShifts)
+      .set({ status })
+      .where(eq(scheduledShifts.id, id))
+      .returning();
+    return updated;
+  }
+
+  /**
+   * ELIMINAR TURNO PROGRAMADO
+   * ========================
+   */
+  async deleteScheduledShift(id: string): Promise<boolean> {
+    const result = await db.delete(scheduledShifts).where(eq(scheduledShifts.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
