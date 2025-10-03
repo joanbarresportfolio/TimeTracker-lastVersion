@@ -55,7 +55,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIncidentSchema, loginSchema, createUserSchema as createEmployeeSchema, updateUserSchema as updateEmployeeSchema, bulkScheduledShiftCreateSchema, insertScheduledShiftSchema } from "@shared/schema";
+import { insertIncidentSchema, loginSchema, createUserSchema as createEmployeeSchema, updateUserSchema as updateEmployeeSchema, bulkScheduledShiftCreateSchema, insertScheduledShiftSchema, manualDailyWorkdaySchema, updateManualDailyWorkdaySchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess, generateToken } from "./middleware/auth";
 import { z } from "zod";
 
@@ -1150,6 +1150,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Error al eliminar incidencia" });
+    }
+  });
+
+  // ==========================================
+  // RUTAS DE GESTIÓN MANUAL DE JORNADAS LABORALES (DAILY WORKDAY)
+  // ==========================================
+
+  /**
+   * GET /api/daily-workday
+   * =====================
+   * 
+   * Obtiene una jornada laboral específica por empleado y fecha.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores
+   * 
+   * QUERY PARAMS:
+   * - employeeId: ID del empleado (requerido)
+   * - date: Fecha en formato YYYY-MM-DD (requerido)
+   */
+  app.get("/api/daily-workday", requireAdmin, async (req, res) => {
+    try {
+      const { employeeId, date } = req.query;
+      
+      if (!employeeId || !date) {
+        return handleApiError(res, 400, "employeeId y date son requeridos");
+      }
+
+      const workday = await storage.getDailyWorkdayByEmployeeAndDate(employeeId as string, date as string);
+      const hasClockEntries = await storage.hasClockEntriesForDate(employeeId as string, date as string);
+
+      res.json({
+        workday: workday || null,
+        hasClockEntries,
+        canEdit: !hasClockEntries
+      });
+    } catch (error) {
+      handleApiError(res, 500, "Error al obtener jornada laboral");
+    }
+  });
+
+  /**
+   * POST /api/daily-workday
+   * ======================
+   * 
+   * Crea manualmente una jornada laboral.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores
+   * 
+   * REQUEST BODY:
+   * {
+   *   "employeeId": "emp-id",
+   *   "date": "2024-03-15",
+   *   "startTime": "09:00",
+   *   "endTime": "17:00",
+   *   "breakMinutes": 30
+   * }
+   */
+  app.post("/api/daily-workday", requireAdmin, async (req, res) => {
+    try {
+      const data = manualDailyWorkdaySchema.parse(req.body);
+      const workday = await storage.createManualDailyWorkday(data);
+      res.status(201).json(workday);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return handleApiError(res, 400, "Datos inválidos", error.errors);
+      }
+      if (error instanceof Error) {
+        return handleApiError(res, 409, error.message);
+      }
+      handleApiError(res, 500, "Error al crear jornada laboral");
+    }
+  });
+
+  /**
+   * PUT /api/daily-workday/:id
+   * =========================
+   * 
+   * Actualiza manualmente una jornada laboral existente.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores
+   */
+  app.put("/api/daily-workday/:id", requireAdmin, async (req, res) => {
+    try {
+      const data = updateManualDailyWorkdaySchema.parse(req.body);
+      const workday = await storage.updateManualDailyWorkday(req.params.id, data);
+      
+      if (!workday) {
+        return handleApiError(res, 404, "Jornada laboral no encontrada");
+      }
+      
+      res.json(workday);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return handleApiError(res, 400, "Datos inválidos", error.errors);
+      }
+      if (error instanceof Error) {
+        return handleApiError(res, 409, error.message);
+      }
+      handleApiError(res, 500, "Error al actualizar jornada laboral");
+    }
+  });
+
+  /**
+   * DELETE /api/daily-workday/:id
+   * ============================
+   * 
+   * Elimina una jornada laboral.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores
+   */
+  app.delete("/api/daily-workday/:id", requireAdmin, async (req, res) => {
+    try {
+      const success = await storage.deleteDailyWorkday(req.params.id);
+      
+      if (!success) {
+        return handleApiError(res, 404, "Jornada laboral no encontrada");
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      if (error instanceof Error) {
+        return handleApiError(res, 409, error.message);
+      }
+      handleApiError(res, 500, "Error al eliminar jornada laboral");
     }
   });
 
