@@ -388,6 +388,14 @@ export async function getTimeEntries(
 }
 
 /**
+ * Obtiene el historial completo de una jornada diaria
+ * Incluye: daily_workday, clock_entries, y scheduled_shift
+ */
+export async function getDailyWorkdayHistory(employeeId: string, date: string) {
+  return apiRequest(`/jornadas/${employeeId}/historial?date=${date}`);
+}
+
+/**
  * SERVICIOS DE HORARIOS
  * =====================
  */
