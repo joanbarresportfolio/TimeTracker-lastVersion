@@ -79,6 +79,7 @@ export const clockEntries = pgTable("clock_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   employeeId: varchar("employee_id").notNull().references(() => users.id),
   shiftId: varchar("shift_id").references(() => scheduledShifts.id), // NULL if no shift assigned
+  dailyWorkdayId: varchar("daily_workday_id").references(() => dailyWorkday.id), // Reference to parent daily workday
   entryType: varchar("entry_type").notNull(), // 'clock_in', 'clock_out', 'break_start', 'break_end'
   timestamp: timestamp("timestamp").notNull().default(sql`now()`),
   source: varchar("source"), // 'mobile_app', 'physical_terminal', 'web'
@@ -96,6 +97,7 @@ export const dailyWorkday = pgTable("daily_workday", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   employeeId: varchar("employee_id").notNull().references(() => users.id),
   date: text("date").notNull(), // YYYY-MM-DD
+  shiftId: varchar("shift_id").references(() => scheduledShifts.id), // Reference to scheduled shift for this day
   startTime: timestamp("start_time"), // First clock-in entry of the day
   endTime: timestamp("end_time"), // Last clock-out entry of the day
   workedMinutes: integer("worked_minutes").notNull().default(0), // in minutes
