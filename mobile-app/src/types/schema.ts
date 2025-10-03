@@ -51,6 +51,12 @@ export interface LoginRequest {
  * El backend internamente usa el nuevo sistema de eventos (clock_entries).
  */
 
+/** Tipo de pausa individual */
+export interface BreakEntry {
+  start: string; // ISO string
+  end?: string | null; // ISO string
+}
+
 /** Tipo completo de registro de tiempo (formato legacy) */
 export interface TimeEntry {
   id: string;
@@ -58,6 +64,8 @@ export interface TimeEntry {
   clockIn: string; // El servidor envía ISO string, no Date
   clockOut?: string | null; // El servidor envía ISO string, no Date
   totalHours?: number | null;
+  breakMinutes?: number | null;
+  breaks: BreakEntry[];
   date: string;
 }
 

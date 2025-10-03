@@ -270,6 +270,14 @@ export interface Employee {
 }
 
 /**
+ * Break entry for TimeEntry
+ */
+export interface BreakEntry {
+  start: Date;
+  end: Date | null;
+}
+
+/**
  * Legacy TimeEntry interface - maps to DailyWorkday
  */
 export interface TimeEntry {
@@ -278,6 +286,8 @@ export interface TimeEntry {
   clockIn: Date;
   clockOut: Date | null;
   totalHours: number | null;
+  breakMinutes: number | null;
+  breaks: BreakEntry[];
   date: string;
 }
 

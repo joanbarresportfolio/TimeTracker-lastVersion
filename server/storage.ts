@@ -51,6 +51,7 @@ import {
   type InsertEmployee, 
   type TimeEntry, 
   type InsertTimeEntry, 
+  type BreakEntry,
   type Schedule, 
   type InsertSchedule, 
   type Incident, 
@@ -622,6 +623,51 @@ export class DatabaseStorage implements IStorage {
   // ==========================================
   
   /**
+   * OBTENER PAUSAS DE UN DÍA ESPECÍFICO
+   * ===================================
+   * 
+   * Recupera todas las pausas (break_start y break_end) de un empleado en una fecha específica.
+   * 
+   * @param employeeId - ID del empleado
+   * @param date - Fecha en formato YYYY-MM-DD
+   * @returns Array de pausas con start y end
+   */
+  async getBreaksForDay(employeeId: string, date: string): Promise<BreakEntry[]> {
+    const entries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${date} AND ${clockEntries.employeeId} = ${employeeId} AND (${clockEntries.entryType} = 'break_start' OR ${clockEntries.entryType} = 'break_end')`
+      )
+      .orderBy(clockEntries.timestamp);
+
+    const breaks: BreakEntry[] = [];
+    let currentBreakStart: Date | null = null;
+
+    for (const entry of entries) {
+      if (entry.entryType === 'break_start') {
+        currentBreakStart = entry.timestamp;
+      } else if (entry.entryType === 'break_end' && currentBreakStart) {
+        breaks.push({
+          start: currentBreakStart,
+          end: entry.timestamp,
+        });
+        currentBreakStart = null;
+      }
+    }
+
+    // Si hay un break_start sin break_end correspondiente
+    if (currentBreakStart) {
+      breaks.push({
+        start: currentBreakStart,
+        end: null,
+      });
+    }
+
+    return breaks;
+  }
+
+  /**
    * OBTENER REGISTRO DE TIEMPO POR ID
    * ================================
    * 
@@ -641,12 +687,17 @@ export class DatabaseStorage implements IStorage {
     const totalMinutes = workday.workedMinutes - workday.breakMinutes;
     const totalHours = totalMinutes / 60;
     
+    // Obtener pausas del día
+    const breaks = await this.getBreaksForDay(workday.employeeId, workday.date);
+    
     return {
       id: workday.id,
       employeeId: workday.employeeId,
       clockIn: workday.startTime || new Date(),
       clockOut: workday.endTime,
       totalHours: totalHours,
+      breakMinutes: workday.breakMinutes,
+      breaks: breaks,
       date: workday.date,
     };
   }
@@ -662,9 +713,12 @@ export class DatabaseStorage implements IStorage {
   async getTimeEntries(): Promise<TimeEntry[]> {
     const workdays = await db.select().from(dailyWorkday);
     
-    return workdays.map(workday => {
+    const entries = await Promise.all(workdays.map(async workday => {
       const totalMinutes = workday.workedMinutes - workday.breakMinutes;
       const totalHours = totalMinutes / 60;
+      
+      // Obtener pausas del día
+      const breaks = await this.getBreaksForDay(workday.employeeId, workday.date);
       
       return {
         id: workday.id,
@@ -672,9 +726,13 @@ export class DatabaseStorage implements IStorage {
         clockIn: workday.startTime || new Date(),
         clockOut: workday.endTime,
         totalHours: totalHours,
+        breakMinutes: workday.breakMinutes,
+        breaks: breaks,
         date: workday.date,
       };
-    });
+    }));
+    
+    return entries;
   }
 
   /**
@@ -692,9 +750,12 @@ export class DatabaseStorage implements IStorage {
       .from(dailyWorkday)
       .where(eq(dailyWorkday.employeeId, employeeId));
     
-    return workdays.map(workday => {
+    const entries = await Promise.all(workdays.map(async workday => {
       const totalMinutes = workday.workedMinutes - workday.breakMinutes;
       const totalHours = totalMinutes / 60;
+      
+      // Obtener pausas del día
+      const breaks = await this.getBreaksForDay(workday.employeeId, workday.date);
       
       return {
         id: workday.id,
@@ -702,9 +763,13 @@ export class DatabaseStorage implements IStorage {
         clockIn: workday.startTime || new Date(),
         clockOut: workday.endTime,
         totalHours: totalHours,
+        breakMinutes: workday.breakMinutes,
+        breaks: breaks,
         date: workday.date,
       };
-    });
+    }));
+    
+    return entries;
   }
 
   /**
@@ -722,9 +787,12 @@ export class DatabaseStorage implements IStorage {
       .from(dailyWorkday)
       .where(eq(dailyWorkday.date, date));
     
-    return workdays.map(workday => {
+    const entries = await Promise.all(workdays.map(async workday => {
       const totalMinutes = workday.workedMinutes - workday.breakMinutes;
       const totalHours = totalMinutes / 60;
+      
+      // Obtener pausas del día
+      const breaks = await this.getBreaksForDay(workday.employeeId, workday.date);
       
       return {
         id: workday.id,
@@ -732,9 +800,13 @@ export class DatabaseStorage implements IStorage {
         clockIn: workday.startTime || new Date(),
         clockOut: workday.endTime,
         totalHours: totalHours,
+        breakMinutes: workday.breakMinutes,
+        breaks: breaks,
         date: workday.date,
       };
-    });
+    }));
+    
+    return entries;
   }
 
   /**
@@ -812,12 +884,17 @@ export class DatabaseStorage implements IStorage {
     const totalMinutes = workday.workedMinutes - workday.breakMinutes;
     const totalHours = totalMinutes / 60;
     
+    // Obtener pausas del día
+    const breaks = await this.getBreaksForDay(workday.employeeId, workday.date);
+    
     return {
       id: workday.id,
       employeeId: workday.employeeId,
       clockIn: workday.startTime || timeEntry.clockIn,
       clockOut: workday.endTime,
       totalHours: totalHours,
+      breakMinutes: workday.breakMinutes,
+      breaks: breaks,
       date: workday.date,
     };
   }
@@ -868,12 +945,17 @@ export class DatabaseStorage implements IStorage {
     const totalMinutes = updatedWorkday.workedMinutes - updatedWorkday.breakMinutes;
     const totalHours = totalMinutes / 60;
     
+    // Obtener pausas del día
+    const breaks = await this.getBreaksForDay(updatedWorkday.employeeId, updatedWorkday.date);
+    
     return {
       id: updatedWorkday.id,
       employeeId: updatedWorkday.employeeId,
       clockIn: updatedWorkday.startTime || new Date(),
       clockOut: updatedWorkday.endTime,
       totalHours: totalHours,
+      breakMinutes: updatedWorkday.breakMinutes,
+      breaks: breaks,
       date: updatedWorkday.date,
     };
   }

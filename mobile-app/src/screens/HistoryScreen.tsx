@@ -194,6 +194,18 @@ export default function HistoryScreen({ route }: HistoryScreenProps) {
             <Text style={styles.timeValue}>{formatTime(entry.clockOut)}</Text>
           </View>
           
+          {/* Mostrar pausas si existen */}
+          {entry.breaks && entry.breaks.length > 0 && (
+            <View style={styles.breaksSection}>
+              <Text style={styles.breaksTitle}>Pausas:</Text>
+              {entry.breaks.map((breakEntry, index) => (
+                <View key={index} style={styles.breakRow}>
+                  <Text style={styles.breakLabel}>• {formatTime(breakEntry.start)} - {formatTime(breakEntry.end)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          
           {entry.totalHours !== null && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total:</Text>
@@ -522,5 +534,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#3b82f6',
     fontWeight: '600',
+  },
+  breaksSection: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  breaksTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  breakRow: {
+    paddingLeft: 8,
+  },
+  breakLabel: {
+    fontSize: 13,
+    color: '#6b7280',
   },
 });
