@@ -298,19 +298,37 @@ export async function getCurrentTimeEntry(): Promise<TimeEntry | null> {
 /**
  * Realiza fichaje de entrada (clock-in)
  */
-export async function clockIn(): Promise<TimeEntry> {
-  return apiRequest<TimeEntry>('/time-entries/clock-in', {
-    method: 'POST',
-  });
+export async function clockIn(): Promise<void> {
+  try {
+    await apiRequest('/fichajes', {
+      method: 'POST',
+      body: {
+        tipoRegistro: 'clock_in',
+        origen: 'mobile_app'
+      }
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Error al marcar entrada';
+    throw new Error(errorMessage);
+  }
 }
 
 /**
  * Realiza fichaje de salida (clock-out)
  */
-export async function clockOut(): Promise<TimeEntry> {
-  return apiRequest<TimeEntry>('/time-entries/clock-out', {
-    method: 'POST',
-  });
+export async function clockOut(): Promise<void> {
+  try {
+    await apiRequest('/fichajes', {
+      method: 'POST',
+      body: {
+        tipoRegistro: 'clock_out',
+        origen: 'mobile_app'
+      }
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Error al marcar salida';
+    throw new Error(errorMessage);
+  }
 }
 
 /**
@@ -321,7 +339,8 @@ export async function startBreak(): Promise<void> {
     await apiRequest('/fichajes', {
       method: 'POST',
       body: {
-        tipoRegistro: 'break_start'
+        tipoRegistro: 'break_start',
+        origen: 'mobile_app'
       }
     });
   } catch (error) {
@@ -338,7 +357,8 @@ export async function endBreak(): Promise<void> {
     await apiRequest('/fichajes', {
       method: 'POST',
       body: {
-        tipoRegistro: 'break_end'
+        tipoRegistro: 'break_end',
+        origen: 'mobile_app'
       }
     });
   } catch (error) {
