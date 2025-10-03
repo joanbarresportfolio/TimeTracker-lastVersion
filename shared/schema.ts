@@ -102,8 +102,6 @@ export const dailyWorkday = pgTable("daily_workday", {
   breakMinutes: integer("break_minutes").notNull().default(0), // in minutes
   overtimeMinutes: integer("overtime_minutes").notNull().default(0), // in minutes
   status: varchar("status").notNull().default('open'), // 'open', 'closed'
-  clockEntryIds: text("clock_entry_ids").array().notNull().default(sql`ARRAY[]::text[]`), // IDs of all clock_entries for this workday
-  shiftId: varchar("shift_id").references(() => scheduledShifts.id), // Reference to scheduled_shift for this day
 });
 
 /**

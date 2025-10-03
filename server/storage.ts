@@ -1443,31 +1443,6 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
 
   let lastClockIn: Date | null = null;
   let lastBreakStart: Date | null = null;
-  
-  // Recopilar todos los IDs de clock_entries para esta jornada
-  const clockEntryIds = entriesOfDay.map(entry => entry.id);
-  
-  // Obtener el shift_id (si existe un horario asignado para este día)
-  let shiftId: string | null = null;
-  if (entriesOfDay.length > 0 && entriesOfDay[0].shiftId) {
-    shiftId = entriesOfDay[0].shiftId;
-  } else {
-    // Buscar si hay un horario programado para este día
-    const [scheduledShift] = await db
-      .select()
-      .from(scheduledShifts)
-      .where(
-        and(
-          eq(scheduledShifts.employeeId, employeeId),
-          eq(scheduledShifts.date, fecha)
-        )
-      )
-      .limit(1);
-    
-    if (scheduledShift) {
-      shiftId = scheduledShift.id;
-    }
-  }
 
   for (const entry of entriesOfDay) {
     switch (entry.entryType) {
@@ -1519,8 +1494,6 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
         workedMinutes,
         breakMinutes,
         status,
-        clockEntryIds,
-        shiftId,
       })
       .where(eq(dailyWorkday.id, existingWorkday.id));
   } else {
@@ -1535,8 +1508,6 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
         breakMinutes,
         overtimeMinutes: 0,
         status,
-        clockEntryIds,
-        shiftId,
       });
   }
 }
@@ -1646,76 +1617,6 @@ export const fichajesService = {
         )
       );
     return workday;
-  },
-
-  /**
-   * Obtiene el historial completo de jornadas diarias con toda la información relacionada
-   * Incluye: clock_entries, scheduled_shift
-   */
-  async obtenerHistorialCompleto(employeeId: string, startDate?: string, endDate?: string) {
-    // Construir condiciones de filtrado
-    const conditions = [eq(dailyWorkday.employeeId, employeeId)];
-    
-    if (startDate && endDate) {
-      conditions.push(sql`${dailyWorkday.date} >= ${startDate} AND ${dailyWorkday.date} <= ${endDate}`);
-    }
-
-    const workdays = await db
-      .select()
-      .from(dailyWorkday)
-      .where(and(...conditions))
-      .orderBy(sql`${dailyWorkday.date} DESC`);
-
-    // Para cada jornada, obtener los clock_entries y scheduled_shift relacionados
-    const historialCompleto = await Promise.all(
-      workdays.map(async (workday) => {
-        // Obtener todos los clock_entries de esta jornada
-        const entries = await db
-          .select()
-          .from(clockEntries)
-          .where(
-            sql`${clockEntries.id} = ANY(${workday.clockEntryIds})`
-          )
-          .orderBy(clockEntries.timestamp);
-
-        // Obtener el scheduled_shift si existe
-        let scheduledShift = null;
-        if (workday.shiftId) {
-          const [shift] = await db
-            .select()
-            .from(scheduledShifts)
-            .where(eq(scheduledShifts.id, workday.shiftId));
-          scheduledShift = shift || null;
-        }
-
-        // Calcular pausas (break_start y break_end emparejados)
-        const breaks: Array<{ startTime: Date; endTime: Date; minutes: number }> = [];
-        let currentBreakStart: Date | null = null;
-
-        for (const entry of entries) {
-          if (entry.entryType === 'break_start') {
-            currentBreakStart = entry.timestamp;
-          } else if (entry.entryType === 'break_end' && currentBreakStart) {
-            const minutes = Math.floor((entry.timestamp.getTime() - currentBreakStart.getTime()) / 60000);
-            breaks.push({
-              startTime: currentBreakStart,
-              endTime: entry.timestamp,
-              minutes,
-            });
-            currentBreakStart = null;
-          }
-        }
-
-        return {
-          ...workday,
-          clockEntries: entries,
-          scheduledShift,
-          breaks,
-        };
-      })
-    );
-
-    return historialCompleto;
   },
 };
 

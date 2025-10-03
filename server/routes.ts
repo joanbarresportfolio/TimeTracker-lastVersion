@@ -872,31 +872,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  /**
-   * GET /api/historial/:employeeId
-   * ================================
-   * 
-   * Obtiene el historial completo de jornadas diarias con clock_entries y scheduled_shift
-   * Incluye información detallada de: fichajes, horarios asignados y pausas
-   */
-  app.get("/api/historial/:employeeId", requireEmployeeAccess, async (req, res) => {
-    try {
-      const { fichajesService } = await import("./storage");
-      const { startDate, endDate } = req.query;
-      
-      const historial = await fichajesService.obtenerHistorialCompleto(
-        req.params.employeeId,
-        startDate as string | undefined,
-        endDate as string | undefined
-      );
-      
-      res.json(historial);
-    } catch (error) {
-      console.error("Error al obtener historial completo:", error);
-      res.status(500).json({ message: "Error al obtener historial completo" });
-    }
-  });
-
   
   // ==========================================
   // RUTAS DE GESTIÓN DE HORARIOS
