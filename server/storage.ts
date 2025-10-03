@@ -1435,6 +1435,23 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
     )
     .orderBy(clockEntries.timestamp);
 
+  // Recopilar IDs de todos los clock_entries del día
+  const clockEntryIds = entriesOfDay.map(entry => entry.id);
+
+  // Buscar el scheduled_shift asignado para este día
+  const [scheduledShift] = await db
+    .select()
+    .from(scheduledShifts)
+    .where(
+      and(
+        eq(scheduledShifts.employeeId, employeeId),
+        eq(scheduledShifts.date, fecha)
+      )
+    )
+    .limit(1);
+
+  const shiftId = scheduledShift ? scheduledShift.id : null;
+
   let startTime: Date | null = null;
   let endTime: Date | null = null;
   let workedMinutes = 0;
@@ -1489,6 +1506,8 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
     await db
       .update(dailyWorkday)
       .set({
+        shiftId,
+        clockEntryIds,
         startTime,
         endTime,
         workedMinutes,
@@ -1502,6 +1521,8 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
       .values({
         employeeId,
         date: fecha,
+        shiftId,
+        clockEntryIds,
         startTime,
         endTime,
         workedMinutes,
