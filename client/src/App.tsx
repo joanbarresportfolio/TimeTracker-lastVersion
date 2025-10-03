@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import Employees from "@/pages/employees";
 import TimeTracking from "@/pages/time-tracking";
 import Schedules from "@/pages/schedules";
+import DailyWorkday from "@/pages/daily-workday";
 import Incidents from "@/pages/incidents";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
@@ -28,6 +29,7 @@ function Router() {
       {user?.role === "admin" && <Route path="/employees" component={Employees} />}
       <Route path="/time-tracking" component={TimeTracking} />
       {user?.role === "admin" && <Route path="/schedules" component={Schedules} />}
+      {user?.role === "admin" && <Route path="/daily-workday" component={DailyWorkday} />}
       <Route path="/incidents" component={Incidents} />
       <Route path="/reports" component={Reports} />
       <Route path="/settings" component={Settings} />
