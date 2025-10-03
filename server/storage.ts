@@ -1639,6 +1639,43 @@ export const fichajesService = {
       );
     return workday;
   },
+
+  async obtenerHistorialCompleto(employeeId: string, fecha: string) {
+    // Obtener daily_workday
+    const workday = await this.obtenerJornadaDiaria(employeeId, fecha);
+    
+    if (!workday) {
+      return null;
+    }
+
+    // Obtener clock_entries usando los IDs guardados
+    let clockEntriesData: ClockEntry[] = [];
+    if (workday.clockEntryIds && workday.clockEntryIds.length > 0) {
+      clockEntriesData = await db
+        .select()
+        .from(clockEntries)
+        .where(
+          inArray(clockEntries.id, workday.clockEntryIds)
+        )
+        .orderBy(clockEntries.timestamp);
+    }
+
+    // Obtener scheduled_shift si existe
+    let scheduledShiftData = null;
+    if (workday.shiftId) {
+      const [shift] = await db
+        .select()
+        .from(scheduledShifts)
+        .where(eq(scheduledShifts.id, workday.shiftId));
+      scheduledShiftData = shift || null;
+    }
+
+    return {
+      ...workday,
+      clockEntries: clockEntriesData,
+      scheduledShift: scheduledShiftData,
+    };
+  },
 };
 
 /**

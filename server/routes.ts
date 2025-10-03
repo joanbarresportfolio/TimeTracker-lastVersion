@@ -849,6 +849,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * GET /api/jornadas/:employeeId/historial
+   * =========================================
+   * 
+   * Obtiene el historial completo de una jornada con todos sus datos relacionados
+   * Incluye: daily_workday, clock_entries, y scheduled_shift
+   */
+  app.get("/api/jornadas/:employeeId/historial", requireEmployeeAccess, async (req, res) => {
+    try {
+      const { fichajesService } = await import("./storage");
+      const { date } = req.query;
+      
+      if (!date) {
+        return res.status(400).json({ message: "El parámetro 'date' es requerido (formato YYYY-MM-DD)" });
+      }
+      
+      const historial = await fichajesService.obtenerHistorialCompleto(
+        req.params.employeeId,
+        date as string
+      );
+      
+      res.json(historial);
+    } catch (error) {
+      console.error("Error al obtener historial completo:", error);
+      res.status(500).json({ message: "Error al obtener historial completo" });
+    }
+  });
+
+  /**
    * GET /api/fichajes/:employeeId/ultimo
    * =====================================
    * 
