@@ -218,6 +218,27 @@ export interface IStorage {
   
   /** Elimina un turno programado */
   deleteScheduledShift(id: string): Promise<boolean>;
+
+  // Métodos de Daily Workday
+  // Gestión manual de jornadas laborales diarias consolidadas
+  
+  /** Obtiene una jornada laboral por empleado y fecha */
+  getDailyWorkdayByEmployeeAndDate(employeeId: string, date: string): Promise<DailyWorkday | undefined>;
+  
+  /** Obtiene todas las jornadas laborales de un empleado en un rango de fechas */
+  getDailyWorkdaysByEmployeeAndRange(employeeId: string, startDate: string, endDate: string): Promise<DailyWorkday[]>;
+  
+  /** Crea manualmente una jornada laboral (verifica que no existan clock_entries para ese día) */
+  createManualDailyWorkday(data: { employeeId: string; date: string; startTime: string; endTime: string; breakMinutes: number }): Promise<DailyWorkday>;
+  
+  /** Actualiza manualmente una jornada laboral existente */
+  updateManualDailyWorkday(id: string, data: { startTime?: string; endTime?: string; breakMinutes?: number }): Promise<DailyWorkday | undefined>;
+  
+  /** Elimina una jornada laboral */
+  deleteDailyWorkday(id: string): Promise<boolean>;
+  
+  /** Verifica si existen clock_entries para un empleado en una fecha específica */
+  hasClockEntriesForDate(employeeId: string, date: string): Promise<boolean>;
 }
 
 /**
@@ -1848,6 +1869,140 @@ export const fichajesService = {
         )
       );
     return workday;
+  },
+
+  // ==========================================
+  // MÉTODOS DE DAILY WORKDAY (GESTIÓN MANUAL)
+  // ==========================================
+
+  async getDailyWorkdayByEmployeeAndDate(employeeId: string, date: string): Promise<DailyWorkday | undefined> {
+    const [workday] = await db
+      .select()
+      .from(dailyWorkday)
+      .where(
+        and(
+          eq(dailyWorkday.employeeId, employeeId),
+          eq(dailyWorkday.date, date)
+        )
+      );
+    return workday;
+  },
+
+  async getDailyWorkdaysByEmployeeAndRange(employeeId: string, startDate: string, endDate: string): Promise<DailyWorkday[]> {
+    return await db
+      .select()
+      .from(dailyWorkday)
+      .where(
+        and(
+          eq(dailyWorkday.employeeId, employeeId),
+          gte(dailyWorkday.date, startDate),
+          lte(dailyWorkday.date, endDate)
+        )
+      )
+      .orderBy(dailyWorkday.date);
+  },
+
+  async createManualDailyWorkday(data: { employeeId: string; date: string; startTime: string; endTime: string; breakMinutes: number }): Promise<DailyWorkday> {
+    const hasEntries = await this.hasClockEntriesForDate(data.employeeId, data.date);
+    if (hasEntries) {
+      throw new Error('No se puede crear una jornada manual porque ya existen fichajes automáticos para este día');
+    }
+
+    const existingWorkday = await this.getDailyWorkdayByEmployeeAndDate(data.employeeId, data.date);
+    if (existingWorkday) {
+      throw new Error('Ya existe una jornada laboral para este empleado en esta fecha');
+    }
+
+    const startDateTime = new Date(`${data.date}T${data.startTime}:00`);
+    const endDateTime = new Date(`${data.date}T${data.endTime}:00`);
+    
+    const workedMinutes = Math.floor((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60)) - data.breakMinutes;
+
+    const [newWorkday] = await db
+      .insert(dailyWorkday)
+      .values({
+        employeeId: data.employeeId,
+        date: data.date,
+        startTime: startDateTime,
+        endTime: endDateTime,
+        workedMinutes,
+        breakMinutes: data.breakMinutes,
+        overtimeMinutes: 0,
+        status: 'closed'
+      })
+      .returning();
+
+    return newWorkday;
+  },
+
+  async updateManualDailyWorkday(id: string, data: { startTime?: string; endTime?: string; breakMinutes?: number }): Promise<DailyWorkday | undefined> {
+    const existing = await db.select().from(dailyWorkday).where(eq(dailyWorkday.id, id)).limit(1);
+    if (!existing || existing.length === 0) {
+      return undefined;
+    }
+
+    const workday = existing[0];
+    
+    const hasEntries = await this.hasClockEntriesForDate(workday.employeeId, workday.date);
+    if (hasEntries) {
+      throw new Error('No se puede editar una jornada porque ya existen fichajes automáticos para este día');
+    }
+
+    let startDateTime = workday.startTime;
+    let endDateTime = workday.endTime;
+    let breakMinutes = data.breakMinutes ?? workday.breakMinutes;
+
+    if (data.startTime) {
+      startDateTime = new Date(`${workday.date}T${data.startTime}:00`);
+    }
+    if (data.endTime) {
+      endDateTime = new Date(`${workday.date}T${data.endTime}:00`);
+    }
+
+    const workedMinutes = startDateTime && endDateTime 
+      ? Math.floor((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60)) - breakMinutes
+      : workday.workedMinutes;
+
+    const [updated] = await db
+      .update(dailyWorkday)
+      .set({
+        startTime: startDateTime,
+        endTime: endDateTime,
+        breakMinutes,
+        workedMinutes,
+      })
+      .where(eq(dailyWorkday.id, id))
+      .returning();
+
+    return updated;
+  },
+
+  async deleteDailyWorkday(id: string): Promise<boolean> {
+    const existing = await db.select().from(dailyWorkday).where(eq(dailyWorkday.id, id)).limit(1);
+    if (!existing || existing.length === 0) {
+      return false;
+    }
+
+    const workday = existing[0];
+    const hasEntries = await this.hasClockEntriesForDate(workday.employeeId, workday.date);
+    if (hasEntries) {
+      throw new Error('No se puede eliminar una jornada porque ya existen fichajes automáticos para este día');
+    }
+
+    const result = await db.delete(dailyWorkday).where(eq(dailyWorkday.id, id));
+    return (result.rowCount ?? 0) > 0;
+  },
+
+  async hasClockEntriesForDate(employeeId: string, date: string): Promise<boolean> {
+    const entries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${date} AND ${clockEntries.employeeId} = ${employeeId}`
+      )
+      .limit(1);
+    
+    return entries.length > 0;
   },
 };
 
