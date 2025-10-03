@@ -69,21 +69,19 @@ export const scheduledShifts = pgTable("scheduled_shifts", {
 });
 
 /**
- * TABLE: clock_entries
- * ====================
+ * TABLE: incidents
+ * ================
  * 
- * Individual clock entry records (clock in, clock out, breaks).
- * Each entry is a unique event that updates the daily_workday.
+ * Record of work incidents (delays, absences, sick leave, etc.).
  */
-export const clockEntries = pgTable("clock_entries", {
+export const incidents = pgTable("incidents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  employeeId: varchar("employee_id").notNull().references(() => users.id),
-  shiftId: varchar("shift_id").references(() => scheduledShifts.id), // NULL if no shift assigned
-  dailyWorkdayId: varchar("daily_workday_id").references(() => dailyWorkday.id), // Reference to parent daily workday
-  entryType: varchar("entry_type").notNull(), // 'clock_in', 'clock_out', 'break_start', 'break_end'
-  timestamp: timestamp("timestamp").notNull().default(sql`now()`),
-  source: varchar("source"), // 'mobile_app', 'physical_terminal', 'web'
-  notes: text("notes"),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  incidentType: text("incident_type").notNull(), // "late", "absence", "sick_leave", "vacation", "forgot_clock_in", "other"
+  description: text("description").notNull(),
+  registeredBy: varchar("registered_by").references(() => users.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  status: text("status").notNull().default("pending"), // "pending", "approved", "rejected"
 });
 
 /**
@@ -98,6 +96,7 @@ export const dailyWorkday = pgTable("daily_workday", {
   employeeId: varchar("employee_id").notNull().references(() => users.id),
   date: text("date").notNull(), // YYYY-MM-DD
   shiftId: varchar("shift_id").references(() => scheduledShifts.id), // Reference to scheduled shift for this day
+  incidentId: varchar("incident_id").references(() => incidents.id), // Reference to incident if there's one this day
   startTime: timestamp("start_time"), // First clock-in entry of the day
   endTime: timestamp("end_time"), // Last clock-out entry of the day
   workedMinutes: integer("worked_minutes").notNull().default(0), // in minutes
@@ -107,20 +106,22 @@ export const dailyWorkday = pgTable("daily_workday", {
 });
 
 /**
- * TABLE: incidents
- * ================
+ * TABLE: clock_entries
+ * ====================
  * 
- * Record of work incidents (delays, absences, sick leave, etc.).
+ * Individual clock entry records (clock in, clock out, breaks).
+ * Each entry is a unique event that updates the daily_workday.
  */
-export const incidents = pgTable("incidents", {
+export const clockEntries = pgTable("clock_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  entryId: varchar("entry_id").references(() => clockEntries.id),
-  incidentType: text("incident_type").notNull(), // "late", "absence", "sick_leave", "vacation", "forgot_clock_in", "other"
-  description: text("description").notNull(),
-  registeredBy: varchar("registered_by").references(() => users.id),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  status: text("status").notNull().default("pending"), // "pending", "approved", "rejected"
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  shiftId: varchar("shift_id").references(() => scheduledShifts.id), // NULL if no shift assigned
+  dailyWorkdayId: varchar("daily_workday_id").references(() => dailyWorkday.id), // Reference to parent daily workday
+  incidentId: varchar("incident_id").references(() => incidents.id), // Reference to related incident if any
+  entryType: varchar("entry_type").notNull(), // 'clock_in', 'clock_out', 'break_start', 'break_end'
+  timestamp: timestamp("timestamp").notNull().default(sql`now()`),
+  source: varchar("source"), // 'mobile_app', 'physical_terminal', 'web'
+  notes: text("notes"),
 });
 
 // ============================================================================
