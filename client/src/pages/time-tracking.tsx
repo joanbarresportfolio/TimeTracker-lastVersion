@@ -52,6 +52,11 @@ function EmployeeTimeTracking() {
     queryKey: ["/api/time-entries"],
   });
 
+  const { data: workdayHistory, isLoading: historyLoading } = useQuery<any[]>({
+    queryKey: ["/api/historial", user?.id],
+    enabled: !!user?.id,
+  });
+
   const clockInMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/fichajes", {
@@ -192,7 +197,7 @@ function EmployeeTimeTracking() {
     return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
   };
 
-  const isLoading = schedulesLoading || timeEntriesLoading;
+  const isLoading = schedulesLoading || timeEntriesLoading || historyLoading;
 
   if (isLoading) {
     return (
@@ -432,6 +437,105 @@ function EmployeeTimeTracking() {
               </tbody>
             </table>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Historial de Jornadas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Historial de Jornadas</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Resumen completo de tus jornadas laborales
+          </p>
+        </CardHeader>
+        <CardContent>
+          {workdayHistory && workdayHistory.length > 0 ? (
+            <div className="space-y-4">
+              {workdayHistory.slice(0, 10).map((workday: any) => (
+                <Card key={workday.id} className="border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          {new Date(workday.date).toLocaleDateString('es-ES', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric' 
+                          })}
+                        </p>
+                        {workday.shift && (
+                          <p className="text-sm text-muted-foreground">
+                            Horario asignado: {workday.shift.expectedStartTime} - {workday.shift.expectedEndTime}
+                          </p>
+                        )}
+                      </div>
+                      <Badge className="bg-blue-500/10 text-blue-700">
+                        {formatDuration(workday.hoursWorked)}
+                      </Badge>
+                    </div>
+
+                    {workday.clockEntries && workday.clockEntries.length > 0 && (
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        {workday.clockEntries
+                          .filter((entry: any) => entry.eventType === 'clock_in' || entry.eventType === 'clock_out')
+                          .map((entry: any, idx: number) => (
+                            <div key={idx}>
+                              <p className="text-xs text-muted-foreground">
+                                {entry.eventType === 'clock_in' ? 'Entrada' : 'Salida'}
+                              </p>
+                              <p className="font-medium text-sm">
+                                {formatTimeFromDate(entry.timestamp)}
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+
+                    {workday.clockEntries && workday.clockEntries.some((e: any) => e.eventType === 'break_start' || e.eventType === 'break_end') && (
+                      <div className="border-t pt-3 mt-3">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Pausas</p>
+                        <div className="space-y-1">
+                          {workday.clockEntries
+                            .filter((entry: any) => entry.eventType === 'break_start')
+                            .map((breakStart: any) => {
+                              const breakEnd = workday.clockEntries.find(
+                                (e: any) => e.eventType === 'break_end' && e.timestamp > breakStart.timestamp
+                              );
+                              if (!breakEnd) return null;
+                              
+                              const duration = Math.floor((new Date(breakEnd.timestamp).getTime() - new Date(breakStart.timestamp).getTime()) / 60000);
+                              
+                              return (
+                                <div key={breakStart.id} className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">
+                                    {formatTimeFromDate(breakStart.timestamp)} - {formatTimeFromDate(breakEnd.timestamp)}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    {formatDuration(duration)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                        <p className="text-sm font-semibold mt-2">
+                          Total pausas: {formatDuration(workday.breakMinutes || 0)}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Timer className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No hay historial disponible</h3>
+              <p className="text-muted-foreground">
+                Comienza a fichar tus jornadas para ver tu historial aquí.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
