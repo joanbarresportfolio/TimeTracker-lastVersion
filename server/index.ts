@@ -16,12 +16,14 @@ declare module "express-session" {
 const app = express();
 
 // Configurar CORS para permitir requests desde app móvil web (Expo)
-app.use(cors({
-  origin: true, // En desarrollo, permitir todos los orígenes
-  credentials: true, // Permitir cookies y headers de autenticación
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(
+  cors({
+    origin: true, // En desarrollo, permitir todos los orígenes
+    credentials: true, // Permitir cookies y headers de autenticación
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -96,7 +98,7 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt("3000", 10);
   server.listen(
     {
       port,
