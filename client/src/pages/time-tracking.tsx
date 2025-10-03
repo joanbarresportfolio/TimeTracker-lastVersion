@@ -54,7 +54,10 @@ function EmployeeTimeTracking() {
 
   const clockInMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/time-entries/clock-in", {});
+      const response = await apiRequest("POST", "/api/fichajes", {
+        tipoRegistro: 'clock_in',
+        origen: 'web'
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -75,7 +78,10 @@ function EmployeeTimeTracking() {
 
   const clockOutMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/time-entries/clock-out", {});
+      const response = await apiRequest("POST", "/api/fichajes", {
+        tipoRegistro: 'clock_out',
+        origen: 'web'
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -457,7 +463,11 @@ function AdminTimeTracking({
 
   const clockInMutation = useMutation({
     mutationFn: async (employeeId: string) => {
-      const response = await apiRequest("POST", "/api/time-entries/clock-in", { employeeId });
+      const response = await apiRequest("POST", "/api/fichajes", { 
+        employeeId,
+        tipoRegistro: 'clock_in',
+        origen: 'web'
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -478,7 +488,11 @@ function AdminTimeTracking({
 
   const clockOutMutation = useMutation({
     mutationFn: async (employeeId: string) => {
-      const response = await apiRequest("POST", "/api/time-entries/clock-out", { employeeId });
+      const response = await apiRequest("POST", "/api/fichajes", { 
+        employeeId,
+        tipoRegistro: 'clock_out',
+        origen: 'web'
+      });
       return response.json();
     },
     onSuccess: () => {
