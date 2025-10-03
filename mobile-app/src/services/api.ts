@@ -388,6 +388,28 @@ export async function getTimeEntries(
 }
 
 /**
+ * Obtiene el historial completo de jornadas diarias con toda la información relacionada
+ * Incluye: clock_entries, scheduled_shift, pausas
+ */
+export async function getWorkdayHistory(
+  employeeId: string,
+  startDate?: string,
+  endDate?: string
+): Promise<any[]> {
+  let endpoint = `/historial/${employeeId}`;
+  const params = new URLSearchParams();
+  
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+  
+  if (params.toString()) {
+    endpoint += `?${params.toString()}`;
+  }
+  
+  return apiRequest<any[]>(endpoint);
+}
+
+/**
  * SERVICIOS DE HORARIOS
  * =====================
  */

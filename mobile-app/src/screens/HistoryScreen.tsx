@@ -23,7 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { User, TimeEntry } from '../types/schema';
-import { getTimeEntries } from '../services/api';
+import { getWorkdayHistory } from '../services/api';
 
 type HistoryNavigationProp = NativeStackNavigationProp<RootStackParamList, 'History'>;
 
@@ -35,12 +35,32 @@ interface HistoryScreenProps {
   };
 }
 
+interface WorkdayHistoryItem {
+  id: string;
+  employeeId: string;
+  date: string;
+  startTime: string | null;
+  endTime: string | null;
+  workedMinutes: number;
+  breakMinutes: number;
+  status: string;
+  clockEntryIds: string[];
+  shiftId: string | null;
+  clockEntries: any[];
+  scheduledShift: any | null;
+  breaks: Array<{
+    startTime: Date;
+    endTime: Date;
+    minutes: number;
+  }>;
+}
+
 export default function HistoryScreen({ route }: HistoryScreenProps) {
   const navigation = useNavigation<HistoryNavigationProp>();
   const { user } = route.params;
   
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [filteredEntries, setFilteredEntries] = useState<TimeEntry[]>([]);
+  const [workdayHistory, setWorkdayHistory] = useState<WorkdayHistoryItem[]>([]);
+  const [filteredHistory, setFilteredHistory] = useState<WorkdayHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -49,9 +69,9 @@ export default function HistoryScreen({ route }: HistoryScreenProps) {
   const [endDate, setEndDate] = useState('');
 
   /**
-   * Carga los registros de tiempo del empleado
+   * Carga el historial completo de jornadas del empleado
    */
-  const loadTimeEntries = async () => {
+  const loadWorkdayHistory = async () => {
     try {
       setLoading(true);
       
@@ -61,18 +81,19 @@ export default function HistoryScreen({ route }: HistoryScreenProps) {
       const defaultStartDate = thirtyDaysAgo.toISOString().split('T')[0];
       const defaultEndDate = new Date().toISOString().split('T')[0];
       
-      const entries = await getTimeEntries(
+      const history = await getWorkdayHistory(
+        user.id,
         startDate || defaultStartDate,
         endDate || defaultEndDate
       );
       
-      setTimeEntries(entries);
-      setFilteredEntries(entries);
+      setWorkdayHistory(history);
+      setFilteredHistory(history);
     } catch (error) {
-      console.error('Error loading time entries:', error);
+      console.error('Error loading workday history:', error);
       Alert.alert(
         'Error',
-        'No se pudieron cargar los registros. Verifica tu conexión e inténtalo nuevamente.',
+        'No se pudo cargar el historial. Verifica tu conexión e inténtalo nuevamente.',
         [{ text: 'OK' }]
       );
     } finally {
@@ -81,20 +102,20 @@ export default function HistoryScreen({ route }: HistoryScreenProps) {
   };
 
   /**
-   * Aplica filtros a los registros
+   * Aplica filtros al historial
    */
   const applyFilters = () => {
-    let filtered = [...timeEntries];
+    let filtered = [...workdayHistory];
     
     if (startDate) {
-      filtered = filtered.filter(entry => entry.date >= startDate);
+      filtered = filtered.filter(item => item.date >= startDate);
     }
     
     if (endDate) {
-      filtered = filtered.filter(entry => entry.date <= endDate);
+      filtered = filtered.filter(item => item.date <= endDate);
     }
     
-    setFilteredEntries(filtered);
+    setFilteredHistory(filtered);
   };
 
   /**
@@ -103,7 +124,7 @@ export default function HistoryScreen({ route }: HistoryScreenProps) {
   const clearFilters = () => {
     setStartDate('');
     setEndDate('');
-    setFilteredEntries(timeEntries);
+    setFilteredHistory(workdayHistory);
   };
 
   /**
@@ -111,12 +132,12 @@ export default function HistoryScreen({ route }: HistoryScreenProps) {
    */
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadTimeEntries();
+    await loadWorkdayHistory();
     setRefreshing(false);
   };
 
   useEffect(() => {
-    loadTimeEntries();
+    loadWorkdayHistory();
   }, []);
 
   /**
@@ -163,15 +184,15 @@ export default function HistoryScreen({ route }: HistoryScreenProps) {
   };
 
   /**
-   * Renderiza una tarjeta de registro de tiempo
+   * Renderiza una tarjeta de jornada de trabajo con información completa
    */
-  const renderTimeEntryCard = (entry: TimeEntry) => {
-    const isComplete = !!entry.clockOut;
+  const renderWorkdayCard = (workday: WorkdayHistoryItem) => {
+    const isComplete = workday.status === 'closed';
     
     return (
-      <View key={entry.id} style={styles.entryCard}>
+      <View key={workday.id} style={styles.entryCard}>
         <View style={styles.entryHeader}>
-          <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
+          <Text style={styles.entryDate}>{formatDate(workday.date)}</Text>
           {isComplete ? (
             <View style={styles.completeBadge}>
               <Text style={styles.completeText}>Completo</Text>
@@ -184,20 +205,50 @@ export default function HistoryScreen({ route }: HistoryScreenProps) {
         </View>
         
         <View style={styles.entryDetails}>
+          {/* Horario asignado */}
+          {workday.scheduledShift && (
+            <View style={styles.scheduleSection}>
+              <Text style={styles.sectionTitle}>Horario Asignado:</Text>
+              <Text style={styles.scheduleText}>
+                {workday.scheduledShift.expectedStartTime} - {workday.scheduledShift.expectedEndTime}
+              </Text>
+            </View>
+          )}
+          
+          {/* Horas de entrada y salida */}
           <View style={styles.timeRow}>
             <Text style={styles.timeLabel}>Entrada:</Text>
-            <Text style={styles.timeValue}>{formatTime(entry.clockIn)}</Text>
+            <Text style={styles.timeValue}>{formatTime(workday.startTime)}</Text>
           </View>
           
           <View style={styles.timeRow}>
             <Text style={styles.timeLabel}>Salida:</Text>
-            <Text style={styles.timeValue}>{formatTime(entry.clockOut)}</Text>
+            <Text style={styles.timeValue}>{formatTime(workday.endTime)}</Text>
           </View>
           
-          {entry.totalHours !== null && (
+          {/* Pausas */}
+          {workday.breaks && workday.breaks.length > 0 && (
+            <View style={styles.breaksSection}>
+              <Text style={styles.sectionTitle}>Pausas:</Text>
+              {workday.breaks.map((breakItem, index) => (
+                <View key={index} style={styles.breakRow}>
+                  <Text style={styles.breakText}>
+                    {formatTime(breakItem.startTime.toString())} - {formatTime(breakItem.endTime.toString())}
+                  </Text>
+                  <Text style={styles.breakDuration}>({breakItem.minutes} min)</Text>
+                </View>
+              ))}
+              <Text style={styles.breakTotal}>
+                Total pausas: {formatDuration(workday.breakMinutes)}
+              </Text>
+            </View>
+          )}
+          
+          {/* Total trabajado */}
+          {workday.workedMinutes > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total:</Text>
-              <Text style={styles.totalValue}>{formatDuration(entry.totalHours)}</Text>
+              <Text style={styles.totalLabel}>Horas Trabajadas:</Text>
+              <Text style={styles.totalValue}>{formatDuration(workday.workedMinutes)}</Text>
             </View>
           )}
         </View>
@@ -285,21 +336,21 @@ export default function HistoryScreen({ route }: HistoryScreenProps) {
 
         {/* Resultados */}
         <Text style={styles.resultsText}>
-          {filteredEntries.length} registro{filteredEntries.length !== 1 ? 's' : ''} encontrado{filteredEntries.length !== 1 ? 's' : ''}
+          {filteredHistory.length} jornada{filteredHistory.length !== 1 ? 's' : ''} encontrada{filteredHistory.length !== 1 ? 's' : ''}
         </Text>
 
-        {filteredEntries.length === 0 ? (
+        {filteredHistory.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No hay registros para mostrar</Text>
+            <Text style={styles.emptyText}>No hay jornadas para mostrar</Text>
             <Text style={styles.emptySubtext}>
-              Ajusta los filtros o espera a tener más turnos registrados.
+              Ajusta los filtros o espera a tener más jornadas registradas.
             </Text>
           </View>
         ) : (
           <View style={styles.entriesContainer}>
-            {filteredEntries
+            {filteredHistory
               .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-              .map(renderTimeEntryCard)}
+              .map(renderWorkdayCard)}
           </View>
         )}
       </ScrollView>
@@ -522,5 +573,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#3b82f6',
     fontWeight: '600',
+  },
+  scheduleSection: {
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  scheduleText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  breaksSection: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  breakRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  breakText: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  breakDuration: {
+    fontSize: 13,
+    color: '#9ca3af',
+  },
+  breakTotal: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 4,
   },
 });
