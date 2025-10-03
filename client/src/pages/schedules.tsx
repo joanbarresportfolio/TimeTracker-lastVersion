@@ -521,24 +521,17 @@ export default function Schedules() {
         }
       }
       
-      // Crear los nuevos horarios
-      if (selectedDates.length === 1) {
-        await createDateScheduleMutation.mutateAsync({
+      // Crear los nuevos horarios usando el endpoint bulk (funciona para uno o múltiples días)
+      await createBulkDateScheduleMutation.mutateAsync({
+        schedules: selectedDates.map(selected => ({
           employeeId: selectedEmployee.id,
-          date: selectedDates[0].dateStr,
+          date: selected.dateStr,
           expectedStartTime: scheduleForm.startTime,
           expectedEndTime: scheduleForm.endTime,
-        });
-      } else {
-        await createBulkDateScheduleMutation.mutateAsync({
-          schedules: selectedDates.map(selected => ({
-            employeeId: selectedEmployee.id,
-            date: selected.dateStr,
-            expectedStartTime: scheduleForm.startTime,
-            expectedEndTime: scheduleForm.endTime,
-          }))
-        });
-      }
+          shiftType: 'morning', // Valor por defecto
+          status: 'scheduled', // Valor por defecto
+        }))
+      });
       
       // Mostrar mensaje de éxito apropiado
       if (selectionType === "with-schedule") {
