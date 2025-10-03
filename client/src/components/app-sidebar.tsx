@@ -1,4 +1,4 @@
-import { Clock, Users, Calendar, AlertTriangle, FileText, Settings, ChartLine, ClipboardList } from "lucide-react";
+import { Clock, Users, Calendar, AlertTriangle, FileText, Settings, ChartLine } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -35,12 +35,6 @@ const allItems = [
     title: "Horarios y Turnos",
     url: "/schedules",
     icon: Calendar,
-    adminOnly: true,
-  },
-  {
-    title: "Jornadas Laborales",
-    url: "/daily-workday",
-    icon: ClipboardList,
     adminOnly: true,
   },
   {

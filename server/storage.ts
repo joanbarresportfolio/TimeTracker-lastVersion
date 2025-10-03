@@ -1903,12 +1903,28 @@ export const fichajesService = {
   },
 
   async createManualDailyWorkday(data: { employeeId: string; date: string; startTime: string; endTime: string; breakMinutes: number }): Promise<DailyWorkday> {
-    const hasEntries = await this.hasClockEntriesForDate(data.employeeId, data.date);
-    if (hasEntries) {
+    const entries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${data.date} AND ${clockEntries.employeeId} = ${data.employeeId}`
+      )
+      .limit(1);
+    
+    if (entries.length > 0) {
       throw new Error('No se puede crear una jornada manual porque ya existen fichajes automáticos para este día');
     }
 
-    const existingWorkday = await this.getDailyWorkdayByEmployeeAndDate(data.employeeId, data.date);
+    const [existingWorkday] = await db
+      .select()
+      .from(dailyWorkday)
+      .where(
+        and(
+          eq(dailyWorkday.employeeId, data.employeeId),
+          eq(dailyWorkday.date, data.date)
+        )
+      );
+    
     if (existingWorkday) {
       throw new Error('Ya existe una jornada laboral para este empleado en esta fecha');
     }
@@ -1943,8 +1959,15 @@ export const fichajesService = {
 
     const workday = existing[0];
     
-    const hasEntries = await this.hasClockEntriesForDate(workday.employeeId, workday.date);
-    if (hasEntries) {
+    const entries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${workday.date} AND ${clockEntries.employeeId} = ${workday.employeeId}`
+      )
+      .limit(1);
+    
+    if (entries.length > 0) {
       throw new Error('No se puede editar una jornada porque ya existen fichajes automáticos para este día');
     }
 
@@ -1984,8 +2007,15 @@ export const fichajesService = {
     }
 
     const workday = existing[0];
-    const hasEntries = await this.hasClockEntriesForDate(workday.employeeId, workday.date);
-    if (hasEntries) {
+    const entries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${workday.date} AND ${clockEntries.employeeId} = ${workday.employeeId}`
+      )
+      .limit(1);
+    
+    if (entries.length > 0) {
       throw new Error('No se puede eliminar una jornada porque ya existen fichajes automáticos para este día');
     }
 
