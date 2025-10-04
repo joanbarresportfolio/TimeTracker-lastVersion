@@ -1638,6 +1638,14 @@ export class DatabaseStorage implements IStorage {
   // MÉTODOS DE DAILY WORKDAY (GESTIÓN MANUAL)
   // ==========================================
 
+  async getDailyWorkday(id: string): Promise<DailyWorkday | undefined> {
+    const [workday] = await db
+      .select()
+      .from(dailyWorkday)
+      .where(eq(dailyWorkday.id, id));
+    return workday;
+  }
+
   async getDailyWorkdayByEmployeeAndDate(employeeId: string, date: string): Promise<DailyWorkday | undefined> {
     const [workday] = await db
       .select()

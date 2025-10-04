@@ -1214,7 +1214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDateTime,
         endDateTime,
         data.breakMinutes || 0,
-        data.shiftId || null
+        null
       );
       res.status(201).json(workday);
     } catch (error) {
@@ -1250,7 +1250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDateTime,
         endDateTime,
         data.breakMinutes || 0,
-        data.shiftId || null
+        null
       );
       
       if (!workday) {
