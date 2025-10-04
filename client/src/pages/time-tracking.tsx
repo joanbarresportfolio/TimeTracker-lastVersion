@@ -799,7 +799,6 @@ function AdminTimeTracking({
                           min="0"
                           {...field}
                           onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                          disabled={!workdayResponse?.canEdit}
                         />
                       </FormControl>
                       <FormMessage />
@@ -816,7 +815,7 @@ function AdminTimeTracking({
                     <FormItem>
                       <FormLabel>Hora de Entrada</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} disabled={!workdayResponse?.canEdit} />
+                        <Input type="time" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -830,7 +829,7 @@ function AdminTimeTracking({
                     <FormItem>
                       <FormLabel>Hora de Salida</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} disabled={!workdayResponse?.canEdit} />
+                        <Input type="time" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -838,17 +837,7 @@ function AdminTimeTracking({
                 />
               </div>
 
-              {workdayResponse?.hasClockEntries && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Este empleado tiene fichajes automáticos para esta fecha. Solo se puede visualizar.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {workdayResponse?.canEdit && (
-                <div className="flex gap-2">
+              <div className="flex gap-2">
                   <Button
                     type="submit"
                     disabled={createWorkdayMutation.isPending || updateWorkdayMutation.isPending}
@@ -871,7 +860,6 @@ function AdminTimeTracking({
                     </Button>
                   )}
                 </div>
-              )}
             </form>
           </Form>
         </CardContent>
