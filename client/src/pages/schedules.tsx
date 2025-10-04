@@ -8,11 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Search, Edit3, Eye, Users, Timer, Building, Clock, Calendar, Plus, Trash2, Save, X } from "lucide-react";
-import { format, startOfYear, endOfYear, eachMonthOfInterval, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, isToday, getDay } from 'date-fns';
+import { Search, Edit3, Eye, Users, Timer, Building, Clock, Calendar as CalendarIcon, Plus, Trash2, Save, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, startOfYear, endOfYear, eachMonthOfInterval, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, isToday, getDay, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
-import type { Employee, TimeEntry, DateSchedule } from "@shared/schema";
+import { Calendar } from "@/components/ui/calendar";
+import type { Employee, TimeEntry, DateSchedule, DailyWorkday } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -48,6 +50,9 @@ export default function Schedules() {
   const [selectionType, setSelectionType] = useState<"with-schedule" | "without-schedule" | null>(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({ startTime: "09:00", endTime: "17:00" });
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [historyEmployee, setHistoryEmployee] = useState<Employee | null>(null);
+  const [historyMonth, setHistoryMonth] = useState(new Date());
   
   const { toast } = useToast();
 
