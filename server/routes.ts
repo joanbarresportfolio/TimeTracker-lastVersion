@@ -1184,6 +1184,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
+   * GET /api/daily-workday/history
+   * ==============================
+   * 
+   * Obtiene el historial de jornadas laborales de un empleado por rango de fechas.
+   * 
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores
+   * 
+   * QUERY PARAMS:
+   * - employeeId: ID del empleado (requerido)
+   * - startDate: Fecha inicial en formato YYYY-MM-DD (requerido)
+   * - endDate: Fecha final en formato YYYY-MM-DD (requerido)
+   */
+  app.get("/api/daily-workday/history", requireAdmin, async (req, res) => {
+    try {
+      const { employeeId, startDate, endDate } = req.query;
+      
+      if (!employeeId || !startDate || !endDate) {
+        return res.status(400).json({ message: "employeeId, startDate y endDate son requeridos" });
+      }
+
+      const workdays = await storage.getDailyWorkdaysByEmployeeAndRange(
+        employeeId as string,
+        startDate as string,
+        endDate as string
+      );
+
+      res.json(workdays);
+    } catch (error) {
+      handleApiError(res, error, "Error al obtener historial de jornadas laborales");
+    }
+  });
+
+  /**
    * POST /api/daily-workday
    * ======================
    * 
