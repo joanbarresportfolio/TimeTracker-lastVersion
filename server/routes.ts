@@ -770,8 +770,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/fichajes", requireAuth, async (req, res) => {
     try {
-      const { fichajesService } = await import("./storage");
-      
       let employeeId = req.user!.id;
       if (req.user!.role === "admin" && req.body.employeeId) {
         employeeId = req.body.employeeId;
@@ -795,7 +793,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const source = (req.body.origen || 'web') as 'mobile_app' | 'physical_terminal' | 'web';
       const notes = req.body.observaciones || null;
 
-      const fichaje = await fichajesService.crearFichaje(
+      const fichaje = await storage.crearFichaje(
         employeeId,
         entryType,
         shiftId,
@@ -818,7 +816,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get("/api/fichajes/:employeeId", requireEmployeeAccess, async (req, res) => {
     try {
-      const { fichajesService } = await import("./storage");
       const { date } = req.query;
       
       if (!date) {
@@ -826,7 +823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // obtenerFichajesDelDia solo acepta employeeId y fecha (no rango)
-      const fichajes = await fichajesService.obtenerFichajesDelDia(
+      const fichajes = await storage.obtenerFichajesDelDia(
         req.params.employeeId,
         date as string
       );
@@ -846,7 +843,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get("/api/jornadas/:employeeId", requireEmployeeAccess, async (req, res) => {
     try {
-      const { fichajesService } = await import("./storage");
       const { date } = req.query;
       
       if (!date) {
@@ -854,7 +850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // obtenerJornadaDiaria obtiene una sola jornada por fecha
-      const jornada = await fichajesService.obtenerJornadaDiaria(
+      const jornada = await storage.obtenerJornadaDiaria(
         req.params.employeeId,
         date as string
       );
@@ -874,11 +870,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get("/api/jornadas/:employeeId/actual", requireEmployeeAccess, async (req, res) => {
     try {
-      const { fichajesService } = await import("./storage");
-      
       // obtenerJornadaDiaria con fecha de hoy
       const today = new Date().toISOString().split('T')[0];
-      const jornada = await fichajesService.obtenerJornadaDiaria(req.params.employeeId, today);
+      const jornada = await storage.obtenerJornadaDiaria(req.params.employeeId, today);
       
       res.json(jornada || null);
     } catch (error) {
@@ -896,11 +890,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.get("/api/fichajes/:employeeId/ultimo", requireEmployeeAccess, async (req, res) => {
     try {
-      const { fichajesService } = await import("./storage");
-      
       // Obtener fichajes de hoy y devolver el último
       const today = new Date().toISOString().split('T')[0];
-      const fichajes = await fichajesService.obtenerFichajesDelDia(req.params.employeeId, today);
+      const fichajes = await storage.obtenerFichajesDelDia(req.params.employeeId, today);
       
       const ultimoFichaje = fichajes.length > 0 ? fichajes[fichajes.length - 1] : null;
       

@@ -1633,6 +1633,265 @@ export class DatabaseStorage implements IStorage {
       };
     });
   }
+
+  // ==========================================
+  // MÉTODOS DE DAILY WORKDAY (GESTIÓN MANUAL)
+  // ==========================================
+
+  async getDailyWorkdayByEmployeeAndDate(employeeId: string, date: string): Promise<DailyWorkday | undefined> {
+    const [workday] = await db
+      .select()
+      .from(dailyWorkday)
+      .where(
+        and(
+          eq(dailyWorkday.employeeId, employeeId),
+          eq(dailyWorkday.date, date)
+        )
+      );
+    return workday;
+  }
+
+  async getDailyWorkdaysByEmployeeAndRange(employeeId: string, startDate: string, endDate: string): Promise<DailyWorkday[]> {
+    return await db
+      .select()
+      .from(dailyWorkday)
+      .where(
+        and(
+          eq(dailyWorkday.employeeId, employeeId),
+          gte(dailyWorkday.date, startDate),
+          lte(dailyWorkday.date, endDate)
+        )
+      )
+      .orderBy(dailyWorkday.date);
+  }
+
+  async createManualDailyWorkday(data: { employeeId: string; date: string; startTime: string; endTime: string; breakMinutes: number }): Promise<DailyWorkday> {
+    const entries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${data.date} AND ${clockEntries.employeeId} = ${data.employeeId}`
+      )
+      .limit(1);
+    
+    if (entries.length > 0) {
+      throw new Error('No se puede crear una jornada manual porque ya existen fichajes automáticos para este día');
+    }
+
+    const [existingWorkday] = await db
+      .select()
+      .from(dailyWorkday)
+      .where(
+        and(
+          eq(dailyWorkday.employeeId, data.employeeId),
+          eq(dailyWorkday.date, data.date)
+        )
+      );
+    
+    if (existingWorkday) {
+      throw new Error('Ya existe una jornada laboral para este empleado en esta fecha');
+    }
+
+    const startDateTime = new Date(`${data.date}T${data.startTime}:00`);
+    const endDateTime = new Date(`${data.date}T${data.endTime}:00`);
+    
+    const workedMinutes = Math.floor((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60)) - data.breakMinutes;
+
+    const [newWorkday] = await db
+      .insert(dailyWorkday)
+      .values({
+        employeeId: data.employeeId,
+        date: data.date,
+        startTime: startDateTime,
+        endTime: endDateTime,
+        workedMinutes,
+        breakMinutes: data.breakMinutes,
+        overtimeMinutes: 0,
+        status: 'closed'
+      })
+      .returning();
+
+    return newWorkday;
+  }
+
+  async updateManualDailyWorkday(id: string, data: { startTime?: string; endTime?: string; breakMinutes?: number }): Promise<DailyWorkday | undefined> {
+    const existing = await db.select().from(dailyWorkday).where(eq(dailyWorkday.id, id)).limit(1);
+    if (!existing || existing.length === 0) {
+      return undefined;
+    }
+
+    const workday = existing[0];
+    
+    const entries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${workday.date} AND ${clockEntries.employeeId} = ${workday.employeeId}`
+      )
+      .limit(1);
+    
+    if (entries.length > 0) {
+      throw new Error('No se puede editar una jornada porque ya existen fichajes automáticos para este día');
+    }
+
+    let startDateTime = workday.startTime;
+    let endDateTime = workday.endTime;
+    let breakMinutes = data.breakMinutes ?? workday.breakMinutes;
+
+    if (data.startTime) {
+      startDateTime = new Date(`${workday.date}T${data.startTime}:00`);
+    }
+    if (data.endTime) {
+      endDateTime = new Date(`${workday.date}T${data.endTime}:00`);
+    }
+
+    const workedMinutes = startDateTime && endDateTime 
+      ? Math.floor((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60)) - breakMinutes
+      : workday.workedMinutes;
+
+    const [updated] = await db
+      .update(dailyWorkday)
+      .set({
+        startTime: startDateTime,
+        endTime: endDateTime,
+        breakMinutes,
+        workedMinutes,
+      })
+      .where(eq(dailyWorkday.id, id))
+      .returning();
+
+    return updated;
+  }
+
+  async deleteDailyWorkday(id: string): Promise<boolean> {
+    const existing = await db.select().from(dailyWorkday).where(eq(dailyWorkday.id, id)).limit(1);
+    if (!existing || existing.length === 0) {
+      return false;
+    }
+
+    const workday = existing[0];
+    const entries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${workday.date} AND ${clockEntries.employeeId} = ${workday.employeeId}`
+      )
+      .limit(1);
+    
+    if (entries.length > 0) {
+      throw new Error('No se puede eliminar una jornada porque ya existen fichajes automáticos para este día');
+    }
+
+    const result = await db.delete(dailyWorkday).where(eq(dailyWorkday.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async hasClockEntriesForDate(employeeId: string, date: string): Promise<boolean> {
+    const entries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${date} AND ${clockEntries.employeeId} = ${employeeId}`
+      )
+      .limit(1);
+    
+    return entries.length > 0;
+  }
+
+  async crearFichaje(
+    employeeId: string,
+    entryType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end',
+    shiftId: string | null = null,
+    source: 'mobile_app' | 'physical_terminal' | 'web' = 'web',
+    notes: string | null = null
+  ): Promise<ClockEntry> {
+    const hoy = new Date().toISOString().split('T')[0];
+
+    if (entryType === 'clock_in') {
+      const fichajesHoy = await this.obtenerFichajesDelDia(employeeId, hoy);
+      const yaHayClockIn = fichajesHoy.some(f => f.entryType === 'clock_in');
+      
+      if (yaHayClockIn) {
+        throw new Error('Ya has iniciado jornada hoy. No puedes iniciar jornada dos veces el mismo día.');
+      }
+      
+      const jornadaHoy = await this.obtenerJornadaDiaria(employeeId, hoy);
+      if (jornadaHoy && jornadaHoy.status === 'closed') {
+        throw new Error('Ya has finalizado tu jornada hoy. No puedes iniciar otra jornada el mismo día.');
+      }
+    }
+    
+    if (entryType === 'clock_out') {
+      const fichajesHoy = await this.obtenerFichajesDelDia(employeeId, hoy);
+      const hayClockIn = fichajesHoy.some(f => f.entryType === 'clock_in');
+      const hayClockOut = fichajesHoy.some(f => f.entryType === 'clock_out');
+      
+      if (!hayClockIn) {
+        throw new Error('No has iniciado jornada hoy. Debes iniciar jornada antes de finalizar.');
+      }
+      
+      if (hayClockOut) {
+        throw new Error('Ya has finalizado tu jornada hoy.');
+      }
+    }
+
+    let finalShiftId = shiftId;
+    if (!finalShiftId) {
+      const [scheduledShift] = await db
+        .select()
+        .from(scheduledShifts)
+        .where(
+          and(
+            eq(scheduledShifts.employeeId, employeeId),
+            eq(scheduledShifts.date, hoy)
+          )
+        )
+        .limit(1);
+      
+      if (scheduledShift) {
+        finalShiftId = scheduledShift.id;
+      }
+    }
+
+    const [entry] = await db
+      .insert(clockEntries)
+      .values({
+        employeeId,
+        shiftId: finalShiftId,
+        entryType,
+        source,
+        notes,
+      })
+      .returning();
+
+    const fecha = entry.timestamp.toISOString().split('T')[0];
+    await calcularYActualizarJornada(employeeId, fecha);
+
+    return entry;
+  }
+
+  async obtenerFichajesDelDia(employeeId: string, fecha: string): Promise<ClockEntry[]> {
+    return await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
+      )
+      .orderBy(clockEntries.timestamp);
+  }
+
+  async obtenerJornadaDiaria(employeeId: string, fecha: string): Promise<DailyWorkday | undefined> {
+    const [workday] = await db
+      .select()
+      .from(dailyWorkday)
+      .where(
+        and(
+          eq(dailyWorkday.employeeId, employeeId),
+          eq(dailyWorkday.date, fecha)
+        )
+      );
+    return workday;
+  }
 }
 
 /**
@@ -1763,278 +2022,6 @@ async function calcularYActualizarJornada(employeeId: string, fecha: string): Pr
       sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
     );
 }
-
-/**
- * Servicio de fichajes - Crea un evento de fichaje individual
- */
-export const fichajesService = {
-  async crearFichaje(
-    employeeId: string,
-    entryType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end',
-    shiftId: string | null = null,
-    source: 'mobile_app' | 'physical_terminal' | 'web' = 'web',
-    notes: string | null = null
-  ): Promise<ClockEntry> {
-    // Obtener fecha actual
-    const hoy = new Date().toISOString().split('T')[0];
-    
-    // VALIDACIÓN: Verificar restricciones antes de crear el fichaje
-    if (entryType === 'clock_in') {
-      // 1. Verificar que no exista ya un clock_in hoy
-      const fichajesHoy = await this.obtenerFichajesDelDia(employeeId, hoy);
-      const yaHayClockIn = fichajesHoy.some(f => f.entryType === 'clock_in');
-      
-      if (yaHayClockIn) {
-        throw new Error('Ya has iniciado jornada hoy. No puedes iniciar jornada dos veces el mismo día.');
-      }
-      
-      // 2. Verificar que no exista una jornada cerrada hoy
-      const jornadaHoy = await this.obtenerJornadaDiaria(employeeId, hoy);
-      if (jornadaHoy && jornadaHoy.status === 'closed') {
-        throw new Error('Ya has finalizado tu jornada hoy. No puedes iniciar otra jornada el mismo día.');
-      }
-    }
-    
-    if (entryType === 'clock_out') {
-      // Verificar que exista un clock_in sin clock_out correspondiente
-      const fichajesHoy = await this.obtenerFichajesDelDia(employeeId, hoy);
-      const hayClockIn = fichajesHoy.some(f => f.entryType === 'clock_in');
-      const hayClockOut = fichajesHoy.some(f => f.entryType === 'clock_out');
-      
-      if (!hayClockIn) {
-        throw new Error('No has iniciado jornada hoy. Debes iniciar jornada antes de finalizar.');
-      }
-      
-      if (hayClockOut) {
-        throw new Error('Ya has finalizado tu jornada hoy.');
-      }
-    }
-    
-    // BUSCAR AUTOMÁTICAMENTE EL HORARIO ASIGNADO (scheduled_shift) DEL DÍA
-    // Si no se proporciona shiftId, buscar el horario programado para hoy
-    let finalShiftId = shiftId;
-    if (!finalShiftId) {
-      const [scheduledShift] = await db
-        .select()
-        .from(scheduledShifts)
-        .where(
-          and(
-            eq(scheduledShifts.employeeId, employeeId),
-            eq(scheduledShifts.date, hoy)
-          )
-        )
-        .limit(1);
-      
-      if (scheduledShift) {
-        finalShiftId = scheduledShift.id;
-      }
-    }
-    
-    // Crear el fichaje con el shiftId encontrado (o null si no hay horario)
-    const [entry] = await db
-      .insert(clockEntries)
-      .values({
-        employeeId,
-        shiftId: finalShiftId,
-        entryType,
-        source,
-        notes,
-      })
-      .returning();
-
-    const fecha = entry.timestamp.toISOString().split('T')[0];
-    await calcularYActualizarJornada(employeeId, fecha);
-
-    return entry;
-  },
-
-  async obtenerFichajesDelDia(employeeId: string, fecha: string): Promise<ClockEntry[]> {
-    return await db
-      .select()
-      .from(clockEntries)
-      .where(
-        sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
-      )
-      .orderBy(clockEntries.timestamp);
-  },
-
-  async obtenerJornadaDiaria(employeeId: string, fecha: string): Promise<DailyWorkday | undefined> {
-    const [workday] = await db
-      .select()
-      .from(dailyWorkday)
-      .where(
-        and(
-          eq(dailyWorkday.employeeId, employeeId),
-          eq(dailyWorkday.date, fecha)
-        )
-      );
-    return workday;
-  },
-
-  // ==========================================
-  // MÉTODOS DE DAILY WORKDAY (GESTIÓN MANUAL)
-  // ==========================================
-
-  async getDailyWorkdayByEmployeeAndDate(employeeId: string, date: string): Promise<DailyWorkday | undefined> {
-    const [workday] = await db
-      .select()
-      .from(dailyWorkday)
-      .where(
-        and(
-          eq(dailyWorkday.employeeId, employeeId),
-          eq(dailyWorkday.date, date)
-        )
-      );
-    return workday;
-  },
-
-  async getDailyWorkdaysByEmployeeAndRange(employeeId: string, startDate: string, endDate: string): Promise<DailyWorkday[]> {
-    return await db
-      .select()
-      .from(dailyWorkday)
-      .where(
-        and(
-          eq(dailyWorkday.employeeId, employeeId),
-          gte(dailyWorkday.date, startDate),
-          lte(dailyWorkday.date, endDate)
-        )
-      )
-      .orderBy(dailyWorkday.date);
-  },
-
-  async createManualDailyWorkday(data: { employeeId: string; date: string; startTime: string; endTime: string; breakMinutes: number }): Promise<DailyWorkday> {
-    const entries = await db
-      .select()
-      .from(clockEntries)
-      .where(
-        sql`DATE(${clockEntries.timestamp}) = ${data.date} AND ${clockEntries.employeeId} = ${data.employeeId}`
-      )
-      .limit(1);
-    
-    if (entries.length > 0) {
-      throw new Error('No se puede crear una jornada manual porque ya existen fichajes automáticos para este día');
-    }
-
-    const [existingWorkday] = await db
-      .select()
-      .from(dailyWorkday)
-      .where(
-        and(
-          eq(dailyWorkday.employeeId, data.employeeId),
-          eq(dailyWorkday.date, data.date)
-        )
-      );
-    
-    if (existingWorkday) {
-      throw new Error('Ya existe una jornada laboral para este empleado en esta fecha');
-    }
-
-    const startDateTime = new Date(`${data.date}T${data.startTime}:00`);
-    const endDateTime = new Date(`${data.date}T${data.endTime}:00`);
-    
-    const workedMinutes = Math.floor((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60)) - data.breakMinutes;
-
-    const [newWorkday] = await db
-      .insert(dailyWorkday)
-      .values({
-        employeeId: data.employeeId,
-        date: data.date,
-        startTime: startDateTime,
-        endTime: endDateTime,
-        workedMinutes,
-        breakMinutes: data.breakMinutes,
-        overtimeMinutes: 0,
-        status: 'closed'
-      })
-      .returning();
-
-    return newWorkday;
-  },
-
-  async updateManualDailyWorkday(id: string, data: { startTime?: string; endTime?: string; breakMinutes?: number }): Promise<DailyWorkday | undefined> {
-    const existing = await db.select().from(dailyWorkday).where(eq(dailyWorkday.id, id)).limit(1);
-    if (!existing || existing.length === 0) {
-      return undefined;
-    }
-
-    const workday = existing[0];
-    
-    const entries = await db
-      .select()
-      .from(clockEntries)
-      .where(
-        sql`DATE(${clockEntries.timestamp}) = ${workday.date} AND ${clockEntries.employeeId} = ${workday.employeeId}`
-      )
-      .limit(1);
-    
-    if (entries.length > 0) {
-      throw new Error('No se puede editar una jornada porque ya existen fichajes automáticos para este día');
-    }
-
-    let startDateTime = workday.startTime;
-    let endDateTime = workday.endTime;
-    let breakMinutes = data.breakMinutes ?? workday.breakMinutes;
-
-    if (data.startTime) {
-      startDateTime = new Date(`${workday.date}T${data.startTime}:00`);
-    }
-    if (data.endTime) {
-      endDateTime = new Date(`${workday.date}T${data.endTime}:00`);
-    }
-
-    const workedMinutes = startDateTime && endDateTime 
-      ? Math.floor((endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60)) - breakMinutes
-      : workday.workedMinutes;
-
-    const [updated] = await db
-      .update(dailyWorkday)
-      .set({
-        startTime: startDateTime,
-        endTime: endDateTime,
-        breakMinutes,
-        workedMinutes,
-      })
-      .where(eq(dailyWorkday.id, id))
-      .returning();
-
-    return updated;
-  },
-
-  async deleteDailyWorkday(id: string): Promise<boolean> {
-    const existing = await db.select().from(dailyWorkday).where(eq(dailyWorkday.id, id)).limit(1);
-    if (!existing || existing.length === 0) {
-      return false;
-    }
-
-    const workday = existing[0];
-    const entries = await db
-      .select()
-      .from(clockEntries)
-      .where(
-        sql`DATE(${clockEntries.timestamp}) = ${workday.date} AND ${clockEntries.employeeId} = ${workday.employeeId}`
-      )
-      .limit(1);
-    
-    if (entries.length > 0) {
-      throw new Error('No se puede eliminar una jornada porque ya existen fichajes automáticos para este día');
-    }
-
-    const result = await db.delete(dailyWorkday).where(eq(dailyWorkday.id, id));
-    return (result.rowCount ?? 0) > 0;
-  },
-
-  async hasClockEntriesForDate(employeeId: string, date: string): Promise<boolean> {
-    const entries = await db
-      .select()
-      .from(clockEntries)
-      .where(
-        sql`DATE(${clockEntries.timestamp}) = ${date} AND ${clockEntries.employeeId} = ${employeeId}`
-      )
-      .limit(1);
-    
-    return entries.length > 0;
-  },
-};
 
 /**
  * INSTANCIA SINGLETON DE STORAGE
