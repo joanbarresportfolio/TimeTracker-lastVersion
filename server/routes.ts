@@ -1204,7 +1204,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/daily-workday", requireAdmin, async (req, res) => {
     try {
       const data = manualDailyWorkdaySchema.parse(req.body);
-      const workday = await storage.createManualDailyWorkday(data);
+      
+      const startDateTime = new Date(`${data.date}T${data.startTime}:00`);
+      const endDateTime = new Date(`${data.date}T${data.endTime}:00`);
+      
+      const workday = await storage.createDailyWorkdayWithAutoClockEntries(
+        data.employeeId,
+        data.date,
+        startDateTime,
+        endDateTime,
+        data.breakMinutes || 0,
+        data.shiftId || null
+      );
       res.status(201).json(workday);
     } catch (error) {
       handleApiError(res, error, "Error al crear jornada laboral");
@@ -1223,7 +1234,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/daily-workday/:id", requireAdmin, async (req, res) => {
     try {
       const data = updateManualDailyWorkdaySchema.parse(req.body);
-      const workday = await storage.updateManualDailyWorkday(req.params.id, data);
+      
+      const existingWorkday = await storage.getDailyWorkday(req.params.id);
+      if (!existingWorkday) {
+        return res.status(404).json({ message: "Jornada laboral no encontrada" });
+      }
+      
+      const startDateTime = new Date(`${existingWorkday.date}T${data.startTime}:00`);
+      const endDateTime = new Date(`${existingWorkday.date}T${data.endTime}:00`);
+      
+      const workday = await storage.updateDailyWorkdayWithAutoClockEntries(
+        req.params.id,
+        existingWorkday.employeeId,
+        existingWorkday.date,
+        startDateTime,
+        endDateTime,
+        data.breakMinutes || 0,
+        data.shiftId || null
+      );
       
       if (!workday) {
         return res.status(404).json({ message: "Jornada laboral no encontrada" });
@@ -1246,7 +1274,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.delete("/api/daily-workday/:id", requireAdmin, async (req, res) => {
     try {
-      const success = await storage.deleteDailyWorkday(req.params.id);
+      const existingWorkday = await storage.getDailyWorkday(req.params.id);
+      if (!existingWorkday) {
+        return res.status(404).json({ message: "Jornada laboral no encontrada" });
+      }
+      
+      const success = await storage.deleteDailyWorkdayWithAutoClockEntries(
+        req.params.id,
+        existingWorkday.employeeId,
+        existingWorkday.date
+      );
       
       if (!success) {
         return res.status(404).json({ message: "Jornada laboral no encontrada" });
