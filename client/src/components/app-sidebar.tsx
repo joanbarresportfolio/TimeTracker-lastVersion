@@ -26,16 +26,16 @@ const allItems = [
     adminOnly: true,
   },
   {
-    title: "Control Horario",
-    url: "/time-tracking",
-    icon: Clock,
-    adminOnly: false,
-  },
-  {
     title: "Horarios y Turnos",
     url: "/schedules",
     icon: Calendar,
     adminOnly: true,
+  },
+  {
+    title: "Control Horario",
+    url: "/time-tracking",
+    icon: Clock,
+    adminOnly: false,
   },
   {
     title: "Incidencias",

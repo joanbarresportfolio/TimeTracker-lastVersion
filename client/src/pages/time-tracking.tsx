@@ -1,13 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Search, LogIn, LogOut, Timer, Calendar } from "lucide-react";
-import type { Employee, TimeEntry, DateSchedule } from "@shared/schema";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
+import { Clock, Search, LogIn, LogOut, Timer, Calendar, AlertCircle, ClipboardList } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import type { Employee, TimeEntry, DateSchedule, DailyWorkday } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +32,25 @@ const daysOfWeek = [
   { value: 5, label: "Viernes" },
   { value: 6, label: "Sábado" },
 ];
+
+type WorkdayResponse = {
+  workday: DailyWorkday | null;
+  hasClockEntries: boolean;
+  canEdit: boolean;
+};
+
+const workdayFormSchema = z.object({
+  employeeId: z.string().min(1, "Debe seleccionar un empleado"),
+  date: z.string().min(1, "Debe seleccionar una fecha"),
+  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Debe ser formato HH:MM"),
+  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Debe ser formato HH:MM"),
+  breakMinutes: z.number().int().min(0, "No puede ser negativo"),
+}).refine((data) => data.startTime < data.endTime, {
+  message: "Hora de salida debe ser posterior a hora de entrada",
+  path: ["endTime"],
+});
+
+type WorkdayFormData = z.infer<typeof workdayFormSchema>;
 
 export default function TimeTracking() {
   const { user } = useAuth();
@@ -461,6 +490,118 @@ function AdminTimeTracking({
     queryKey: ["/api/time-entries"],
   });
 
+  // Estados y form para gestión de jornadas
+  const workdayForm = useForm<WorkdayFormData>({
+    resolver: zodResolver(workdayFormSchema),
+    defaultValues: {
+      employeeId: "",
+      date: "",
+      startTime: "09:00",
+      endTime: "17:00",
+      breakMinutes: 30,
+    },
+  });
+
+  const watchEmployeeId = workdayForm.watch("employeeId");
+  const watchDate = workdayForm.watch("date");
+
+  const { data: workdayResponse, refetch: refetchWorkday } = useQuery<WorkdayResponse>({
+    queryKey: ["/api/daily-workday", watchEmployeeId, watchDate],
+    queryFn: async () => {
+      if (!watchEmployeeId || !watchDate) return { workday: null, hasClockEntries: false, canEdit: true };
+      const response = await fetch(
+        `/api/daily-workday?employeeId=${watchEmployeeId}&date=${watchDate}`,
+        { credentials: "include" }
+      );
+      if (!response.ok) throw new Error("Error al obtener jornada");
+      return response.json();
+    },
+    enabled: !!watchEmployeeId && !!watchDate,
+  });
+
+  useEffect(() => {
+    if (workdayResponse?.workday) {
+      const formatTimeFromDB = (timestamp: Date | string | null | undefined): string => {
+        if (!timestamp) return "09:00";
+        const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+        return format(date, "HH:mm");
+      };
+
+      workdayForm.setValue("startTime", formatTimeFromDB(workdayResponse.workday.startTime));
+      workdayForm.setValue("endTime", formatTimeFromDB(workdayResponse.workday.endTime));
+      workdayForm.setValue("breakMinutes", workdayResponse.workday.breakMinutes);
+    }
+  }, [workdayResponse?.workday]);
+
+  const createWorkdayMutation = useMutation({
+    mutationFn: async (data: WorkdayFormData) => {
+      return apiRequest("POST", "/api/daily-workday", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-workday"] });
+      refetchWorkday();
+      toast({ title: "Éxito", description: "Jornada laboral creada" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear la jornada laboral",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateWorkdayMutation = useMutation({
+    mutationFn: async (data: WorkdayFormData) => {
+      return apiRequest("PUT", `/api/daily-workday/${workdayResponse?.workday?.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-workday"] });
+      refetchWorkday();
+      toast({ title: "Éxito", description: "Jornada laboral actualizada" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la jornada laboral",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteWorkdayMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", `/api/daily-workday/${workdayResponse?.workday?.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/daily-workday"] });
+      refetchWorkday();
+      toast({ title: "Éxito", description: "Jornada laboral eliminada" });
+      workdayForm.reset({
+        employeeId: "",
+        date: "",
+        startTime: "09:00",
+        endTime: "17:00",
+        breakMinutes: 30,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar la jornada laboral",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onWorkdaySubmit = (data: WorkdayFormData) => {
+    if (workdayResponse?.workday) {
+      updateWorkdayMutation.mutate(data);
+    } else {
+      createWorkdayMutation.mutate(data);
+    }
+  };
+
   const clockInMutation = useMutation({
     mutationFn: async (employeeId: string) => {
       const response = await apiRequest("POST", "/api/fichajes", { 
@@ -593,6 +734,148 @@ function AdminTimeTracking({
         <h2 className="text-2xl font-bold text-foreground">Control Horario</h2>
         <p className="text-muted-foreground">Gestiona los fichajes de entrada y salida</p>
       </div>
+
+      {/* Gestión Manual de Jornadas Laborales */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <ClipboardList className="w-5 h-5" />
+            Gestión Manual de Jornadas
+          </CardTitle>
+          <CardDescription>Añadir, editar o eliminar jornadas laborales manualmente</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...workdayForm}>
+            <form onSubmit={workdayForm.handleSubmit(onWorkdaySubmit)} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormField
+                  control={workdayForm.control}
+                  name="employeeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Empleado</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar empleado..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {employees?.map((employee) => (
+                            <SelectItem key={employee.id} value={employee.id}>
+                              {employee.firstName} {employee.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={workdayForm.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Fecha</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={workdayForm.control}
+                  name="breakMinutes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Minutos de Pausa</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          disabled={!workdayResponse?.canEdit}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={workdayForm.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hora de Entrada</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} disabled={!workdayResponse?.canEdit} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={workdayForm.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hora de Salida</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} disabled={!workdayResponse?.canEdit} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {workdayResponse?.hasClockEntries && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Este empleado tiene fichajes automáticos para esta fecha. Solo se puede visualizar.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {workdayResponse?.canEdit && (
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    disabled={createWorkdayMutation.isPending || updateWorkdayMutation.isPending}
+                  >
+                    {workdayResponse?.workday ? "Actualizar Jornada" : "Crear Jornada"}
+                  </Button>
+
+                  {workdayResponse?.workday && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        if (confirm("¿Está seguro de eliminar esta jornada laboral?")) {
+                          deleteWorkdayMutation.mutate();
+                        }
+                      }}
+                      disabled={deleteWorkdayMutation.isPending}
+                    >
+                      Eliminar Jornada
+                    </Button>
+                  )}
+                </div>
+              )}
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
 
       {/* Filtros */}
       <Card>
