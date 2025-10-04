@@ -458,6 +458,169 @@ export default function Schedules() {
             )}
           </CardContent>
         </Card>
+
+        {/* Diálogo de historial de turnos */}
+        <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CalendarIcon className="w-5 h-5" />
+                Historial de Turnos - {historyEmployee?.firstName} {historyEmployee?.lastName}
+              </DialogTitle>
+              <DialogDescription>
+                Visualiza el historial de jornadas laborales del empleado
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex items-center justify-between mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setHistoryMonth(subMonths(historyMonth, 1))}
+                data-testid="button-prev-month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <h3 className="font-semibold text-lg">
+                {format(historyMonth, 'MMMM yyyy', { locale: es })}
+              </h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setHistoryMonth(addMonths(historyMonth, 1))}
+                data-testid="button-next-month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <Tabs defaultValue="table" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="table" data-testid="tab-table-view">Vista Tabla</TabsTrigger>
+                <TabsTrigger value="calendar" data-testid="tab-calendar-view">Vista Calendario</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="table" className="space-y-4">
+                {workdayHistoryLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Cargando historial...</p>
+                  </div>
+                ) : !workdayHistory || workdayHistory.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No hay jornadas registradas para este mes</p>
+                  </div>
+                ) : (
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Entrada</TableHead>
+                          <TableHead>Salida</TableHead>
+                          <TableHead>Horas Trabajadas</TableHead>
+                          <TableHead>Pausas</TableHead>
+                          <TableHead>Estado</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {workdayHistory.map((workday) => {
+                          const formatMinutesToHours = (minutes: number) => {
+                            const hours = Math.floor(minutes / 60);
+                            const mins = minutes % 60;
+                            return `${hours}h ${mins}m`;
+                          };
+                          
+                          return (
+                            <TableRow key={workday.id} data-testid={`workday-row-${workday.id}`}>
+                              <TableCell className="font-medium">
+                                {format(new Date(workday.date), 'dd/MM/yyyy', { locale: es })}
+                              </TableCell>
+                              <TableCell>
+                                {workday.startTime ? format(new Date(workday.startTime), 'HH:mm') : '-'}
+                              </TableCell>
+                              <TableCell>
+                                {workday.endTime ? format(new Date(workday.endTime), 'HH:mm') : '-'}
+                              </TableCell>
+                              <TableCell>
+                                {formatMinutesToHours(workday.workedMinutes)}
+                              </TableCell>
+                              <TableCell>
+                                {formatMinutesToHours(workday.breakMinutes)}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={workday.status === 'closed' ? 'default' : 'secondary'}>
+                                  {workday.status === 'closed' ? 'Cerrada' : 'Abierta'}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="calendar" className="space-y-4">
+                {workdayHistoryLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Cargando calendario...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <Calendar
+                      mode="single"
+                      month={historyMonth}
+                      onMonthChange={setHistoryMonth}
+                      locale={es}
+                      modifiers={{
+                        worked: (date) => {
+                          const dateStr = format(date, 'yyyy-MM-dd');
+                          return workdayHistory?.some(wd => wd.date === dateStr) || false;
+                        },
+                      }}
+                      modifiersStyles={{
+                        worked: {
+                          fontWeight: 'bold',
+                          backgroundColor: 'hsl(var(--primary) / 0.1)',
+                          border: '2px solid hsl(var(--primary))',
+                        },
+                      }}
+                      className="rounded-md border"
+                    />
+                    <div className="grid gap-2">
+                      <p className="text-sm text-muted-foreground">
+                        Los días marcados representan jornadas laborales registradas.
+                      </p>
+                      {workdayHistory && workdayHistory.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="font-semibold text-sm">Resumen del mes:</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="p-3 border rounded-lg">
+                              <p className="text-xs text-muted-foreground">Total días trabajados</p>
+                              <p className="text-2xl font-bold">{workdayHistory.length}</p>
+                            </div>
+                            <div className="p-3 border rounded-lg">
+                              <p className="text-xs text-muted-foreground">Total horas</p>
+                              <p className="text-2xl font-bold">
+                                {(() => {
+                                  const totalMinutes = workdayHistory.reduce((sum, wd) => sum + wd.workedMinutes, 0);
+                                  const hours = Math.floor(totalMinutes / 60);
+                                  const mins = totalMinutes % 60;
+                                  return `${hours}h ${mins}m`;
+                                })()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -920,175 +1083,5 @@ export default function Schedules() {
     );
   }
 
-  // Diálogo de historial de turnos trabajados
-  const renderHistoryDialog = () => {
-    if (!historyEmployee) return null;
-
-    const workdaysByDate = new Map<string, DailyWorkday>();
-    workdayHistory?.forEach(wd => {
-      workdaysByDate.set(wd.date, wd);
-    });
-
-    const formatMinutesToHours = (minutes: number) => {
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-      return `${hours}h ${mins}m`;
-    };
-
-    return (
-      <Dialog open={showHistoryDialog} onOpenChange={setShowHistoryDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5" />
-              Historial de Turnos - {historyEmployee.firstName} {historyEmployee.lastName}
-            </DialogTitle>
-            <DialogDescription>
-              Visualiza el historial de jornadas laborales del empleado
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex items-center justify-between mb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setHistoryMonth(subMonths(historyMonth, 1))}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <h3 className="font-semibold text-lg">
-              {format(historyMonth, 'MMMM yyyy', { locale: es })}
-            </h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setHistoryMonth(addMonths(historyMonth, 1))}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <Tabs defaultValue="table" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="table">Vista Tabla</TabsTrigger>
-              <TabsTrigger value="calendar">Vista Calendario</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="table" className="space-y-4">
-              {workdayHistoryLoading ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Cargando historial...</p>
-                </div>
-              ) : !workdayHistory || workdayHistory.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No hay jornadas registradas para este mes</p>
-                </div>
-              ) : (
-                <div className="border rounded-lg">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Entrada</TableHead>
-                        <TableHead>Salida</TableHead>
-                        <TableHead>Horas Trabajadas</TableHead>
-                        <TableHead>Pausas</TableHead>
-                        <TableHead>Estado</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {workdayHistory.map((workday) => (
-                        <TableRow key={workday.id}>
-                          <TableCell className="font-medium">
-                            {format(new Date(workday.date), 'dd/MM/yyyy', { locale: es })}
-                          </TableCell>
-                          <TableCell>
-                            {workday.startTime ? format(new Date(workday.startTime), 'HH:mm') : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {workday.endTime ? format(new Date(workday.endTime), 'HH:mm') : '-'}
-                          </TableCell>
-                          <TableCell>
-                            {formatMinutesToHours(workday.workedMinutes)}
-                          </TableCell>
-                          <TableCell>
-                            {formatMinutesToHours(workday.breakMinutes)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={workday.status === 'closed' ? 'default' : 'secondary'}>
-                              {workday.status === 'closed' ? 'Cerrada' : 'Abierta'}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="calendar" className="space-y-4">
-              {workdayHistoryLoading ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">Cargando calendario...</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <Calendar
-                    mode="single"
-                    month={historyMonth}
-                    onMonthChange={setHistoryMonth}
-                    locale={es}
-                    modifiers={{
-                      worked: (date) => {
-                        const dateStr = format(date, 'yyyy-MM-dd');
-                        return workdaysByDate.has(dateStr);
-                      },
-                    }}
-                    modifiersStyles={{
-                      worked: {
-                        fontWeight: 'bold',
-                        backgroundColor: 'hsl(var(--primary) / 0.1)',
-                        border: '2px solid hsl(var(--primary))',
-                      },
-                    }}
-                    className="rounded-md border"
-                  />
-                  <div className="grid gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      Los días marcados representan jornadas laborales registradas.
-                    </p>
-                    {workdayHistory && workdayHistory.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="font-semibold text-sm">Resumen del mes:</p>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="p-3 border rounded-lg">
-                            <p className="text-xs text-muted-foreground">Total días trabajados</p>
-                            <p className="text-2xl font-bold">{workdayHistory.length}</p>
-                          </div>
-                          <div className="p-3 border rounded-lg">
-                            <p className="text-xs text-muted-foreground">Total horas</p>
-                            <p className="text-2xl font-bold">
-                              {formatMinutesToHours(workdayHistory.reduce((sum, wd) => sum + wd.workedMinutes, 0))}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog>
-    );
-  };
-
-  return (
-    <>
-      {renderHistoryDialog()}
-      {null}
-    </>
-  );
+  return null;
 }
