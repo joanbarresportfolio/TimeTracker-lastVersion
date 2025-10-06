@@ -5,7 +5,6 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
 import { type User } from "@shared/schema";
-import "dotenv/config";
 
 // Extend Express session interface
 declare module "express-session" {
