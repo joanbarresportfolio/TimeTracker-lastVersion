@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Search, Edit3, Eye, Users, Timer, Building, Clock, Calendar as CalendarIcon, Plus, Trash2, Save, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Search, Edit3, Eye, Users, Timer, Building, Clock, Calendar as CalendarIcon, Plus, Trash2, Save, X, ChevronLeft, ChevronRight, Copy } from "lucide-react";
 import { format, startOfYear, endOfYear, eachMonthOfInterval, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, isToday, getDay, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -53,6 +54,8 @@ export default function Schedules() {
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [historyEmployee, setHistoryEmployee] = useState<Employee | null>(null);
   const [historyMonth, setHistoryMonth] = useState(new Date());
+  const [showCopyDialog, setShowCopyDialog] = useState(false);
+  const [selectedEmployeesToCopy, setSelectedEmployeesToCopy] = useState<string[]>([]);
   
   const { toast } = useToast();
 
@@ -762,6 +765,67 @@ export default function Schedules() {
     setSelectionType(null);
   };
 
+loyeesToCopy.length === 0) return;
+
+    try {
+      // Determinar shiftType basado en la hora de inicio
+      const determineShiftType = (startTime: string): 'morning' | 'afternoon' | 'night' => {
+        const hour = parseInt(startTime.split(':')[0]);
+        if (hour < 12) return 'morning';
+        if (hour < 18) return 'afternoon';
+        return 'night';
+      };
+
+      // Crear array de horarios para copiar
+      const schedulesToCopy = dateSchedules.map(schedule => ({
+        employeeId: '', // Se llenará para cada empleado destino
+        date: schedule.date,
+        expectedStartTime: schedule.startTime,
+        expectedEndTime: schedule.endTime,
+        shiftType: determineShiftType(schedule.startTime),
+        status: 'scheduled' as const
+      }));
+
+      // Copiar horarios para cada empleado seleccionado
+      for (const targetEmployeeId of selectedEmployeesToCopy) {
+        const bulkSchedules = schedulesToCopy.map(s => ({
+          ...s,
+          employeeId: targetEmployeeId
+        }));
+
+        await apiRequest('POST', '/api/date-schedules/bulk', {
+          schedules: bulkSchedules
+        });
+      }
+
+      toast({
+        title: "Horarios copiados",
+        description: `Se copiaron ${dateSchedules.length} horarios a ${selectedEmployeesToCopy.length} empleado(s)`,
+      });
+
+      setShowCopyDialog(false);
+      setSelectedEmployeesToCopy([]);
+      
+      // Refrescar horarios
+      await refetchDateSchedules();
+    } catch (error) {
+      console.error('Error copiando horarios:', error);
+      toast({
+        title: "Error",
+        description: "Hubo un error al copiar los horarios. Por favor, intenta de nuevo.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleEmployeeSelection = (employeeId: string) => {
+    setSelectedEmployeesToCopy(prev =>
+      prev.includes(employeeId)
+        ? prev.filter(id => id !== employeeId)
+        : [...prev, employeeId]
+    );
+  };
+
   // Vista de calendario
   if (viewMode === "calendar") {
     return (
@@ -774,6 +838,16 @@ export default function Schedules() {
             </p>
           </div>
           <div className="flex gap-2">
+            {dateSchedules && dateSchedules.length > 0 && (
+              <Button 
+                variant="outline"
+                onClick={() => setShowCopyDialog(true)}
+                data-testid="button-copy-schedules"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar Horarios
+              </Button>
+            )}
             <Button 
               variant="outline"
               onClick={() => setViewMode("summary")}
@@ -953,6 +1027,78 @@ export default function Schedules() {
           </CardContent>
         </Card>
         
+        {/* Dialog para copiar horarios a otros empleados */}
+        <Dialog open={showCopyDialog} onOpenChange={setShowCopyDialog}>
+          <DialogContent data-testid="dialog-copy-schedules" className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Copiar Horarios a Otros Empleados</DialogTitle>
+              <DialogDescription>
+                Selecciona los empleados a los que quieres copiar los {dateSchedules?.length || 0} horarios de {selectedEmployee?.firstName} {selectedEmployee?.lastName} del año {calendarYear}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-3 max-h-96 overflow-y-auto border rounded-lg p-4">
+                {employees
+                  ?.filter(emp => emp.id !== selectedEmployee?.id)
+                  .map(employee => (
+                    <div key={employee.id} className="flex items-center space-x-3 hover-elevate p-2 rounded">
+                      <Checkbox
+                        id={`emp-${employee.id}`}
+                        checked={selectedEmployeesToCopy.includes(employee.id)}
+                        onCheckedChange={() => toggleEmployeeSelection(employee.id)}
+                        data-testid={`checkbox-employee-${employee.id}`}
+                      />
+                      <label 
+                        htmlFor={`emp-${employee.id}`} 
+                        className="flex items-center gap-3 flex-1 cursor-pointer"
+                      >
+                        <Avatar>
+                          <AvatarFallback>
+                            {employee.firstName[0]}{employee.lastName[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{employee.firstName} {employee.lastName}</p>
+                          <p className="text-sm text-muted-foreground">{employee.department || 'Sin departamento'}</p>
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+              </div>
+              
+              {selectedEmployeesToCopy.length > 0 && (
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="text-sm font-medium">
+                    {selectedEmployeesToCopy.length} empleado(s) seleccionado(s)
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <DialogFooter className="gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowCopyDialog(false);
+                  setSelectedEmployeesToCopy([]);
+                }}
+                data-testid="button-cancel-copy"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleCopySchedules}
+                disabled={selectedEmployeesToCopy.length === 0}
+                data-testid="button-confirm-copy"
+              >
+                <Copy className="w-4 h-4 mr-2" />
+                Copiar Horarios
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Dialog para asignar/modificar horario */}
         <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
           <DialogContent data-testid="dialog-assign-schedule">

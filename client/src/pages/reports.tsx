@@ -18,7 +18,10 @@ import {
   Users,
   TrendingUp,
 } from "lucide-react";
-import type { Employee, TimeEntry, Incident } from "@shared/schema";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import type { Employee, TimeEntry, Incident, DailyWorkday } from "@shared/schema";
 
 export default function Reports() {
   const [selectedPeriod, setSelectedPeriod] = useState("this_month");
@@ -62,8 +65,9 @@ export default function Reports() {
         periodStart.setDate(1);
         break;
       case "last_month":
-        periodStart.setMonth(now.getMonth() - 1, 1);
-        periodEnd.setDate(0);
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        periodStart = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+        periodEnd = new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
         break;
       case "custom":
         if (startDate && endDate) {
@@ -137,28 +141,232 @@ export default function Reports() {
 
   const reportData = getReportData();
 
-  const exportReport = (format: string) => {
-    if (!reportData) return;
+  const exportReport = async (format: "pdf" | "excel") => {
+    if (!reportData || !employees) return;
 
-    // In a real application, this would generate and download the actual file
-    const data = {
-      period: `${reportData.periodStart} to ${reportData.periodEnd}`,
-      summary: {
-        totalEmployees: reportData.totalEmployees,
-        totalHours: reportData.totalHours,
-        totalIncidents: reportData.totalIncidents,
-      },
-      employees: reportData.employeesWithData,
-    };
+    // Get period dates
+    const now = new Date();
+    let periodStart = new Date();
+    let periodEnd = new Date();
 
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `timetracker-report-${format}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    switch (selectedPeriod) {
+      case "this_week":
+        periodStart.setDate(now.getDate() - now.getDay());
+        break;
+      case "this_month":
+        periodStart.setDate(1);
+        break;
+      case "last_month":
+        periodStart.setMonth(now.getMonth() - 1, 1);
+        periodEnd.setDate(0);
+        break;
+      case "custom":
+        if (startDate && endDate) {
+          periodStart = new Date(startDate);
+          periodEnd = new Date(endDate);
+        }
+        break;
+    }
+
+    const startDateStr = periodStart.toISOString().split("T")[0];
+    const endDateStr = periodEnd.toISOString().split("T")[0];
+
+    // Filter employees based on selection
+    const employeesToExport = selectedEmployee === "all" 
+      ? employees 
+      : employees.filter(emp => emp.id === selectedEmployee);
+
+    // Fetch daily_workday data for each employee
+    const allWorkdayData: Array<{ employee: Employee; workdays: DailyWorkday[] }> = [];
+    
+    for (const employee of employeesToExport) {
+      try {
+        const response = await fetch(
+          `/api/daily-workday/history?employeeId=${employee.id}&startDate=${startDateStr}&endDate=${endDateStr}`,
+          { credentials: 'include' }
+        );
+        if (response.ok) {
+          const workdays = await response.json();
+          allWorkdayData.push({ employee, workdays });
+        }
+      } catch (error) {
+        console.error(`Error fetching workdays for ${employee.firstName}:`, error);
+      }
+    }
+
+    if (format === "pdf") {
+      exportToPDF(allWorkdayData, startDateStr, endDateStr);
+    } else {
+      exportToExcel(allWorkdayData, startDateStr, endDateStr);
+    }
+  };
+
+  const exportToPDF = (
+    data: Array<{ employee: Employee; workdays: DailyWorkday[] }>,
+    startDate: string,
+    endDate: string
+  ) => {
+    const doc = new jsPDF();
+    
+    // Title
+    doc.setFontSize(18);
+    doc.text("Reporte de Jornadas Laborales", 14, 20);
+    
+    doc.setFontSize(11);
+    doc.text(`Período: ${startDate} a ${endDate}`, 14, 28);
+    doc.text(`Generado: ${new Date().toLocaleString('es-ES')}`, 14, 34);
+    
+    let yPosition = 45;
+
+    data.forEach((employeeData, index) => {
+      const { employee, workdays } = employeeData;
+      
+      // Add new page if needed
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      // Employee header
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${employee.firstName} ${employee.lastName}`, 14, yPosition);
+      yPosition += 2;
+
+      // Summary for this employee
+      const totalMinutes = workdays.reduce((sum, wd) => sum + (wd.workedMinutes || 0), 0);
+      const totalBreakMinutes = workdays.reduce((sum, wd) => sum + (wd.breakMinutes || 0), 0);
+      const totalDays = workdays.length;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Total días: ${totalDays} | Total horas: ${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m | Pausas: ${Math.floor(totalBreakMinutes / 60)}h ${totalBreakMinutes % 60}m`, 14, yPosition + 5);
+      
+      yPosition += 10;
+
+      // Table with workday details
+      const tableData = workdays.map(wd => {
+        // Format times safely - startTime and endTime are timestamps (Date objects)
+        const formatTime = (timestamp: Date | null) => {
+          if (!timestamp) return '-';
+          try {
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) return '-';
+            return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          } catch {
+            return '-';
+          }
+        };
+
+        return [
+          wd.date,
+          formatTime(wd.startTime),
+          formatTime(wd.endTime),
+          `${Math.floor((wd.workedMinutes || 0) / 60)}h ${(wd.workedMinutes || 0) % 60}m`,
+          `${Math.floor((wd.breakMinutes || 0) / 60)}h ${(wd.breakMinutes || 0) % 60}m`,
+          wd.status === 'closed' ? 'Cerrada' : 'Abierta'
+        ];
+      });
+
+      autoTable(doc, {
+        startY: yPosition,
+        head: [['Fecha', 'Entrada', 'Salida', 'Horas', 'Pausas', 'Estado']],
+        body: tableData,
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [66, 139, 202] },
+        margin: { left: 14, right: 14 }
+      });
+
+      yPosition = (doc as any).lastAutoTable.finalY + 15;
+
+      // Add page break between employees if not the last one
+      if (index < data.length - 1 && yPosition > 200) {
+        doc.addPage();
+        yPosition = 20;
+      }
+    });
+
+    doc.save(`reporte-jornadas-${startDate}-${endDate}.pdf`);
+  };
+
+  const exportToExcel = (
+    data: Array<{ employee: Employee; workdays: DailyWorkday[] }>,
+    startDate: string,
+    endDate: string
+  ) => {
+    const workbook = XLSX.utils.book_new();
+
+    data.forEach((employeeData) => {
+      const { employee, workdays } = employeeData;
+      
+      // Create worksheet data
+      const worksheetData = [
+        [`Empleado: ${employee.firstName} ${employee.lastName}`],
+        [`Departamento: ${employee.department || 'N/A'}`],
+        [`Período: ${startDate} a ${endDate}`],
+        [],
+        ['Fecha', 'Entrada', 'Salida', 'Horas Trabajadas', 'Pausas', 'Horas Extra', 'Estado']
+      ];
+
+      workdays.forEach(wd => {
+        // Format times safely - startTime and endTime are timestamps
+        const formatTime = (timestamp: Date | null) => {
+          if (!timestamp) return '-';
+          try {
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) return '-';
+            return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          } catch {
+            return '-';
+          }
+        };
+
+        worksheetData.push([
+          wd.date,
+          formatTime(wd.startTime),
+          formatTime(wd.endTime),
+          `${Math.floor((wd.workedMinutes || 0) / 60)}h ${(wd.workedMinutes || 0) % 60}m`,
+          `${Math.floor((wd.breakMinutes || 0) / 60)}h ${(wd.breakMinutes || 0) % 60}m`,
+          `${Math.floor((wd.overtimeMinutes || 0) / 60)}h ${(wd.overtimeMinutes || 0) % 60}m`,
+          wd.status === 'closed' ? 'Cerrada' : 'Abierta'
+        ]);
+      });
+
+      // Add summary row
+      const totalMinutes = workdays.reduce((sum, wd) => sum + (wd.workedMinutes || 0), 0);
+      const totalBreakMinutes = workdays.reduce((sum, wd) => sum + (wd.breakMinutes || 0), 0);
+      
+      worksheetData.push([]);
+      worksheetData.push([
+        'TOTALES',
+        '',
+        '',
+        `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`,
+        `${Math.floor(totalBreakMinutes / 60)}h ${totalBreakMinutes % 60}m`,
+        '',
+        `${workdays.length} días`
+      ]);
+
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+      
+      // Set column widths
+      worksheet['!cols'] = [
+        { wch: 12 }, // Fecha
+        { wch: 10 }, // Entrada
+        { wch: 10 }, // Salida
+        { wch: 16 }, // Horas
+        { wch: 12 }, // Pausas
+        { wch: 12 }, // Horas Extra
+        { wch: 10 }  // Estado
+      ];
+
+      // Use employee name as sheet name (sanitize for Excel)
+      const sheetName = `${employee.firstName} ${employee.lastName}`.substring(0, 31).replace(/[:\\\/\?\*\[\]]/g, '');
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    });
+
+    XLSX.writeFile(workbook, `reporte-jornadas-${startDate}-${endDate}.xlsx`);
   };
 
   if (isLoading) {
