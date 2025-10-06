@@ -595,7 +595,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(filteredEntries);
       }
     } catch (error) {
-      res.status(500).json({ message: "Error al obtener registros de tiempo" });
+      console.error("Error en GET /api/time-entries:", error);
+      res.status(500).json({ 
+        message: "Error al obtener registros de tiempo",
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
