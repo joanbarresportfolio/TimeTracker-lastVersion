@@ -5,6 +5,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedDatabase } from "./seed";
 import { type User } from "@shared/schema";
+import "dotenv/config";
 
 // Extend Express session interface
 declare module "express-session" {
@@ -16,7 +17,14 @@ declare module "express-session" {
 const app = express();
 
 // Configurar CORS para permitir requests desde app móvil web (Expo)
-app.use(cors());
+app.use(
+  cors({
+    origin: true, // En desarrollo, permitir todos los orígenes
+    credentials: true, // Permitir cookies y headers de autenticación
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -28,7 +36,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true, // Set to true in production with HTTPS
+      secure: false, // Set to true in production with HTTPS
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   }),
