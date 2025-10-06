@@ -15,22 +15,9 @@ declare module "express-session" {
 
 const app = express();
 
-// Configurar CORS para permitir requests desde app móvil web (Expo) y producción
+// Configurar CORS para permitir requests desde app móvil web (Expo)
 app.use(cors({
-  origin: (origin, callback) => {
-    // Permitir requests sin origin (mobile apps, Postman, etc.) o desde dominios permitidos
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:5000',
-      'https://time-trackr-joanbarresportf.replit.app',
-    ];
-    
-    if (!origin || allowedOrigins.some(allowed => origin.startsWith(allowed))) {
-      callback(null, true);
-    } else {
-      callback(null, true); // En desarrollo, permitir todo por ahora
-    }
-  },
+  origin: true, // En desarrollo, permitir todos los orígenes
   credentials: true, // Permitir cookies y headers de autenticación
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -40,17 +27,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Configure sessions
-const isProduction = process.env.NODE_ENV === "production" || process.env.REPL_SLUG;
-
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "employee-tracking-secret-key",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: isProduction, // Use secure cookies in production (HTTPS)
-      httpOnly: true,
-      sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax', // 'none' required for cross-origin in production
+      secure: false, // Set to true in production with HTTPS
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   }),
