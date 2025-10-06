@@ -16,10 +16,39 @@ declare module "express-session" {
 
 const app = express();
 
+// Detectar si estamos en producción
+const isProduction = process.env.NODE_ENV === "production";
+
+// Configurar trust proxy para que Express confíe en el proxy reverso de Replit
+// Esto es necesario para que las cookies seguras funcionen correctamente en producción
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
+
 // Configurar CORS para permitir requests desde app móvil web (Expo)
 app.use(
   cors({
-    origin: true, // En desarrollo, permitir todos los orígenes
+    origin: (origin, callback) => {
+      // En desarrollo, permitir todos los orígenes
+      if (!isProduction) {
+        callback(null, true);
+        return;
+      }
+
+      // En producción, permitir:
+      // - Requests sin origin (apps móviles nativas)
+      // - Dominios de Replit (.replit.app, .repl.co, .replit.dev)
+      if (
+        !origin ||
+        origin.includes(".replit.app") ||
+        origin.includes(".repl.co") ||
+        origin.includes(".replit.dev")
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true, // Permitir cookies y headers de autenticación
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -36,7 +65,9 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // Set to true in production with HTTPS
+      secure: isProduction, // true en producción (HTTPS), false en desarrollo
+      httpOnly: true, // Prevenir acceso desde JavaScript del lado del cliente
+      sameSite: isProduction ? "none" : "lax", // "none" en producción para cross-origin
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   }),

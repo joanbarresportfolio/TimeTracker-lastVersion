@@ -60,9 +60,9 @@ const getApiBaseUrl = (): string => {
         return backendUrl;
       }
 
-      // Si estamos en repl.co (producción publicada)
-      if (hostname.includes("repl.co")) {
-        console.log("[API Config] Repl.co mode - using relative path");
+      // Si estamos en replit.app (producción publicada) o repl.co
+      if (hostname.includes("replit.app") || hostname.includes("repl.co")) {
+        console.log("[API Config] Published Replit app - using relative path");
         return "/api";
       }
     }
