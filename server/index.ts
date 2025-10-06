@@ -16,12 +16,7 @@ declare module "express-session" {
 const app = express();
 
 // Configurar CORS para permitir requests desde app móvil web (Expo)
-app.use(cors({
-  origin: true, // En desarrollo, permitir todos los orígenes
-  credentials: true, // Permitir cookies y headers de autenticación
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -33,7 +28,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: false, // Set to true in production with HTTPS
+      secure: true, // Set to true in production with HTTPS
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   }),
