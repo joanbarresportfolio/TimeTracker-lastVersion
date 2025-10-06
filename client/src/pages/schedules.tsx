@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Search, Edit3, Eye, Users, Timer, Building, Clock, Calendar as CalendarIcon, Plus, Trash2, Save, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, startOfYear, endOfYear, eachMonthOfInterval, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, isToday, getDay, addMonths, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import type { Employee, TimeEntry, DateSchedule, DailyWorkday } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -568,14 +568,14 @@ export default function Schedules() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <Calendar
+                    <CalendarComponent
                       mode="single"
                       month={historyMonth}
                       onMonthChange={setHistoryMonth}
                       locale={es}
                       modifiers={{
                         worked: (date) => {
-                          const dateStr = format(date, 'yyyy-MM-dd');
+                          const dateStr = format(date, 'yyyy-dd');
                           return workdayHistory?.some(wd => wd.date === dateStr) || false;
                         },
                       }}
@@ -788,7 +788,7 @@ export default function Schedules() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
+              <CalendarIcon className="w-5 h-5" />
               Calendario Anual {calendarYear}
             </CardTitle>
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -816,7 +816,7 @@ export default function Schedules() {
                 {selectedDates.length > 0 && (
                   <>
                     <Badge variant="secondary" className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
+                      <CalendarIcon className="w-3 h-3" />
                       {selectedDates.length} fecha{selectedDates.length > 1 ? 's' : ''} seleccionada{selectedDates.length > 1 ? 's' : ''}
                     </Badge>
                     <Button 
