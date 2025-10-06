@@ -71,7 +71,12 @@ const getApiBaseUrl = (): string => {
     console.log("[API Config] Using relative path /api");
     return "/api";
   }
-
+  // 🚀 NUEVO: Configuración explícita para móviles
+  if (Platform.OS === "android" || Platform.OS === "ios") {
+    console.log("[API Config] Mobile device detected - using Replit backend");
+    return "https://c01b1921-e768-4ceb-80ea-89c2b2f264d5-00-4yhqgowik164.worf.replit.dev:5000/api";
+  }
+/*
   if (__DEV__) {
     // En desarrollo, conectar al servidor local en puerto 5000
     if (Platform.OS === "android") {
@@ -86,7 +91,7 @@ const getApiBaseUrl = (): string => {
     return "http://localhost:5000/api";
   }
 };
-
+*/
 const API_BASE_URL = getApiBaseUrl();
 const API_TIMEOUT = 10000; // 10 segundos
 
