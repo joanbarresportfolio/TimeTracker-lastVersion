@@ -105,6 +105,7 @@ export const incidentTypes = pgTable("incident_types", {
 export const incidents = pgTable("incidents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
+  date: text("date").notNull(), // YYYY-MM-DD - date when the incident occurred
   incidentType: text("incident_type").notNull(),
   description: text("description").notNull(),
   registeredBy: varchar("registered_by").references(() => users.id),
@@ -313,6 +314,7 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
   createdAt: true,
 }).extend({
   userId: z.string().min(1, "Debe seleccionar un empleado"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato YYYY-MM-DD"),
   incidentType: z.string().min(1, "Debe seleccionar un tipo de incidencia"),
   description: z.string().min(1, "La descripción es obligatoria"),
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
