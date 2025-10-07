@@ -13,18 +13,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search, AlertTriangle, Check, X } from "lucide-react";
 import { insertIncidentSchema } from "@shared/schema";
-import type { Employee, Incident, InsertIncident } from "@shared/schema";
+import type { Employee, Incident, InsertIncident, IncidentType } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-
-const incidentTypes = [
-  { value: "late", label: "Retraso" },
-  { value: "absence", label: "Ausencia" },
-  { value: "early_departure", label: "Salida temprana" },
-  { value: "forgot_clock_in", label: "Olvidó fichar entrada" },
-  { value: "forgot_clock_out", label: "Olvidó fichar salida" },
-];
 
 const statusTypes = [
   { value: "pending", label: "Pendiente", color: "bg-yellow-500/10 text-yellow-700" },
@@ -46,6 +38,10 @@ export default function Incidents() {
 
   const { data: incidents, isLoading: incidentsLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
+  });
+
+  const { data: incidentTypes, isLoading: typesLoading } = useQuery<IncidentType[]>({
+    queryKey: ["/api/incident-types"],
   });
 
   const createIncidentMutation = useMutation({
@@ -161,7 +157,7 @@ export default function Incidents() {
     resolver: zodResolver(insertIncidentSchema),
     defaultValues: {
       userId: "",
-      incidentType: "late",
+      incidentType: "",
       description: "",
       status: "pending",
     },
@@ -197,7 +193,7 @@ export default function Incidents() {
   };
 
   const getIncidentTypeLabel = (type: string) => {
-    return incidentTypes.find(t => t.value === type)?.label || type;
+    return incidentTypes?.find(t => t.name === type)?.name || type;
   };
 
   const getStatusInfo = (status: string) => {
@@ -315,8 +311,8 @@ export default function Incidents() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los tipos</SelectItem>
-                  {incidentTypes.map(type => (
-                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                  {incidentTypes?.filter(t => t.isActive).map(type => (
+                    <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -326,9 +322,10 @@ export default function Incidents() {
                 <Button 
                   onClick={() => {
                     setEditingIncident(null);
+                    const defaultType = incidentTypes?.find(t => t.isActive)?.name || "";
                     form.reset({
                       userId: "",
-                      incidentType: "late",
+                      incidentType: defaultType,
                       description: "",
                       status: "pending",
                     });
@@ -384,9 +381,9 @@ export default function Incidents() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {incidentTypes.map(type => (
-                                <SelectItem key={type.value} value={type.value}>
-                                  {type.label}
+                              {incidentTypes?.filter(t => t.isActive).map(type => (
+                                <SelectItem key={type.id} value={type.name}>
+                                  {type.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>

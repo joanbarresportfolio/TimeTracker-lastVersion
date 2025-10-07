@@ -312,7 +312,7 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
   id: true,
   createdAt: true,
 }).extend({
-  employeeId: z.string().min(1, "Debe seleccionar un empleado"),
+  userId: z.string().min(1, "Debe seleccionar un empleado"),
   incidentType: z.string().min(1, "Debe seleccionar un tipo de incidencia"),
   description: z.string().min(1, "La descripción es obligatoria"),
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
