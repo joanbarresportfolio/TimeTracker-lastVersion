@@ -93,7 +93,7 @@ function AppContent() {
             data-testid="nav-dashboard"
           >
             <i className="fas fa-chart-line text-lg"></i>
-            <span className="text-xs">Dashboard</span>
+            <span className="text-xs">Panel</span>
           </a>
           <a
             href="/time-tracking"

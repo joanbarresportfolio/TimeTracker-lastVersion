@@ -50,7 +50,13 @@ export default function Schedules() {
   const [selectedDates, setSelectedDates] = useState<SelectedDate[]>([]);
   const [selectionType, setSelectionType] = useState<"with-schedule" | "without-schedule" | null>(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-  const [scheduleForm, setScheduleForm] = useState({ startTime: "09:00", endTime: "17:00" });
+  const [scheduleForm, setScheduleForm] = useState({ 
+    startTime: "09:00", 
+    endTime: "17:00",
+    workdayType: "completa" as "completa" | "partida",
+    breakStartTime: "12:00",
+    breakEndTime: "13:00"
+  });
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [historyEmployee, setHistoryEmployee] = useState<Employee | null>(null);
   const [historyMonth, setHistoryMonth] = useState(new Date());
@@ -1155,6 +1161,22 @@ export default function Schedules() {
             </DialogHeader>
             
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tipo de Jornada</Label>
+                <Select 
+                  value={scheduleForm.workdayType} 
+                  onValueChange={(value: "completa" | "partida") => setScheduleForm(prev => ({ ...prev, workdayType: value }))}
+                >
+                  <SelectTrigger data-testid="select-workday-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="completa">Jornada Completa</SelectItem>
+                    <SelectItem value="partida">Jornada Partida</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startTime">Hora de Inicio</Label>
@@ -1177,6 +1199,31 @@ export default function Schedules() {
                   />
                 </div>
               </div>
+              
+              {scheduleForm.workdayType === "partida" && (
+                <div className="grid grid-cols-2 gap-4 p-3 bg-muted rounded-lg">
+                  <div className="space-y-2">
+                    <Label htmlFor="breakStartTime">Inicio de Pausa</Label>
+                    <Input
+                      id="breakStartTime"
+                      type="time"
+                      value={scheduleForm.breakStartTime}
+                      onChange={(e) => setScheduleForm(prev => ({ ...prev, breakStartTime: e.target.value }))}
+                      data-testid="input-break-start-time"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="breakEndTime">Fin de Pausa</Label>
+                    <Input
+                      id="breakEndTime"
+                      type="time"
+                      value={scheduleForm.breakEndTime}
+                      onChange={(e) => setScheduleForm(prev => ({ ...prev, breakEndTime: e.target.value }))}
+                      data-testid="input-break-end-time"
+                    />
+                  </div>
+                </div>
+              )}
               
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm font-medium mb-2">Fechas seleccionadas:</p>

@@ -14,7 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const allItems = [
   {
-    title: "Dashboard",
+    title: "Panel",
     url: "/",
     icon: ChartLine,
     adminOnly: false,
