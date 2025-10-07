@@ -68,14 +68,14 @@ import {
   clockEntries,
   dailyWorkday,
   incidents,
-  customFields,
+  incidentTypes,
   type Department,
   type Role,
   type ScheduledShift,
   type ClockEntry,
   type DailyWorkday,
-  type CustomField,
-  type InsertCustomField
+  type IncidentType,
+  type InsertIncidentType
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
@@ -145,18 +145,18 @@ export interface IStorage {
   /** Elimina un rol y actualiza empleados que lo tienen asignado al rol por defecto */
   deleteRole(id: string): Promise<void>;
   
-  // Métodos de Custom Fields
-  /** Obtiene todos los campos personalizados */
-  getCustomFields(): Promise<CustomField[]>;
+  // Métodos de Tipos de Incidencias
+  /** Obtiene todos los tipos de incidencias */
+  getIncidentTypes(): Promise<IncidentType[]>;
   
-  /** Obtiene campos personalizados por tipo de entidad */
-  getCustomFieldsByEntity(entityType: string): Promise<CustomField[]>;
+  /** Crea un nuevo tipo de incidencia */
+  createIncidentType(data: InsertIncidentType): Promise<IncidentType>;
   
-  /** Crea un nuevo campo personalizado */
-  createCustomField(data: InsertCustomField): Promise<CustomField>;
+  /** Actualiza un tipo de incidencia */
+  updateIncidentType(id: string, data: Partial<InsertIncidentType>): Promise<IncidentType>;
   
-  /** Elimina un campo personalizado */
-  deleteCustomField(id: string): Promise<void>;
+  /** Elimina un tipo de incidencia */
+  deleteIncidentType(id: string): Promise<void>;
   
   /** 
    * Crea un nuevo empleado (delega a createEmployeeWithPassword para asegurar hashing)
@@ -685,24 +685,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   /**
-   * CUSTOM FIELDS
-   * =============
+   * TIPOS DE INCIDENCIAS
+   * ====================
    */
-  async getCustomFields(): Promise<CustomField[]> {
-    return await db.select().from(customFields);
+  async getIncidentTypes(): Promise<IncidentType[]> {
+    return await db.select().from(incidentTypes).orderBy(incidentTypes.name);
   }
 
-  async getCustomFieldsByEntity(entityType: string): Promise<CustomField[]> {
-    return await db.select().from(customFields).where(eq(customFields.entityType, entityType));
+  async createIncidentType(data: InsertIncidentType): Promise<IncidentType> {
+    const [incidentType] = await db.insert(incidentTypes).values(data).returning();
+    return incidentType;
   }
 
-  async createCustomField(data: InsertCustomField): Promise<CustomField> {
-    const [customField] = await db.insert(customFields).values(data).returning();
-    return customField;
+  async updateIncidentType(id: string, data: Partial<InsertIncidentType>): Promise<IncidentType> {
+    const [incidentType] = await db.update(incidentTypes)
+      .set(data)
+      .where(eq(incidentTypes.id, id))
+      .returning();
+    return incidentType;
   }
 
-  async deleteCustomField(id: string): Promise<void> {
-    await db.delete(customFields).where(eq(customFields.id, id));
+  async deleteIncidentType(id: string): Promise<void> {
+    await db.delete(incidentTypes).where(eq(incidentTypes.id, id));
   }
 
   /**
