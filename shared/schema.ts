@@ -195,6 +195,10 @@ export const updateUserSchema = z.object({
   departmentId: z.string().min(1, "Debe seleccionar un departamento").optional(),
   hireDate: z.string().transform((str) => new Date(str)).optional(),
   isActive: z.boolean().optional(),
+  passwordHash: z.string().min(4, "La contraseña debe tener al menos 4 caracteres").optional(),
+  role: z.enum(["admin", "employee"], {
+    errorMap: () => ({ message: "Debe seleccionar un rol válido" })
+  }).optional(),
 });
 
 /**

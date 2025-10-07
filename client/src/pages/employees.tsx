@@ -28,7 +28,10 @@ type CreateEmployeePayload = {
   role: "admin" | "employee";
 };
 
-type UpdateEmployeePayload = Omit<CreateEmployeePayload, 'passwordHash' | 'role'>;
+type UpdateEmployeePayload = Omit<CreateEmployeePayload, 'passwordHash' | 'role'> & {
+  passwordHash?: string;
+  role?: "admin" | "employee";
+};
 
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -213,8 +216,10 @@ export default function Employees() {
   });
 
   // Esquema para el formulario (frontend - usa Date objects)
+  // Hacemos la contraseña opcional para permitir edición sin cambiar la contraseña
   const employeeFormSchema = createUserSchema.extend({
-    hireDate: z.date() // El formulario usa Date objects
+    hireDate: z.date(), // El formulario usa Date objects
+    passwordHash: z.string().min(4, "La contraseña debe tener al menos 4 caracteres").or(z.string().length(0)).optional(),
   });
   
   type EmployeeFormData = z.infer<typeof employeeFormSchema>;
@@ -236,13 +241,26 @@ export default function Employees() {
 
   const onSubmit = (data: EmployeeFormData) => {
     if (editingEmployee) {
-      // Para actualizar, omitimos el passwordHash y role, y convertimos fecha
-      const { passwordHash, role, ...updateData } = data;
-      const updatePayload = {
-        ...updateData,
-        departmentId: updateData.departmentId === 'none' || !updateData.departmentId ? undefined : updateData.departmentId,
-        hireDate: updateData.hireDate.toISOString()
+      // Para actualizar, incluimos todos los campos excepto passwordHash y role si están vacíos
+      const updatePayload: UpdateEmployeePayload = {
+        employeeNumber: data.employeeNumber,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        departmentId: data.departmentId === 'none' || !data.departmentId ? undefined : data.departmentId,
+        hireDate: data.hireDate.toISOString(),
+        isActive: data.isActive,
       };
+      
+      // Solo incluir contraseña si se ha proporcionado una nueva
+      if (data.passwordHash && data.passwordHash.trim()) {
+        updatePayload.passwordHash = data.passwordHash;
+      }
+      
+      // Incluir el rol si se ha especificado
+      if (data.role) {
+        updatePayload.role = data.role;
+      }
       
       updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updatePayload });
     } else {
@@ -266,7 +284,7 @@ export default function Employees() {
       departmentId: employee.department || "none", // Mapear department a departmentId, usar "none" si está vacío
       hireDate: new Date(employee.hireDate), // Convertir string a Date object
       isActive: employee.isActive,
-      passwordHash: "password123", // Password dummy para validación del formulario
+      passwordHash: "", // Vacío por defecto, opcional al editar
       role: employee.role as "admin" | "employee",
     });
     setIsDialogOpen(true);
@@ -566,21 +584,24 @@ export default function Employees() {
                         </FormItem>
                       )}
                     />
-                    {!editingEmployee && (
-                      <FormField
-                        control={form.control}
-                        name="passwordHash"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Contraseña</FormLabel>
-                            <FormControl>
-                              <Input type="password" {...field} data-testid="input-password" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
+                    <FormField
+                      control={form.control}
+                      name="passwordHash"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contraseña {editingEmployee && "(opcional)"}</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="password" 
+                              {...field} 
+                              placeholder={editingEmployee ? "Dejar en blanco para mantener la actual" : ""} 
+                              data-testid="input-password" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="role"
