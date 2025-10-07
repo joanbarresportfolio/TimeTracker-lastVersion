@@ -738,6 +738,56 @@ function AdminTimeTracking({
     },
   });
 
+  const breakStartMutation = useMutation({
+    mutationFn: async (employeeId: string) => {
+      const response = await apiRequest("/api/fichajes", "POST", {
+        employeeId,
+        tipoRegistro: 'break_start',
+        origen: 'web'
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      toast({
+        title: "Pausa iniciada",
+        description: "La pausa ha sido registrada exitosamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al iniciar pausa",
+        description: error.message || "No se pudo iniciar la pausa.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const breakEndMutation = useMutation({
+    mutationFn: async (employeeId: string) => {
+      const response = await apiRequest("/api/fichajes", "POST", {
+        employeeId,
+        tipoRegistro: 'break_end',
+        origen: 'web'
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      toast({
+        title: "Pausa finalizada",
+        description: "La pausa ha sido finalizada exitosamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al finalizar pausa",
+        description: error.message || "No se pudo finalizar la pausa.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredEmployees = employees?.filter(employee => {
     const matchesSearch = 
       employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1166,16 +1216,28 @@ function AdminTimeTracking({
                   )}
                   
                   {status.status === "clocked_in" && (
-                    <Button 
-                      onClick={() => clockOutMutation.mutate(employee.id)}
-                      disabled={clockOutMutation.isPending}
-                      variant="outline"
-                      className="flex-1"
-                      data-testid={`button-clock-out-${employee.id}`}
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Fichar Salida
-                    </Button>
+                    <>
+                      <Button 
+                        onClick={() => breakStartMutation.mutate(employee.id)}
+                        disabled={breakStartMutation.isPending}
+                        variant="outline"
+                        className="flex-1"
+                        data-testid={`button-break-start-${employee.id}`}
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        Iniciar Pausa
+                      </Button>
+                      <Button 
+                        onClick={() => clockOutMutation.mutate(employee.id)}
+                        disabled={clockOutMutation.isPending}
+                        variant="outline"
+                        className="flex-1"
+                        data-testid={`button-clock-out-${employee.id}`}
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Fichar Salida
+                      </Button>
+                    </>
                   )}
                   
                   {status.status === "completed" && (
