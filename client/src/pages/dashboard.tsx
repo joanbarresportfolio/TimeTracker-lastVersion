@@ -18,6 +18,7 @@ import { insertIncidentSchema, insertScheduledShiftSchema } from "@shared/schema
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface DashboardStats {
   totalEmployees?: number;
@@ -31,6 +32,7 @@ interface DashboardStats {
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const isEmployee = user?.role === "employee";
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<Employee | null>(null);
   const [selectedEmployeeSchedule, setSelectedEmployeeSchedule] = useState<Employee | null>(null);
@@ -208,16 +210,10 @@ export default function Dashboard() {
   };
 
   const handleEditSchedule = (employee: Employee) => {
-    setSelectedEmployeeSchedule(employee);
-    scheduleForm.reset({
-      employeeId: employee.id,
-      date: new Date().toISOString().split('T')[0], // today
-      expectedStartTime: "09:00",
-      expectedEndTime: "17:00",
-      shiftType: "morning",
-      status: "scheduled",
-    });
-    setIsScheduleDialogOpen(true);
+    // Guardar empleado en sessionStorage para que schedules pueda leerlo
+    sessionStorage.setItem('selectedEmployeeId', employee.id);
+    // Redirigir a /schedules
+    setLocation('/schedules');
   };
 
   const handleReportIncident = (employee: Employee) => {

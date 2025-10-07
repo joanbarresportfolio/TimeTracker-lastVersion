@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -315,6 +315,20 @@ export default function Schedules() {
     setHistoryMonth(new Date());
     setShowHistoryDialog(true);
   };
+
+  // Efecto para leer employeeId de sessionStorage y seleccionar empleado automáticamente
+  useEffect(() => {
+    const savedEmployeeId = sessionStorage.getItem('selectedEmployeeId');
+    if (savedEmployeeId && employees) {
+      const employee = employees.find(emp => emp.id === savedEmployeeId);
+      if (employee) {
+        setSelectedEmployee(employee);
+        setViewMode("calendar");
+        // Limpiar el sessionStorage después de usarlo
+        sessionStorage.removeItem('selectedEmployeeId');
+      }
+    }
+  }, [employees]);
 
   const isLoading = employeesLoading || timeEntriesLoading || (viewMode === "calendar" && dateSchedulesLoading);
 
