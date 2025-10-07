@@ -119,6 +119,16 @@ export interface IStorage {
   
   /** Busca un empleado por su número de empleado (identificador empresarial) */
   getEmployeeByNumber(employeeNumber: string): Promise<Employee | undefined>;
+
+  // Métodos de Departamentos
+  /** Obtiene todos los departamentos del sistema */
+  getDepartments(): Promise<Department[]>;
+  
+  /** Crea un nuevo departamento */
+  createDepartment(data: { name: string; description?: string }): Promise<Department>;
+  
+  /** Elimina un departamento y desasigna de todos los empleados */
+  deleteDepartment(id: string): Promise<void>;
   
   /** 
    * Crea un nuevo empleado (delega a createEmployeeWithPassword para asegurar hashing)
@@ -554,6 +564,48 @@ export class DatabaseStorage implements IStorage {
       conventionHours: 1752,
       isActive: user.isActive,
     };
+  }
+
+  /**
+   * OBTENER TODOS LOS DEPARTAMENTOS
+   * ===============================
+   * 
+   * Obtiene la lista completa de departamentos del sistema.
+   * 
+   * @returns Array de departamentos
+   */
+  async getDepartments(): Promise<Department[]> {
+    return await db.select().from(departments);
+  }
+
+  /**
+   * CREAR DEPARTAMENTO
+   * ==================
+   * 
+   * Crea un nuevo departamento en el sistema.
+   * 
+   * @param data - Nombre y descripción opcional del departamento
+   * @returns Departamento creado
+   */
+  async createDepartment(data: { name: string; description?: string }): Promise<Department> {
+    const [department] = await db.insert(departments).values(data).returning();
+    return department;
+  }
+
+  /**
+   * ELIMINAR DEPARTAMENTO
+   * ====================
+   * 
+   * Elimina un departamento y desasigna a todos los empleados de ese departamento.
+   * 
+   * @param id - ID del departamento a eliminar
+   */
+  async deleteDepartment(id: string): Promise<void> {
+    // Primero desasignar el departamento de todos los empleados
+    await db.update(users).set({ departmentId: null }).where(eq(users.departmentId, id));
+    
+    // Luego eliminar el departamento
+    await db.delete(departments).where(eq(departments.id, id));
   }
 
   /**
