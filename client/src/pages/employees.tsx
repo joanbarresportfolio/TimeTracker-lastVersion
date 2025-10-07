@@ -18,6 +18,7 @@ import { z } from "zod";
 // Tipos específicos para las llamadas a la API (con fechas como strings)
 type CreateEmployeePayload = {
   employeeNumber: string;
+  dni?: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -230,6 +231,7 @@ export default function Employees() {
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
       employeeNumber: "",
+      dni: "",
       firstName: "",
       lastName: "",
       email: "",
@@ -247,6 +249,7 @@ export default function Employees() {
       // Para actualizar, incluimos todos los campos excepto passwordHash y role si están vacíos
       const updatePayload: UpdateEmployeePayload = {
         employeeNumber: data.employeeNumber,
+        dni: data.dni || undefined,
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
@@ -271,6 +274,7 @@ export default function Employees() {
       // Para crear, incluimos todos los datos y convertimos fecha
       const createPayload: CreateEmployeePayload = {
         employeeNumber: data.employeeNumber,
+        dni: data.dni || undefined,
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
@@ -289,6 +293,7 @@ export default function Employees() {
     setEditingEmployee(employee);
     form.reset({
       employeeNumber: employee.employeeNumber,
+      dni: employee.dni || "",
       firstName: employee.firstName,
       lastName: employee.lastName,
       email: employee.email,
@@ -518,6 +523,7 @@ export default function Employees() {
                       setEditingEmployee(null);
                       form.reset({
                         employeeNumber: "",
+                        dni: "",
                         firstName: "",
                         lastName: "",
                         email: "",
@@ -551,6 +557,19 @@ export default function Employees() {
                           <FormLabel>Número de Empleado</FormLabel>
                           <FormControl>
                             <Input {...field} data-testid="input-employee-number" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="dni"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>DNI</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} data-testid="input-dni" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

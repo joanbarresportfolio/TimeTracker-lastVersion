@@ -54,6 +54,7 @@ export const roles = pgTable("roles", {
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   employeeNumber: text("employee_number").notNull().unique(),
+  dni: text("dni"),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email").notNull().unique(),
@@ -195,6 +196,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 
 export const createUserSchema = insertUserSchema.extend({
   employeeNumber: z.string().min(1, "El número de empleado es obligatorio"),
+  dni: z.string().optional(),
   firstName: z.string().min(1, "El nombre es obligatorio"),
   lastName: z.string().min(1, "El apellido es obligatorio"),
   email: z.string().email("Debe ingresar un correo electrónico válido"),
@@ -208,6 +210,7 @@ export const createUserSchema = insertUserSchema.extend({
 
 export const updateUserSchema = z.object({
   employeeNumber: z.string().min(1, "El número de empleado es obligatorio").optional(),
+  dni: z.string().optional(),
   firstName: z.string().min(1, "El nombre es obligatorio").optional(),
   lastName: z.string().min(1, "El apellido es obligatorio").optional(),
   email: z.string().email("Debe ingresar un correo electrónico válido").optional(),

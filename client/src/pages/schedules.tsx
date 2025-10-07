@@ -63,6 +63,10 @@ export default function Schedules() {
     queryKey: ["/api/employees"],
   });
 
+  const { data: departmentsList } = useQuery<Array<{ id: string; name: string }>>({
+    queryKey: ["/api/departments"],
+  });
+
   const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries"],
   });
@@ -185,6 +189,12 @@ export default function Schedules() {
     });
   }, [employees, timeEntries]);
 
+  // Crear mapa de ID de departamento a nombre
+  const departmentMap = useMemo(() => {
+    if (!departmentsList) return new Map<string, string>();
+    return new Map(departmentsList.map(dept => [dept.id, dept.name]));
+  }, [departmentsList]);
+
   // Filtrar empleados según búsqueda y departamento
   const filteredSummaries = useMemo(() => {
     return employeeSummaries.filter(summary => {
@@ -194,18 +204,22 @@ export default function Schedules() {
         employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase());
       
+      const employeeDeptName = employee.departmentId ? departmentMap.get(employee.departmentId) : null;
       const matchesDepartment = selectedDepartment === "all" || 
-        employee.departmentId === selectedDepartment;
+        employeeDeptName === selectedDepartment;
       
       return matchesSearch && matchesDepartment && employee.isActive;
     });
-  }, [employeeSummaries, searchTerm, selectedDepartment]);
+  }, [employeeSummaries, searchTerm, selectedDepartment, departmentMap]);
 
-  // Obtener departamentos únicos
+  // Obtener departamentos únicos (nombres) para el filtro
   const departments = useMemo(() => {
-    if (!employees) return [];
-    return Array.from(new Set(employees.map(emp => emp.departmentId).filter(dept => dept !== null))) as string[];
-  }, [employees]);
+    if (!employees || !departmentMap.size) return [];
+    const deptNames = employees
+      .map(emp => emp.departmentId ? departmentMap.get(emp.departmentId) : null)
+      .filter(name => name !== null && name !== undefined) as string[];
+    return Array.from(new Set(deptNames));
+  }, [employees, departmentMap]);
 
   // ⚠️ CALENDARIO DATA MOVIDO AQUÍ - Debe estar antes de returns condicionales
   const calendarData = useMemo(() => {
@@ -398,7 +412,7 @@ export default function Schedules() {
                       <TableCell>
                         <Badge variant="secondary" className="flex items-center gap-1">
                           <Building className="w-3 h-3" />
-                          {summary.employee.departmentId || 'Sin departamento'}
+                          {summary.employee.departmentId ? (departmentMap.get(summary.employee.departmentId) || 'Sin departamento') : 'Sin departamento'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -1084,7 +1098,9 @@ export default function Schedules() {
                         </Avatar>
                         <div>
                           <p className="font-medium">{employee.firstName} {employee.lastName}</p>
-                          <p className="text-sm text-muted-foreground">{employee.departmentId || 'Sin departamento'}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {employee.departmentId ? (departmentMap.get(employee.departmentId) || 'Sin departamento') : 'Sin departamento'}
+                          </p>
                         </div>
                       </label>
                     </div>
