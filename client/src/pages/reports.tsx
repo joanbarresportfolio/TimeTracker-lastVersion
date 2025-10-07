@@ -140,16 +140,19 @@ export default function Reports() {
     doc.text(`Tipo: ${periodType === 'day' ? 'Día' : periodType === 'week' ? 'Semana' : periodType === 'month' ? 'Mes' : periodType === 'quarter' ? 'Trimestre' : 'Año'}`, 14, 34);
     doc.text(`Generado: ${new Date().toLocaleString('es-ES')}`, 14, 40);
 
-    const tableData = reportData.map(item => [
-      item.employeeNumber,
-      item.employeeName,
-      `${item.hoursWorked}h ${item.minutesWorked}m`,
-      item.daysWorked.toString(),
-      `${item.hoursPlanned}h ${item.minutesPlanned}m`,
-      `${item.hoursDifference >= 0 ? '+' : ''}${item.hoursDifference}h`,
-      item.incidents.length.toString(),
-      item.absences.toString()
-    ]);
+    const tableData = reportData.map(item => {
+      const diffIsPositive = (item.hoursDifference * 60 + item.minutesDifference) >= 0;
+      return [
+        item.employeeNumber,
+        item.employeeName,
+        `${item.hoursWorked}h ${item.minutesWorked}m`,
+        item.daysWorked.toString(),
+        `${item.hoursPlanned}h ${item.minutesPlanned}m`,
+        `${diffIsPositive ? '+' : ''}${item.hoursDifference}h ${item.minutesDifference}m`,
+        item.incidents.length.toString(),
+        item.absences.toString()
+      ];
+    });
 
     autoTable(doc, {
       startY: 50,
