@@ -1990,6 +1990,48 @@ export class DatabaseStorage implements IStorage {
       if (hayClockOut) {
         throw new Error('Ya has finalizado tu jornada hoy.');
       }
+
+      // Verificar si hay una pausa activa (break_start sin break_end)
+      const breakStarts = fichajesHoy.filter(f => f.entryType === 'break_start');
+      const breakEnds = fichajesHoy.filter(f => f.entryType === 'break_end');
+      if (breakStarts.length > breakEnds.length) {
+        throw new Error('No puedes fichar salida mientras tienes una pausa activa. Finaliza la pausa primero.');
+      }
+    }
+
+    if (entryType === 'break_start') {
+      const fichajesHoy = await this.obtenerFichajesDelDia(employeeId, hoy);
+      const hayClockIn = fichajesHoy.some(f => f.entryType === 'clock_in');
+      const hayClockOut = fichajesHoy.some(f => f.entryType === 'clock_out');
+      
+      if (!hayClockIn) {
+        throw new Error('No has iniciado jornada hoy. Debes fichar entrada antes de iniciar una pausa.');
+      }
+      
+      if (hayClockOut) {
+        throw new Error('Ya has finalizado tu jornada hoy. No puedes iniciar una pausa.');
+      }
+
+      // Verificar si ya hay una pausa activa
+      const breakStarts = fichajesHoy.filter(f => f.entryType === 'break_start');
+      const breakEnds = fichajesHoy.filter(f => f.entryType === 'break_end');
+      if (breakStarts.length > breakEnds.length) {
+        throw new Error('Ya tienes una pausa activa. Finaliza la pausa actual antes de iniciar otra.');
+      }
+    }
+
+    if (entryType === 'break_end') {
+      const fichajesHoy = await this.obtenerFichajesDelDia(employeeId, hoy);
+      const breakStarts = fichajesHoy.filter(f => f.entryType === 'break_start');
+      const breakEnds = fichajesHoy.filter(f => f.entryType === 'break_end');
+      
+      if (breakStarts.length === 0) {
+        throw new Error('No has iniciado ninguna pausa hoy. Inicia una pausa antes de finalizarla.');
+      }
+      
+      if (breakStarts.length <= breakEnds.length) {
+        throw new Error('No tienes ninguna pausa activa para finalizar.');
+      }
     }
 
     let finalShiftId = shiftId;
