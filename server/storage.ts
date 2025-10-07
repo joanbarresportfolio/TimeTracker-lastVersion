@@ -1226,23 +1226,62 @@ export class DatabaseStorage implements IStorage {
    * CREAR INCIDENCIA
    * ===============
    * 
-   * Registra una nueva incidencia en el sistema.
+   * Registra una nueva incidencia en el sistema y la asocia con el daily_workday correspondiente.
    * 
    * @param insertIncident - Datos de la incidencia
    * @returns Incidencia creada con ID asignado
    */
   async createIncident(insertIncident: InsertIncident): Promise<Incident> {
+    // PASO 1: Crear la incidencia
     const [incident] = await db
       .insert(incidents)
       .values({
         userId: insertIncident.userId,
-        entryId: insertIncident.entryId || null,
+        date: insertIncident.date,
         incidentType: insertIncident.incidentType,
         description: insertIncident.description,
         registeredBy: insertIncident.registeredBy || null,
         status: insertIncident.status || "pending",
       })
       .returning();
+    
+    // PASO 2: Buscar daily_workday para este empleado y fecha
+    let workday = await this.getDailyWorkdayByEmployeeAndDate(insertIncident.userId, insertIncident.date);
+    
+    // PASO 3: Si no existe daily_workday, crearlo
+    if (!workday) {
+      // Buscar scheduled_shift para este día
+      const [shift] = await db
+        .select()
+        .from(scheduledShifts)
+        .where(
+          and(
+            eq(scheduledShifts.employeeId, insertIncident.userId),
+            eq(scheduledShifts.date, insertIncident.date)
+          )
+        )
+        .limit(1);
+      
+      // Crear daily_workday básico
+      const [newWorkday] = await db
+        .insert(dailyWorkday)
+        .values({
+          employeeId: insertIncident.userId,
+          date: insertIncident.date,
+          shiftId: shift?.id || null,
+          incidentId: incident.id,
+          status: 'open',
+        })
+        .returning();
+      
+      workday = newWorkday;
+    } else {
+      // PASO 4: Si existe, actualizar el incidentId
+      await db
+        .update(dailyWorkday)
+        .set({ incidentId: incident.id })
+        .where(eq(dailyWorkday.id, workday.id));
+    }
     
     return incident;
   }
@@ -1261,10 +1300,10 @@ export class DatabaseStorage implements IStorage {
     const updateData: any = {};
     
     if (incidentData.userId !== undefined) updateData.userId = incidentData.userId;
+    if (incidentData.date !== undefined) updateData.date = incidentData.date;
     if (incidentData.description !== undefined) updateData.description = incidentData.description;
     if (incidentData.incidentType !== undefined) updateData.incidentType = incidentData.incidentType;
     if (incidentData.status !== undefined) updateData.status = incidentData.status;
-    if (incidentData.entryId !== undefined) updateData.entryId = incidentData.entryId;
     if (incidentData.registeredBy !== undefined) updateData.registeredBy = incidentData.registeredBy;
     
     const [updatedIncident] = await db
