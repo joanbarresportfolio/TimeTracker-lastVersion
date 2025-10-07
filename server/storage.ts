@@ -63,11 +63,13 @@ import {
   type BulkDateScheduleCreate,
   users,
   departments,
+  roles,
   scheduledShifts,
   clockEntries,
   dailyWorkday,
   incidents,
   type Department,
+  type Role,
   type ScheduledShift,
   type ClockEntry,
   type DailyWorkday
@@ -129,6 +131,16 @@ export interface IStorage {
   
   /** Elimina un departamento y desasigna de todos los empleados */
   deleteDepartment(id: string): Promise<void>;
+  
+  // Métodos de Roles
+  /** Obtiene todos los roles del sistema */
+  getRoles(): Promise<Role[]>;
+  
+  /** Crea un nuevo rol */
+  createRole(data: { name: string; description?: string }): Promise<Role>;
+  
+  /** Elimina un rol y actualiza empleados que lo tienen asignado al rol por defecto */
+  deleteRole(id: string): Promise<void>;
   
   /** 
    * Crea un nuevo empleado (delega a createEmployeeWithPassword para asegurar hashing)
@@ -606,6 +618,54 @@ export class DatabaseStorage implements IStorage {
     
     // Luego eliminar el departamento
     await db.delete(departments).where(eq(departments.id, id));
+  }
+
+  /**
+   * OBTENER TODOS LOS ROLES
+   * =======================
+   * 
+   * Obtiene la lista completa de roles disponibles en el sistema.
+   * 
+   * @returns Array de todos los roles
+   */
+  async getRoles(): Promise<Role[]> {
+    return await db.select().from(roles);
+  }
+
+  /**
+   * CREAR ROL
+   * =========
+   * 
+   * Crea un nuevo rol en el sistema.
+   * 
+   * @param data - Nombre y descripción opcional del rol
+   * @returns Rol creado
+   */
+  async createRole(data: { name: string; description?: string }): Promise<Role> {
+    const [role] = await db.insert(roles).values(data).returning();
+    return role;
+  }
+
+  /**
+   * ELIMINAR ROL
+   * ============
+   * 
+   * Elimina un rol y actualiza a todos los empleados que lo tienen asignado
+   * al rol por defecto 'employee'.
+   * 
+   * @param id - ID del rol a eliminar
+   */
+  async deleteRole(id: string): Promise<void> {
+    // Primero buscar el rol para obtener su nombre
+    const [roleToDelete] = await db.select().from(roles).where(eq(roles.id, id));
+    
+    if (roleToDelete) {
+      // Actualizar empleados que tienen este rol al rol por defecto
+      await db.update(users).set({ role: 'employee' }).where(eq(users.role, roleToDelete.name));
+      
+      // Luego eliminar el rol
+      await db.delete(roles).where(eq(roles.id, id));
+    }
   }
 
   /**

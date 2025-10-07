@@ -34,6 +34,18 @@ export const departments = pgTable("departments", {
 });
 
 /**
+ * TABLE: roles
+ * ============
+ * 
+ * Defines user roles in the system.
+ */
+export const roles = pgTable("roles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+});
+
+/**
  * TABLE: users
  * ============
  * 
@@ -48,7 +60,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   hireDate: timestamp("hire_date").notNull(),
   isActive: boolean("is_active").notNull().default(true),
-  role: text("role").notNull().default("employee"), // "admin" or "employee"
+  role: text("role").notNull().default("employee"), // "admin" or "employee" - can reference roles table
   departmentId: varchar("department_id").references(() => departments.id),
 });
 
@@ -143,6 +155,16 @@ export const loginSchema = z.object({
 export const insertDepartmentSchema = createInsertSchema(departments).omit({
   id: true,
 });
+
+/**
+ * SCHEMAS FOR ROLES
+ */
+export const insertRoleSchema = createInsertSchema(roles).omit({
+  id: true,
+});
+
+export type Role = typeof roles.$inferSelect;
+export type InsertRole = z.infer<typeof insertRoleSchema>;
 
 /**
  * SCHEMAS FOR USERS

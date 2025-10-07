@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { createUserSchema } from "@shared/schema";
-import type { Employee, CreateUser, Department } from "@shared/schema";
+import type { Employee, CreateUser, Department, Role } from "@shared/schema";
 import { z } from "zod";
 
 // Tipos específicos para las llamadas a la API (con fechas como strings)
@@ -39,7 +39,9 @@ export default function Employees() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [newRoleName, setNewRoleName] = useState("");
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const { toast } = useToast();
 
@@ -49,6 +51,10 @@ export default function Employees() {
 
   const { data: departments = [] } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
+  });
+
+  const { data: roles = [] } = useQuery<Role[]>({
+    queryKey: ["/api/roles"],
   });
 
   const createEmployeeMutation = useMutation({
@@ -162,6 +168,50 @@ export default function Employees() {
     },
   });
 
+  const createRoleMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const response = await apiRequest("/api/roles", "POST", { name });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      setNewRoleName("");
+      toast({
+        title: "Rol creado",
+        description: "El rol ha sido creado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el rol.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteRoleMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest(`/api/roles/${id}`, "DELETE");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      toast({
+        title: "Rol eliminado",
+        description: "El rol ha sido eliminado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el rol.",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Esquema para el formulario (frontend - usa Date objects)
   const employeeFormSchema = createUserSchema.extend({
     hireDate: z.date() // El formulario usa Date objects
@@ -236,6 +286,17 @@ export default function Employees() {
       }
     }
     deleteDepartmentMutation.mutate(id);
+  };
+
+  const handleDeleteRole = (id: string) => {
+    const role = roles.find(r => r.id === id);
+    const employeesWithRole = employees?.filter(emp => emp.role === role?.name).length || 0;
+    if (employeesWithRole > 0) {
+      if (!confirm(`Este rol tiene ${employeesWithRole} empleado(s) asignado(s). ¿Estás seguro de que quieres eliminarlo? Los empleados se cambiarán al rol 'employee'.`)) {
+        return;
+      }
+    }
+    deleteRoleMutation.mutate(id);
   };
   
   const filteredEmployees = employees?.filter(employee => {
@@ -361,6 +422,56 @@ export default function Employees() {
                             onClick={() => handleDeleteDepartment(dept.id)}
                             disabled={deleteDepartmentMutation.isPending}
                             data-testid={`button-delete-department-${dept.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-edit-roles">
+                    Editar Roles
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Gestionar Roles</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nombre del rol"
+                        value={newRoleName}
+                        onChange={(e) => setNewRoleName(e.target.value)}
+                        data-testid="input-role-name"
+                      />
+                      <Button 
+                        onClick={() => {
+                          if (newRoleName.trim()) {
+                            createRoleMutation.mutate(newRoleName.trim());
+                          }
+                        }}
+                        disabled={createRoleMutation.isPending || !newRoleName.trim()}
+                        data-testid="button-create-role"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Crear
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {roles.map(role => (
+                        <div key={role.id} className="flex items-center justify-between p-2 rounded-md border">
+                          <span>{role.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteRole(role.id)}
+                            disabled={deleteRoleMutation.isPending}
+                            data-testid={`button-delete-role-${role.id}`}
                           >
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>

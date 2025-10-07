@@ -15,7 +15,7 @@
  */
 
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { users, roles } from "@shared/schema";
 import { storage } from "./storage";
 import { eq, or } from "drizzle-orm";
 
@@ -26,6 +26,20 @@ import { eq, or } from "drizzle-orm";
 export async function seedDatabase() {
   try {
     console.log("🌱 Iniciando proceso de semilla de base de datos...");
+
+    // PASO 0: Crear roles por defecto si no existen
+    const existingRoles = await db.select().from(roles);
+    if (existingRoles.length === 0) {
+      await db.insert(roles).values([
+        { name: "admin", description: "Administrador del sistema" },
+        { name: "employee", description: "Empleado regular" },
+        { name: "manager", description: "Gerente de departamento" },
+        { name: "supervisor", description: "Supervisor de equipo" },
+      ]);
+      console.log("✅ Roles por defecto creados exitosamente");
+    } else {
+      console.log("ℹ️  Roles ya existen");
+    }
 
     // PASO 1: Crear usuario administrador si no existe
     // Verifica por email Y employeeNumber para evitar duplicados
