@@ -157,6 +157,7 @@ export default function Incidents() {
     resolver: zodResolver(insertIncidentSchema),
     defaultValues: {
       userId: "",
+      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
       incidentType: "",
       description: "",
       status: "pending",
