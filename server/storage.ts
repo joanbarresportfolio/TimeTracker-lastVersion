@@ -1283,6 +1283,20 @@ export class DatabaseStorage implements IStorage {
         .where(eq(dailyWorkday.id, workday.id));
     }
     
+    // PASO 5: Actualizar clock_entries del mismo día para asociarlos con la incidencia
+    await db
+      .update(clockEntries)
+      .set({ 
+        incidentId: incident.id,
+        dailyWorkdayId: workday.id
+      })
+      .where(
+        and(
+          eq(clockEntries.employeeId, insertIncident.userId),
+          sql`DATE(${clockEntries.timestamp}) = ${insertIncident.date}`
+        )
+      );
+    
     return incident;
   }
 
