@@ -7,8 +7,31 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Users, Clock, Bell, Shield, Database } from "lucide-react";
+import { Settings, Users, Clock, Bell, Shield, Database, Plus, Trash2, Sliders } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertCustomFieldSchema, type InsertCustomField, type CustomField } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -43,6 +66,72 @@ export default function SettingsPage() {
   });
 
   const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<"employee" | "incident">("employee");
+
+  const { data: customFields, isLoading: loadingFields } = useQuery<CustomField[]>({
+    queryKey: ["/api/custom-fields"],
+  });
+
+  const form = useForm<InsertCustomField>({
+    resolver: zodResolver(insertCustomFieldSchema),
+    defaultValues: {
+      entityType: "employee",
+      fieldName: "",
+      fieldType: "text",
+      options: [],
+      isRequired: false,
+    },
+  });
+
+  const fieldType = form.watch("fieldType");
+
+  const createFieldMutation = useMutation({
+    mutationFn: (data: InsertCustomField) =>
+      apiRequest("/api/custom-fields", "POST", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
+      toast({
+        title: "Campo creado",
+        description: "El campo personalizado se ha creado exitosamente.",
+      });
+      setDialogOpen(false);
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el campo personalizado.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteFieldMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest(`/api/custom-fields/${id}`, "DELETE"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
+      toast({
+        title: "Campo eliminado",
+        description: "El campo personalizado se ha eliminado exitosamente.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el campo personalizado.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmitCustomField = (data: InsertCustomField) => {
+    createFieldMutation.mutate(data);
+  };
+
+  const employeeFields = customFields?.filter((f) => f.entityType === "employee") || [];
+  const incidentFields = customFields?.filter((f) => f.entityType === "incident") || [];
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({
@@ -77,7 +166,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5" data-testid="settings-tabs">
+        <TabsList className="grid w-full grid-cols-6" data-testid="settings-tabs">
           <TabsTrigger value="general" className="flex items-center space-x-2">
             <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">General</span>
@@ -93,6 +182,10 @@ export default function SettingsPage() {
           <TabsTrigger value="security" className="flex items-center space-x-2">
             <Shield className="w-4 h-4" />
             <span className="hidden sm:inline">Seguridad</span>
+          </TabsTrigger>
+          <TabsTrigger value="custom-fields" className="flex items-center space-x-2">
+            <Sliders className="w-4 h-4" />
+            <span className="hidden sm:inline">Campos</span>
           </TabsTrigger>
           <TabsTrigger value="advanced" className="flex items-center space-x-2">
             <Database className="w-4 h-4" />
@@ -336,6 +429,364 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="custom-fields" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
+                <CardTitle>Campos de Empleados</CardTitle>
+                <Dialog open={dialogOpen && selectedEntity === "employee"} onOpenChange={(open) => {
+                  if (open) {
+                    setSelectedEntity("employee");
+                    form.setValue("entityType", "employee");
+                  }
+                  setDialogOpen(open);
+                }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-employee-field">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Agregar
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nuevo Campo de Empleado</DialogTitle>
+                      <DialogDescription>
+                        Crea un campo personalizado para los empleados
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmitCustomField)} className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="fieldName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nombre del Campo</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-field-name" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="fieldType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo de Campo</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-field-type">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="text">Texto</SelectItem>
+                                  <SelectItem value="dropdown">Lista Desplegable</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {fieldType === "dropdown" && (
+                          <FormField
+                            control={form.control}
+                            name="options"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Opciones (separadas por coma)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    value={field.value?.join(", ") || ""}
+                                    onChange={(e) => {
+                                      const options = e.target.value
+                                        .split(",")
+                                        .map((opt) => opt.trim())
+                                        .filter((opt) => opt.length > 0);
+                                      field.onChange(options);
+                                    }}
+                                    placeholder="Opción 1, Opción 2, Opción 3"
+                                    data-testid="input-field-options"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        <FormField
+                          control={form.control}
+                          name="isRequired"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-field-required"
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Campo Obligatorio</FormLabel>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDialogOpen(false)}
+                            data-testid="button-cancel-field"
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={createFieldMutation.isPending}
+                            data-testid="button-create-field"
+                          >
+                            Crear Campo
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {loadingFields ? (
+                  <p className="text-sm text-muted-foreground">Cargando...</p>
+                ) : employeeFields.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay campos personalizados</p>
+                ) : (
+                  <div className="space-y-2">
+                    {employeeFields.map((field) => (
+                      <div
+                        key={field.id}
+                        className="flex items-center justify-between p-3 rounded-md border"
+                        data-testid={`field-employee-${field.id}`}
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium" data-testid={`text-field-name-${field.id}`}>
+                            {field.fieldName}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline">
+                              {field.fieldType === "text" ? "Texto" : "Lista"}
+                            </Badge>
+                            {field.isRequired && (
+                              <Badge variant="secondary">Obligatorio</Badge>
+                            )}
+                          </div>
+                          {field.options && field.options.length > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Opciones: {field.options.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteFieldMutation.mutate(field.id)}
+                          disabled={deleteFieldMutation.isPending}
+                          data-testid={`button-delete-field-${field.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
+                <CardTitle>Campos de Incidentes</CardTitle>
+                <Dialog open={dialogOpen && selectedEntity === "incident"} onOpenChange={(open) => {
+                  if (open) {
+                    setSelectedEntity("incident");
+                    form.setValue("entityType", "incident");
+                  }
+                  setDialogOpen(open);
+                }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-add-incident-field">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Agregar
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nuevo Campo de Incidente</DialogTitle>
+                      <DialogDescription>
+                        Crea un campo personalizado para los incidentes
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmitCustomField)} className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="fieldName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nombre del Campo</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-field-name" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="fieldType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo de Campo</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-field-type">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="text">Texto</SelectItem>
+                                  <SelectItem value="dropdown">Lista Desplegable</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {fieldType === "dropdown" && (
+                          <FormField
+                            control={form.control}
+                            name="options"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Opciones (separadas por coma)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    value={field.value?.join(", ") || ""}
+                                    onChange={(e) => {
+                                      const options = e.target.value
+                                        .split(",")
+                                        .map((opt) => opt.trim())
+                                        .filter((opt) => opt.length > 0);
+                                      field.onChange(options);
+                                    }}
+                                    placeholder="Opción 1, Opción 2, Opción 3"
+                                    data-testid="input-field-options"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        <FormField
+                          control={form.control}
+                          name="isRequired"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-field-required"
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Campo Obligatorio</FormLabel>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDialogOpen(false)}
+                            data-testid="button-cancel-field"
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={createFieldMutation.isPending}
+                            data-testid="button-create-field"
+                          >
+                            Crear Campo
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {loadingFields ? (
+                  <p className="text-sm text-muted-foreground">Cargando...</p>
+                ) : incidentFields.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay campos personalizados</p>
+                ) : (
+                  <div className="space-y-2">
+                    {incidentFields.map((field) => (
+                      <div
+                        key={field.id}
+                        className="flex items-center justify-between p-3 rounded-md border"
+                        data-testid={`field-incident-${field.id}`}
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium" data-testid={`text-field-name-${field.id}`}>
+                            {field.fieldName}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline">
+                              {field.fieldType === "text" ? "Texto" : "Lista"}
+                            </Badge>
+                            {field.isRequired && (
+                              <Badge variant="secondary">Obligatorio</Badge>
+                            )}
+                          </div>
+                          {field.options && field.options.length > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Opciones: {field.options.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteFieldMutation.mutate(field.id)}
+                          disabled={deleteFieldMutation.isPending}
+                          data-testid={`button-delete-field-${field.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-6">
