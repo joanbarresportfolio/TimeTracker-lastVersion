@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertCustomFieldSchema, type InsertCustomField, type CustomField } from "@shared/schema";
+import { insertIncidentTypeSchema, type InsertIncidentType, type IncidentType } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Dialog,
@@ -67,33 +67,29 @@ export default function SettingsPage() {
 
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedEntity, setSelectedEntity] = useState<"employee" | "incident">("employee");
+  const [editingIncidentType, setEditingIncidentType] = useState<IncidentType | null>(null);
 
-  const { data: customFields, isLoading: loadingFields } = useQuery<CustomField[]>({
-    queryKey: ["/api/custom-fields"],
+  const { data: incidentTypes, isLoading: loadingTypes } = useQuery<IncidentType[]>({
+    queryKey: ["/api/incident-types"],
   });
 
-  const form = useForm<InsertCustomField>({
-    resolver: zodResolver(insertCustomFieldSchema),
+  const form = useForm<InsertIncidentType>({
+    resolver: zodResolver(insertIncidentTypeSchema),
     defaultValues: {
-      entityType: "employee",
-      fieldName: "",
-      fieldType: "text",
-      options: [],
-      isRequired: false,
+      name: "",
+      description: "",
+      isActive: true,
     },
   });
 
-  const fieldType = form.watch("fieldType");
-
-  const createFieldMutation = useMutation({
-    mutationFn: (data: InsertCustomField) =>
-      apiRequest("/api/custom-fields", "POST", data),
+  const createTypeMutation = useMutation({
+    mutationFn: (data: InsertIncidentType) =>
+      apiRequest("/api/incident-types", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
       toast({
-        title: "Campo creado",
-        description: "El campo personalizado se ha creado exitosamente.",
+        title: "Tipo de incidencia creado",
+        description: "El tipo de incidencia se ha creado exitosamente.",
       });
       setDialogOpen(false);
       form.reset();
@@ -101,37 +97,60 @@ export default function SettingsPage() {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear el campo personalizado.",
+        description: error.message || "No se pudo crear el tipo de incidencia.",
         variant: "destructive",
       });
     },
   });
 
-  const deleteFieldMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiRequest(`/api/custom-fields/${id}`, "DELETE"),
+  const updateTypeMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<InsertIncidentType> }) =>
+      apiRequest(`/api/incident-types/${id}`, "PUT", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/custom-fields"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
       toast({
-        title: "Campo eliminado",
-        description: "El campo personalizado se ha eliminado exitosamente.",
+        title: "Tipo de incidencia actualizado",
+        description: "El tipo de incidencia se ha actualizado exitosamente.",
+      });
+      setDialogOpen(false);
+      setEditingIncidentType(null);
+      form.reset();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el tipo de incidencia.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteTypeMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiRequest(`/api/incident-types/${id}`, "DELETE"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
+      toast({
+        title: "Tipo de incidencia eliminado",
+        description: "El tipo de incidencia se ha eliminado exitosamente.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "No se pudo eliminar el campo personalizado.",
+        description: "No se pudo eliminar el tipo de incidencia.",
         variant: "destructive",
       });
     },
   });
 
-  const onSubmitCustomField = (data: InsertCustomField) => {
-    createFieldMutation.mutate(data);
+  const onSubmitIncidentType = (data: InsertIncidentType) => {
+    if (editingIncidentType) {
+      updateTypeMutation.mutate({ id: editingIncidentType.id, data });
+    } else {
+      createTypeMutation.mutate(data);
+    }
   };
-
-  const employeeFields = customFields?.filter((f) => f.entityType === "employee") || [];
-  const incidentFields = customFields?.filter((f) => f.entityType === "incident") || [];
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({
@@ -183,9 +202,9 @@ export default function SettingsPage() {
             <Shield className="w-4 h-4" />
             <span className="hidden sm:inline">Seguridad</span>
           </TabsTrigger>
-          <TabsTrigger value="custom-fields" className="flex items-center space-x-2">
+          <TabsTrigger value="incident-types" className="flex items-center space-x-2">
             <Sliders className="w-4 h-4" />
-            <span className="hidden sm:inline">Campos</span>
+            <span className="hidden sm:inline">Incidencias</span>
           </TabsTrigger>
           <TabsTrigger value="advanced" className="flex items-center space-x-2">
             <Database className="w-4 h-4" />
@@ -431,185 +450,174 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="custom-fields" className="space-y-6">
-          <div className="grid gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
-                <CardTitle>Campos de Incidentes</CardTitle>
-                <Dialog open={dialogOpen && selectedEntity === "incident"} onOpenChange={(open) => {
-                  if (open) {
-                    setSelectedEntity("incident");
-                    form.setValue("entityType", "incident");
-                  }
-                  setDialogOpen(open);
-                }}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" data-testid="button-add-incident-field">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Agregar
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Nuevo Campo de Incidente</DialogTitle>
-                      <DialogDescription>
-                        Crea un campo personalizado para los incidentes
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmitCustomField)} className="space-y-4">
-                        <FormField
-                          control={form.control}
-                          name="fieldName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nombre del Campo</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-field-name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="fieldType"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Tipo de Campo</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-field-type">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="text">Texto</SelectItem>
-                                  <SelectItem value="dropdown">Lista Desplegable</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        {fieldType === "dropdown" && (
-                          <FormField
-                            control={form.control}
-                            name="options"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Opciones (separadas por coma)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    {...field}
-                                    value={field.value?.join(", ") || ""}
-                                    onChange={(e) => {
-                                      const options = e.target.value
-                                        .split(",")
-                                        .map((opt) => opt.trim())
-                                        .filter((opt) => opt.length > 0);
-                                      field.onChange(options);
-                                    }}
-                                    placeholder="Opción 1, Opción 2, Opción 3"
-                                    data-testid="input-field-options"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+        <TabsContent value="incident-types" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
+              <CardTitle>Tipos de Incidencias</CardTitle>
+              <Dialog open={dialogOpen} onOpenChange={(open) => {
+                setDialogOpen(open);
+                if (!open) {
+                  setEditingIncidentType(null);
+                  form.reset();
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" data-testid="button-add-incident-type">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Agregar
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingIncidentType ? "Editar Tipo de Incidencia" : "Nuevo Tipo de Incidencia"}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {editingIncidentType 
+                        ? "Actualiza la información del tipo de incidencia" 
+                        : "Crea un nuevo tipo de incidencia para el sistema"
+                      }
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmitIncidentType)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Nombre</FormLabel>
+                            <FormControl>
+                              <Input {...field} data-testid="input-incident-type-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )}
+                      />
 
-                        <FormField
-                          control={form.control}
-                          name="isRequired"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  data-testid="checkbox-field-required"
-                                />
-                              </FormControl>
-                              <div className="space-y-1 leading-none">
-                                <FormLabel>Campo Obligatorio</FormLabel>
-                              </div>
-                            </FormItem>
-                          )}
-                        />
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Descripción (opcional)</FormLabel>
+                            <FormControl>
+                              <Input {...field} data-testid="input-incident-type-description" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setDialogOpen(false)}
-                            data-testid="button-cancel-field"
-                          >
-                            Cancelar
-                          </Button>
-                          <Button
-                            type="submit"
-                            disabled={createFieldMutation.isPending}
-                            data-testid="button-create-field"
-                          >
-                            Crear Campo
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {loadingFields ? (
-                  <p className="text-sm text-muted-foreground">Cargando...</p>
-                ) : incidentFields.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No hay campos personalizados</p>
-                ) : (
-                  <div className="space-y-2">
-                    {incidentFields.map((field) => (
-                      <div
-                        key={field.id}
-                        className="flex items-center justify-between p-3 rounded-md border"
-                        data-testid={`field-incident-${field.id}`}
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium" data-testid={`text-field-name-${field.id}`}>
-                            {field.fieldName}
+                      <FormField
+                        control={form.control}
+                        name="isActive"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                data-testid="checkbox-incident-type-active"
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>Tipo Activo</FormLabel>
+                              <p className="text-sm text-muted-foreground">
+                                Los tipos inactivos no aparecerán en el desplegable
+                              </p>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setDialogOpen(false);
+                            setEditingIncidentType(null);
+                            form.reset();
+                          }}
+                          data-testid="button-cancel-incident-type"
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={createTypeMutation.isPending || updateTypeMutation.isPending}
+                          data-testid="button-submit-incident-type"
+                        >
+                          {editingIncidentType ? "Actualizar" : "Crear"} Tipo
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {loadingTypes ? (
+                <p className="text-sm text-muted-foreground">Cargando...</p>
+              ) : !incidentTypes || incidentTypes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay tipos de incidencias configurados</p>
+              ) : (
+                <div className="space-y-2">
+                  {incidentTypes.map((type) => (
+                    <div
+                      key={type.id}
+                      className="flex items-center justify-between p-3 rounded-md border"
+                      data-testid={`incident-type-${type.id}`}
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium" data-testid={`text-type-name-${type.id}`}>
+                          {type.name}
+                        </p>
+                        {type.description && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {type.description}
                           </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline">
-                              {field.fieldType === "text" ? "Texto" : "Lista"}
-                            </Badge>
-                            {field.isRequired && (
-                              <Badge variant="secondary">Obligatorio</Badge>
-                            )}
-                          </div>
-                          {field.options && field.options.length > 0 && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Opciones: {field.options.join(", ")}
-                            </p>
-                          )}
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant={type.isActive ? "default" : "secondary"}>
+                            {type.isActive ? "Activo" : "Inactivo"}
+                          </Badge>
                         </div>
+                      </div>
+                      <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => deleteFieldMutation.mutate(field.id)}
-                          disabled={deleteFieldMutation.isPending}
-                          data-testid={`button-delete-field-${field.id}`}
+                          onClick={() => {
+                            setEditingIncidentType(type);
+                            form.reset({
+                              name: type.name,
+                              description: type.description || "",
+                              isActive: type.isActive,
+                            });
+                            setDialogOpen(true);
+                          }}
+                          data-testid={`button-edit-type-${type.id}`}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteTypeMutation.mutate(type.id)}
+                          disabled={deleteTypeMutation.isPending}
+                          data-testid={`button-delete-type-${type.id}`}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="advanced" className="space-y-6">
