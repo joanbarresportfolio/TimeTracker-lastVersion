@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Clock, Search, LogIn, LogOut, Timer, Calendar, AlertCircle, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import type { Employee, TimeEntry, DateSchedule, DailyWorkday } from "@shared/schema";
+import type { Employee, TimeEntry, DateSchedule, DailyWorkday, Department } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -481,6 +481,7 @@ function AdminTimeTracking({
   setSelectedDate: (date: string) => void;
   toast: any;
 }) {
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
 
   const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
@@ -488,6 +489,10 @@ function AdminTimeTracking({
 
   const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries"],
+  });
+
+  const { data: departments } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
   });
 
   // Estados y form para gestión de jornadas
@@ -658,7 +663,9 @@ function AdminTimeTracking({
       employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesSearch && employee.isActive;
+    const matchesDepartment = selectedDepartment === "all" || employee.department === selectedDepartment;
+    
+    return matchesSearch && matchesDepartment && employee.isActive;
   }) || [];
 
   const getEmployeeTimeEntry = (employeeId: string) => {
@@ -879,6 +886,17 @@ function AdminTimeTracking({
                 data-testid="input-search-employees"
               />
             </div>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <SelectTrigger className="w-[200px]" data-testid="select-department-filter">
+                <SelectValue placeholder="Todos los departamentos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los departamentos</SelectItem>
+                {departments?.map(dept => (
+                  <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium">Fecha:</label>
               <Input
