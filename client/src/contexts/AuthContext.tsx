@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await apiRequest("GET", "/api/auth/me");
+        const response = await apiRequest("/api/auth/me", "GET");
         const data = await response.json();
         if (data.user) {
           setUser(data.user);
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const logout = async () => {
     try {
-      await apiRequest("POST", "/api/auth/logout");
+      await apiRequest("/api/auth/logout", "POST");
     } catch (error) {
       console.error("Error during logout:", error);
     } finally {

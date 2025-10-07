@@ -798,7 +798,7 @@ export default function Schedules() {
         }));
 
         try {
-          await apiRequest('POST', '/api/date-schedules/bulk', {
+          await apiRequest('/api/date-schedules/bulk', 'POST', {
             schedules: bulkSchedules
           });
           successCount++;
