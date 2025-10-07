@@ -765,7 +765,8 @@ export default function Schedules() {
     setSelectionType(null);
   };
 
-loyeesToCopy.length === 0) return;
+  const handleCopySchedules = async () => {
+    if (!selectedEmployee || !dateSchedules || selectedEmployeesToCopy.length === 0) return;
 
     try {
       // Determinar shiftType basado en la hora de inicio
@@ -786,6 +787,9 @@ loyeesToCopy.length === 0) return;
         status: 'scheduled' as const
       }));
 
+      let successCount = 0;
+      let errorCount = 0;
+
       // Copiar horarios para cada empleado seleccionado
       for (const targetEmployeeId of selectedEmployeesToCopy) {
         const bulkSchedules = schedulesToCopy.map(s => ({
@@ -793,20 +797,40 @@ loyeesToCopy.length === 0) return;
           employeeId: targetEmployeeId
         }));
 
-        await apiRequest('POST', '/api/date-schedules/bulk', {
-          schedules: bulkSchedules
-        });
+        try {
+          await apiRequest('POST', '/api/date-schedules/bulk', {
+            schedules: bulkSchedules
+          });
+          successCount++;
+        } catch (error) {
+          console.error(`Error copiando horarios para empleado ${targetEmployeeId}:`, error);
+          errorCount++;
+        }
       }
 
-      toast({
-        title: "Horarios copiados",
-        description: `Se copiaron ${dateSchedules.length} horarios a ${selectedEmployeesToCopy.length} empleado(s)`,
+      // Invalidar cache de horarios para todos los empleados afectados
+      selectedEmployeesToCopy.forEach(employeeId => {
+        queryClient.invalidateQueries({ queryKey: ["/api/date-schedules", employeeId, calendarYear] });
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
+
+      if (successCount > 0) {
+        toast({
+          title: "Horarios copiados",
+          description: `Se copiaron ${dateSchedules.length} horarios a ${successCount} empleado(s)${errorCount > 0 ? `. ${errorCount} empleado(s) tuvieron errores (posiblemente ya tenían horarios en esas fechas)` : ''}`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "No se pudieron copiar los horarios. Los empleados seleccionados podrían ya tener horarios en esas fechas.",
+          variant: "destructive"
+        });
+      }
 
       setShowCopyDialog(false);
       setSelectedEmployeesToCopy([]);
       
-      // Refrescar horarios
+      // Refrescar horarios del empleado actual
       await refetchDateSchedules();
     } catch (error) {
       console.error('Error copiando horarios:', error);
