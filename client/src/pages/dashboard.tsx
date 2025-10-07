@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Clock, Users, TrendingUp, AlertTriangle, Eye, Calendar, Plus } from "lucide-react";
-import type { Employee, TimeEntry, InsertIncident, InsertScheduledShift } from "@shared/schema";
+import type { Employee, TimeEntry, InsertIncident, InsertScheduledShift, Department } from "@shared/schema";
 import { insertIncidentSchema, insertScheduledShiftSchema } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -40,6 +40,10 @@ export default function Dashboard() {
   const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  // Filtros
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
@@ -53,6 +57,11 @@ export default function Dashboard() {
 
   const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<TimeEntry[]>({
     queryKey: ["/api/time-entries"],
+  });
+
+  const { data: departments } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
+    enabled: !isEmployee,
   });
 
   // Forms for dialogs
@@ -145,6 +154,24 @@ export default function Dashboard() {
     if (entry.clockOut) return { status: "completed", color: "bg-blue-500/10 text-blue-700" };
     return { status: "absent", color: "bg-red-500/10 text-red-700" };
   };
+
+  // Filtrar empleados
+  const filteredEmployees = employees?.filter(employee => {
+    // Filtro por departamento
+    if (selectedDepartment !== "all" && employee.department !== selectedDepartment) {
+      return false;
+    }
+    
+    // Filtro por estado
+    if (selectedStatus !== "all") {
+      const status = getEmployeeStatus(employee).status;
+      if (status !== selectedStatus) {
+        return false;
+      }
+    }
+    
+    return true;
+  }) || [];
 
   const formatTime = (date: Date | string) => {
     return new Date(date).toLocaleTimeString('es-ES', { 
@@ -331,12 +358,33 @@ export default function Dashboard() {
         // Vista de Admin: Control de Fichaje Rápido
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4">
               <CardTitle>Control de Fichaje Rápido</CardTitle>
-              <Button data-testid="button-add-employee">
-                <Plus className="w-4 h-4 mr-2" />
-                Nuevo Empleado
-              </Button>
+              <div className="flex gap-4">
+                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                  <SelectTrigger className="w-[200px]" data-testid="select-department-filter">
+                    <SelectValue placeholder="Todos los departamentos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los departamentos</SelectItem>
+                    {departments?.map(dept => (
+                      <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                  <SelectTrigger className="w-[200px]" data-testid="select-status-filter">
+                    <SelectValue placeholder="Todos los estados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="present">Presente</SelectItem>
+                    <SelectItem value="absent">Ausente</SelectItem>
+                    <SelectItem value="completed">Completado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardHeader>
         <CardContent>
@@ -354,7 +402,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {employees?.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((employee) => {
+                {filteredEmployees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((employee) => {
                   const entry = todayEntries.find(e => e.employeeId === employee.id);
                   const status = getEmployeeStatus(employee);
                   
@@ -444,7 +492,7 @@ export default function Dashboard() {
               >
                 Anterior
               </Button>
-              {Array.from({ length: Math.ceil((employees?.length || 0) / itemsPerPage) }, (_, i) => i + 1).map(page => (
+              {Array.from({ length: Math.ceil(filteredEmployees.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
@@ -528,57 +576,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
-
-      {/* Acciones Rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Button 
-          variant="outline" 
-          className="h-auto p-6 justify-start hover-elevate"
-          data-testid="button-export-reports"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-blue-500/10 rounded-full">
-              <i className="fas fa-download text-blue-500 text-xl"></i>
-            </div>
-            <div className="text-left">
-              <h4 className="font-semibold text-foreground">Exportar Reportes</h4>
-              <p className="text-sm text-muted-foreground">Generar informes en PDF o Excel</p>
-            </div>
-          </div>
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          className="h-auto p-6 justify-start hover-elevate"
-          data-testid="button-manage-schedules"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-green-500/10 rounded-full">
-              <i className="fas fa-calendar-plus text-green-500 text-xl"></i>
-            </div>
-            <div className="text-left">
-              <h4 className="font-semibold text-foreground">Gestionar Horarios</h4>
-              <p className="text-sm text-muted-foreground">Configurar turnos y horarios</p>
-            </div>
-          </div>
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          className="h-auto p-6 justify-start hover-elevate"
-          data-testid="button-view-incidents"
-        >
-          <div className="flex items-center space-x-4">
-            <div className="p-3 bg-yellow-500/10 rounded-full">
-              <i className="fas fa-exclamation-circle text-yellow-500 text-xl"></i>
-            </div>
-            <div className="text-left">
-              <h4 className="font-semibold text-foreground">Ver Incidencias</h4>
-              <p className="text-sm text-muted-foreground">Revisar reportes y ausencias</p>
-            </div>
-          </div>
-        </Button>
-      </div>
 
       {/* Diálogo de detalles del empleado */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
