@@ -55,7 +55,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIncidentSchema, loginSchema, createUserSchema as createEmployeeSchema, updateUserSchema as updateEmployeeSchema, bulkScheduledShiftCreateSchema, insertScheduledShiftSchema, manualDailyWorkdaySchema, updateManualDailyWorkdaySchema, insertCustomFieldSchema } from "@shared/schema";
+import { insertIncidentSchema, loginSchema, createUserSchema as createEmployeeSchema, updateUserSchema as updateEmployeeSchema, bulkScheduledShiftCreateSchema, insertScheduledShiftSchema, manualDailyWorkdaySchema, updateManualDailyWorkdaySchema, insertIncidentTypeSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess, generateToken } from "./middleware/auth";
 import { z } from "zod";
 import { db } from "../server/db";
@@ -715,40 +715,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // ==========================================
-  // RUTAS DE CUSTOM FIELDS
+  // RUTAS DE TIPOS DE INCIDENCIAS
   // ==========================================
   
   /**
-   * GET /api/custom-fields
-   * ======================
+   * GET /api/incident-types
+   * =======================
    * 
-   * Obtiene todos los campos personalizados del sistema.
+   * Obtiene todos los tipos de incidencias configurados.
    */
-  app.get("/api/custom-fields", requireAuth, async (req, res) => {
+  app.get("/api/incident-types", requireAuth, async (req, res) => {
     try {
-      const { entityType } = req.query;
-      
-      if (entityType && typeof entityType === 'string') {
-        const fields = await storage.getCustomFieldsByEntity(entityType);
-        return res.json(fields);
-      }
-      
-      const fields = await storage.getCustomFields();
-      res.json(fields);
+      const types = await storage.getIncidentTypes();
+      res.json(types);
     } catch (error) {
-      res.status(500).json({ message: "Error al obtener campos personalizados" });
+      res.status(500).json({ message: "Error al obtener tipos de incidencias" });
     }
   });
   
   /**
-   * POST /api/custom-fields
-   * =======================
+   * POST /api/incident-types
+   * ========================
    * 
-   * Crea un nuevo campo personalizado.
+   * Crea un nuevo tipo de incidencia.
    */
-  app.post("/api/custom-fields", requireAdmin, async (req, res) => {
+  app.post("/api/incident-types", requireAdmin, async (req, res) => {
     try {
-      const validation = insertCustomFieldSchema.safeParse(req.body);
+      const validation = insertIncidentTypeSchema.safeParse(req.body);
       
       if (!validation.success) {
         return res.status(400).json({ 
@@ -757,25 +750,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const field = await storage.createCustomField(validation.data);
-      res.status(201).json(field);
+      const incidentType = await storage.createIncidentType(validation.data);
+      res.status(201).json(incidentType);
     } catch (error) {
-      res.status(500).json({ message: "Error al crear campo personalizado" });
+      console.error("Error al crear tipo de incidencia:", error);
+      res.status(500).json({ message: "Error al crear tipo de incidencia" });
     }
   });
   
   /**
-   * DELETE /api/custom-fields/:id
-   * =============================
+   * PUT /api/incident-types/:id
+   * ===========================
    * 
-   * Elimina un campo personalizado.
+   * Actualiza un tipo de incidencia.
    */
-  app.delete("/api/custom-fields/:id", requireAdmin, async (req, res) => {
+  app.put("/api/incident-types/:id", requireAdmin, async (req, res) => {
     try {
-      await storage.deleteCustomField(req.params.id);
+      const validation = insertIncidentTypeSchema.partial().safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validation.error.errors 
+        });
+      }
+      
+      const incidentType = await storage.updateIncidentType(req.params.id, validation.data);
+      res.json(incidentType);
+    } catch (error) {
+      res.status(500).json({ message: "Error al actualizar tipo de incidencia" });
+    }
+  });
+  
+  /**
+   * DELETE /api/incident-types/:id
+   * ==============================
+   * 
+   * Elimina un tipo de incidencia.
+   */
+  app.delete("/api/incident-types/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteIncidentType(req.params.id);
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Error al eliminar campo personalizado" });
+      res.status(500).json({ message: "Error al eliminar tipo de incidencia" });
     }
   });
   
