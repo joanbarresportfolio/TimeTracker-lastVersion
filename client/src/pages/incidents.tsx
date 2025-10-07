@@ -513,9 +513,15 @@ export default function Incidents() {
                     <span className="font-medium">{getIncidentTypeLabel(incident.incidentType)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Fecha:</span>
+                    <span className="text-muted-foreground">Fecha de Incidencia:</span>
                     <span className="font-medium">
-                      {new Date(incident.createdAt).toLocaleDateString('es-ES')} {new Date(incident.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(incident.date + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Registrada el:</span>
+                    <span className="font-medium text-muted-foreground">
+                      {new Date(incident.createdAt).toLocaleDateString('es-ES')}
                     </span>
                   </div>
                   <div className="text-sm">
