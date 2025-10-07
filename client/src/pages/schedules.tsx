@@ -172,7 +172,7 @@ export default function Schedules() {
       const hoursWorked = Math.round(totalMinutesWorked / 60 * 100) / 100;
 
       // Calcular porcentaje trabajado respecto a horas de convenio
-      const conventionHours = employee.conventionHours || 1752;
+      const conventionHours = 1752; // Horas de convenio anual estándar
       const percentageWorked = conventionHours > 0 ? 
         Math.round((hoursWorked / conventionHours) * 100 * 100) / 100 : 0;
 
@@ -195,7 +195,7 @@ export default function Schedules() {
         employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesDepartment = selectedDepartment === "all" || 
-        employee.department === selectedDepartment;
+        employee.departmentId === selectedDepartment;
       
       return matchesSearch && matchesDepartment && employee.isActive;
     });
@@ -204,7 +204,7 @@ export default function Schedules() {
   // Obtener departamentos únicos
   const departments = useMemo(() => {
     if (!employees) return [];
-    return Array.from(new Set(employees.map(emp => emp.department)));
+    return Array.from(new Set(employees.map(emp => emp.departmentId).filter(dept => dept !== null))) as string[];
   }, [employees]);
 
   // ⚠️ CALENDARIO DATA MOVIDO AQUÍ - Debe estar antes de returns condicionales
@@ -398,7 +398,7 @@ export default function Schedules() {
                       <TableCell>
                         <Badge variant="secondary" className="flex items-center gap-1">
                           <Building className="w-3 h-3" />
-                          {summary.employee.department}
+                          {summary.employee.departmentId || 'Sin departamento'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -1084,7 +1084,7 @@ export default function Schedules() {
                         </Avatar>
                         <div>
                           <p className="font-medium">{employee.firstName} {employee.lastName}</p>
-                          <p className="text-sm text-muted-foreground">{employee.department || 'Sin departamento'}</p>
+                          <p className="text-sm text-muted-foreground">{employee.departmentId || 'Sin departamento'}</p>
                         </div>
                       </label>
                     </div>
