@@ -54,18 +54,6 @@ function AppContent() {
               <SidebarTrigger data-testid="button-sidebar-toggle" />
             </div>
             <div className="flex items-center space-x-4">
-              {user?.role === "admin" && (
-                <div className="relative hidden sm:block">
-                  <input
-                    type="search"
-                    placeholder="Buscar empleado..."
-                    className="pl-10 pr-4 py-2 bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring w-64"
-                    data-testid="input-employee-search"
-                  />
-                  <i className="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
-                </div>
-              )}
-              
               {/* User info and logout */}
               <div className="flex items-center space-x-2 text-sm">
                 <User className="h-4 w-4" />
