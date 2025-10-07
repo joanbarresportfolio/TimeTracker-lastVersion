@@ -55,7 +55,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertIncidentSchema, loginSchema, createUserSchema as createEmployeeSchema, updateUserSchema as updateEmployeeSchema, bulkScheduledShiftCreateSchema, insertScheduledShiftSchema, manualDailyWorkdaySchema, updateManualDailyWorkdaySchema } from "@shared/schema";
+import { insertIncidentSchema, loginSchema, createUserSchema as createEmployeeSchema, updateUserSchema as updateEmployeeSchema, bulkScheduledShiftCreateSchema, insertScheduledShiftSchema, manualDailyWorkdaySchema, updateManualDailyWorkdaySchema, insertCustomFieldSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess, generateToken } from "./middleware/auth";
 import { z } from "zod";
 
@@ -708,6 +708,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Error al eliminar rol" });
+    }
+  });
+  
+  // ==========================================
+  // RUTAS DE CUSTOM FIELDS
+  // ==========================================
+  
+  /**
+   * GET /api/custom-fields
+   * ======================
+   * 
+   * Obtiene todos los campos personalizados del sistema.
+   */
+  app.get("/api/custom-fields", requireAuth, async (req, res) => {
+    try {
+      const { entityType } = req.query;
+      
+      if (entityType && typeof entityType === 'string') {
+        const fields = await storage.getCustomFieldsByEntity(entityType);
+        return res.json(fields);
+      }
+      
+      const fields = await storage.getCustomFields();
+      res.json(fields);
+    } catch (error) {
+      res.status(500).json({ message: "Error al obtener campos personalizados" });
+    }
+  });
+  
+  /**
+   * POST /api/custom-fields
+   * =======================
+   * 
+   * Crea un nuevo campo personalizado.
+   */
+  app.post("/api/custom-fields", requireAdmin, async (req, res) => {
+    try {
+      const validation = insertCustomFieldSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Datos inválidos", 
+          errors: validation.error.errors 
+        });
+      }
+      
+      const field = await storage.createCustomField(validation.data);
+      res.status(201).json(field);
+    } catch (error) {
+      res.status(500).json({ message: "Error al crear campo personalizado" });
+    }
+  });
+  
+  /**
+   * DELETE /api/custom-fields/:id
+   * =============================
+   * 
+   * Elimina un campo personalizado.
+   */
+  app.delete("/api/custom-fields/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteCustomField(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Error al eliminar campo personalizado" });
     }
   });
   

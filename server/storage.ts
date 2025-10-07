@@ -68,11 +68,14 @@ import {
   clockEntries,
   dailyWorkday,
   incidents,
+  customFields,
   type Department,
   type Role,
   type ScheduledShift,
   type ClockEntry,
-  type DailyWorkday
+  type DailyWorkday,
+  type CustomField,
+  type InsertCustomField
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
@@ -141,6 +144,19 @@ export interface IStorage {
   
   /** Elimina un rol y actualiza empleados que lo tienen asignado al rol por defecto */
   deleteRole(id: string): Promise<void>;
+  
+  // Métodos de Custom Fields
+  /** Obtiene todos los campos personalizados */
+  getCustomFields(): Promise<CustomField[]>;
+  
+  /** Obtiene campos personalizados por tipo de entidad */
+  getCustomFieldsByEntity(entityType: string): Promise<CustomField[]>;
+  
+  /** Crea un nuevo campo personalizado */
+  createCustomField(data: InsertCustomField): Promise<CustomField>;
+  
+  /** Elimina un campo personalizado */
+  deleteCustomField(id: string): Promise<void>;
   
   /** 
    * Crea un nuevo empleado (delega a createEmployeeWithPassword para asegurar hashing)
@@ -666,6 +682,27 @@ export class DatabaseStorage implements IStorage {
       // Luego eliminar el rol
       await db.delete(roles).where(eq(roles.id, id));
     }
+  }
+
+  /**
+   * CUSTOM FIELDS
+   * =============
+   */
+  async getCustomFields(): Promise<CustomField[]> {
+    return await db.select().from(customFields);
+  }
+
+  async getCustomFieldsByEntity(entityType: string): Promise<CustomField[]> {
+    return await db.select().from(customFields).where(eq(customFields.entityType, entityType));
+  }
+
+  async createCustomField(data: InsertCustomField): Promise<CustomField> {
+    const [customField] = await db.insert(customFields).values(data).returning();
+    return customField;
+  }
+
+  async deleteCustomField(id: string): Promise<void> {
+    await db.delete(customFields).where(eq(customFields.id, id));
   }
 
   /**

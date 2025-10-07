@@ -97,6 +97,23 @@ export const incidents = pgTable("incidents", {
 });
 
 /**
+ * TABLE: custom_fields
+ * ====================
+ * 
+ * Defines custom fields for employees and incidents.
+ * Allows dynamic form fields with text or dropdown types.
+ */
+export const customFields = pgTable("custom_fields", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  entityType: text("entity_type").notNull(), // "employee" or "incident"
+  fieldName: text("field_name").notNull(),
+  fieldType: text("field_type").notNull(), // "text" or "dropdown"
+  options: text("options").array(), // Array of options for dropdown type
+  isRequired: boolean("is_required").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+/**
  * TABLE: daily_workday
  * ====================
  * 
@@ -288,6 +305,32 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
 });
 
+/**
+ * SCHEMAS FOR CUSTOM FIELDS
+ */
+export const insertCustomFieldSchema = createInsertSchema(customFields).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  entityType: z.enum(["employee", "incident"], {
+    errorMap: () => ({ message: "Debe seleccionar un tipo de entidad válido" })
+  }),
+  fieldName: z.string().min(1, "El nombre del campo es obligatorio"),
+  fieldType: z.enum(["text", "dropdown"], {
+    errorMap: () => ({ message: "Debe seleccionar un tipo de campo válido" })
+  }),
+  options: z.array(z.string()).optional(),
+  isRequired: z.boolean().default(false),
+}).refine(
+  (data) => {
+    if (data.fieldType === "dropdown") {
+      return data.options && data.options.length > 0;
+    }
+    return true;
+  },
+  { message: "Los campos de tipo dropdown deben tener al menos una opción", path: ["options"] }
+);
+
 // ============================================================================
 // TYPESCRIPT TYPES
 // ============================================================================
@@ -314,6 +357,9 @@ export type UpdateManualDailyWorkday = z.infer<typeof updateManualDailyWorkdaySc
 
 export type Incident = typeof incidents.$inferSelect;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
+
+export type CustomField = typeof customFields.$inferSelect;
+export type InsertCustomField = z.infer<typeof insertCustomFieldSchema>;
 
 // ============================================================================
 // LEGACY TYPES FOR API COMPATIBILITY
