@@ -176,9 +176,10 @@ export default function Incidents() {
     setEditingIncident(incident);
     form.reset({
       userId: incident.userId,
+      date: incident.date,
       incidentType: incident.incidentType,
       description: incident.description,
-      status: incident.status,
+      status: incident.status as "pending" | "approved" | "rejected",
     });
     setIsDialogOpen(true);
   };
@@ -326,6 +327,7 @@ export default function Incidents() {
                     const defaultType = incidentTypes?.find(t => t.isActive)?.name || "";
                     form.reset({
                       userId: "",
+                      date: new Date().toISOString().split('T')[0],
                       incidentType: defaultType,
                       description: "",
                       status: "pending",
@@ -365,6 +367,23 @@ export default function Incidents() {
                               ))}
                             </SelectContent>
                           </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fecha de la Incidencia</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              data-testid="input-incident-date"
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
