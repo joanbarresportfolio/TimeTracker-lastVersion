@@ -92,21 +92,7 @@ function EmployeeTimeTracking() {
     queryKey: ["/api/time-entries"],
   });
 
-  // Obtener clock_entries del día actual para gestionar pausas
-  const { data: clockEntries, isLoading: clockEntriesLoading, refetch: refetchClockEntries } = useQuery({
-    queryKey: ["/api/fichajes", user?.id, selectedDate],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const response = await fetch(`/api/fichajes/${user.id}?date=${selectedDate}`, {
-        credentials: "include"
-      });
-      if (!response.ok) return [];
-      return response.json();
-    },
-    enabled: !!user?.id,
-    staleTime: 0, // Siempre considerar los datos como obsoletos para refrescar
-    refetchOnMount: true,
-  });
+  // Ya no necesitamos clockEntries - todo se maneja con todayEntry
 
   const clockInMutation = useMutation({
     mutationFn: async () => {
@@ -292,31 +278,17 @@ function EmployeeTimeTracking() {
     return `${hours}h ${mins}m`;
   };
 
-  const hasActiveBreak = () => {
-    if (!clockEntries || clockEntries.length === 0) return false;
-    
-    // Buscar si hay un break_start sin su correspondiente break_end
-    const breakStarts = clockEntries.filter((entry: any) => entry.entryType === 'break_start');
-    const breakEnds = clockEntries.filter((entry: any) => entry.entryType === 'break_end');
-    
-    return breakStarts.length > breakEnds.length;
-  };
-
   const getStatus = () => {
     const entry = getTodayTimeEntry();
     if (!entry) return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
     
-    // Verificar si hay una pausa activa
-    if (entry.clockIn && !entry.clockOut && hasActiveBreak()) {
-      return { status: "on_break", label: "En pausa", color: "bg-orange-500/10 text-orange-700" };
-    }
-    
+    // Simple: si hay clockIn y NO hay clockOut = está presente
     if (entry.clockIn && !entry.clockOut) return { status: "clocked_in", label: "Presente", color: "bg-green-500/10 text-green-700" };
     if (entry.clockOut) return { status: "completed", label: "Completado", color: "bg-blue-500/10 text-blue-700" };
     return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
   };
 
-  const isLoading = schedulesLoading || timeEntriesLoading || clockEntriesLoading;
+  const isLoading = schedulesLoading || timeEntriesLoading;
 
   if (isLoading) {
     return (
@@ -402,28 +374,6 @@ function EmployeeTimeTracking() {
                   <Button 
                     onClick={() => clockOutMutation.mutate()}
                     disabled={clockOutMutation.isPending}
-                    variant="outline"
-                    data-testid="button-clock-out"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Fichar Salida
-                  </Button>
-                </>
-              )}
-              
-              {status.status === "on_break" && (
-                <>
-                  <Button 
-                    onClick={() => breakEndMutation.mutate()}
-                    disabled={breakEndMutation.isPending}
-                    data-testid="button-break-end"
-                  >
-                    <Clock className="w-4 h-4 mr-2" />
-                    Finalizar Pausa
-                  </Button>
-                  <Button 
-                    onClick={() => clockOutMutation.mutate()}
-                    disabled={true}
                     variant="outline"
                     data-testid="button-clock-out"
                   >
