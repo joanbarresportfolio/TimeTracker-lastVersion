@@ -42,12 +42,23 @@ type WorkdayResponse = {
 const workdayFormSchema = z.object({
   employeeId: z.string().min(1, "Debe seleccionar un empleado"),
   date: z.string().min(1, "Debe seleccionar una fecha"),
+  workdayType: z.enum(["completa", "partida"]).default("completa"),
   startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Debe ser formato HH:MM"),
   endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Debe ser formato HH:MM"),
   breakMinutes: z.number().int().min(0, "No puede ser negativo"),
+  breakStartTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Debe ser formato HH:MM").optional(),
+  breakEndTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Debe ser formato HH:MM").optional(),
 }).refine((data) => data.startTime < data.endTime, {
   message: "Hora de salida debe ser posterior a hora de entrada",
   path: ["endTime"],
+}).refine((data) => {
+  if (data.workdayType === "partida" && data.breakStartTime && data.breakEndTime) {
+    return data.breakStartTime < data.breakEndTime;
+  }
+  return true;
+}, {
+  message: "Fin de pausa debe ser posterior a inicio de pausa",
+  path: ["breakEndTime"],
 });
 
 type WorkdayFormData = z.infer<typeof workdayFormSchema>;
@@ -501,9 +512,12 @@ function AdminTimeTracking({
     defaultValues: {
       employeeId: "",
       date: "",
+      workdayType: "completa",
       startTime: "09:00",
       endTime: "17:00",
       breakMinutes: 30,
+      breakStartTime: "12:00",
+      breakEndTime: "13:00",
     },
   });
 
@@ -796,18 +810,21 @@ function AdminTimeTracking({
 
                 <FormField
                   control={workdayForm.control}
-                  name="breakMinutes"
+                  name="workdayType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Minutos de Pausa</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        />
-                      </FormControl>
+                      <FormLabel>Tipo de Jornada</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="completa">Jornada Completa</SelectItem>
+                          <SelectItem value="partida">Jornada Partida</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -843,6 +860,55 @@ function AdminTimeTracking({
                   )}
                 />
               </div>
+
+              {workdayForm.watch("workdayType") === "partida" && (
+                <div className="grid gap-4 md:grid-cols-3 p-3 bg-muted rounded-lg">
+                  <FormField
+                    control={workdayForm.control}
+                    name="breakStartTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Inicio de Pausa</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={workdayForm.control}
+                    name="breakEndTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fin de Pausa</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={workdayForm.control}
+                    name="breakMinutes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Minutos de Pausa</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
 
               <div className="flex gap-2">
                   <Button
