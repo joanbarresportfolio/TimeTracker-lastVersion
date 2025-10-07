@@ -60,8 +60,9 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   hireDate: timestamp("hire_date").notNull(),
   isActive: boolean("is_active").notNull().default(true),
-  role: text("role").notNull().default("employee"), // "admin" or "employee" - can reference roles table
+  role: text("role").notNull().default("employee"), // "admin" or "employee" - system permission level
   departmentId: varchar("department_id").references(() => departments.id),
+  rolEmpresa: varchar("rol_empresa").references(() => roles.id), // Company role/position
 });
 
 /**
@@ -202,6 +203,7 @@ export const createUserSchema = insertUserSchema.extend({
     errorMap: () => ({ message: "Debe seleccionar un rol válido" })
   }).default("employee"),
   hireDate: z.string().transform((str) => new Date(str)),
+  rolEmpresa: z.string().optional(),
 });
 
 export const updateUserSchema = z.object({
@@ -216,6 +218,7 @@ export const updateUserSchema = z.object({
   role: z.enum(["admin", "employee"], {
     errorMap: () => ({ message: "Debe seleccionar un rol válido" })
   }).optional(),
+  rolEmpresa: z.string().optional(),
 });
 
 /**
@@ -366,22 +369,9 @@ export type InsertCustomField = z.infer<typeof insertCustomFieldSchema>;
 // ============================================================================
 
 /**
- * Legacy Employee interface - maps to User
+ * Employee type - alias for User
  */
-export interface Employee {
-  id: string;
-  employeeNumber: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  role: string;
-  department: string;
-  position: string;
-  hireDate: Date;
-  conventionHours: number;
-  isActive: boolean;
-}
+export type Employee = User;
 
 /**
  * Break entry for TimeEntry

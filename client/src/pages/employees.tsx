@@ -26,11 +26,13 @@ type CreateEmployeePayload = {
   isActive?: boolean;
   passwordHash: string;
   role: "admin" | "employee";
+  rolEmpresa?: string;
 };
 
 type UpdateEmployeePayload = Omit<CreateEmployeePayload, 'passwordHash' | 'role'> & {
   passwordHash?: string;
   role?: "admin" | "employee";
+  rolEmpresa?: string;
 };
 
 import { apiRequest } from "@/lib/queryClient";
@@ -236,6 +238,7 @@ export default function Employees() {
       isActive: true,
       passwordHash: "",
       role: "employee",
+      rolEmpresa: "",
     },
   });
 
@@ -250,6 +253,7 @@ export default function Employees() {
         departmentId: data.departmentId === 'none' || !data.departmentId ? undefined : data.departmentId,
         hireDate: data.hireDate.toISOString(),
         isActive: data.isActive,
+        rolEmpresa: data.rolEmpresa === 'none' || !data.rolEmpresa ? undefined : data.rolEmpresa,
       };
       
       // Solo incluir contraseña si se ha proporcionado una nueva
@@ -265,10 +269,17 @@ export default function Employees() {
       updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updatePayload });
     } else {
       // Para crear, incluimos todos los datos y convertimos fecha
-      const createPayload = {
-        ...data,
+      const createPayload: CreateEmployeePayload = {
+        employeeNumber: data.employeeNumber,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
         departmentId: data.departmentId === 'none' || !data.departmentId ? undefined : data.departmentId,
-        hireDate: data.hireDate.toISOString()
+        hireDate: data.hireDate.toISOString(),
+        isActive: data.isActive,
+        passwordHash: data.passwordHash || "", // Asegurarse de que sea string
+        role: data.role,
+        rolEmpresa: data.rolEmpresa === 'none' || !data.rolEmpresa ? undefined : data.rolEmpresa,
       };
       createEmployeeMutation.mutate(createPayload);
     }
@@ -281,11 +292,12 @@ export default function Employees() {
       firstName: employee.firstName,
       lastName: employee.lastName,
       email: employee.email,
-      departmentId: employee.department || "none", // Mapear department a departmentId, usar "none" si está vacío
+      departmentId: employee.departmentId || "none", // Usar "none" si está vacío
       hireDate: new Date(employee.hireDate), // Convertir string a Date object
       isActive: employee.isActive,
       passwordHash: "", // Vacío por defecto, opcional al editar
       role: employee.role as "admin" | "employee",
+      rolEmpresa: employee.rolEmpresa || "",
     });
     setIsDialogOpen(true);
   };
@@ -297,7 +309,7 @@ export default function Employees() {
   };
 
   const handleDeleteDepartment = (id: string) => {
-    const employeesInDept = employees?.filter(emp => emp.department === departments.find(d => d.id === id)?.name).length || 0;
+    const employeesInDept = employees?.filter(emp => emp.departmentId === id).length || 0;
     if (employeesInDept > 0) {
       if (!confirm(`Este departamento tiene ${employeesInDept} empleado(s) asignado(s). ¿Estás seguro de que quieres eliminarlo? Los empleados quedarán sin departamento.`)) {
         return;
@@ -324,7 +336,7 @@ export default function Employees() {
       employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.email.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesDepartment = selectedDepartment === "all" || employee.department === selectedDepartment;
+    const matchesDepartment = selectedDepartment === "all" || employee.departmentId === selectedDepartment;
     
     return matchesSearch && matchesDepartment;
   }) || [];
@@ -514,6 +526,7 @@ export default function Employees() {
                         isActive: true,
                         passwordHash: "",
                         role: "employee",
+                        rolEmpresa: "",
                       });
                     }}
                     data-testid="button-add-employee"
@@ -607,7 +620,7 @@ export default function Employees() {
                       name="role"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Rol</FormLabel>
+                          <FormLabel>Rol del Sistema</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid="select-role">
@@ -617,6 +630,31 @@ export default function Employees() {
                             <SelectContent>
                               <SelectItem value="employee">Empleado</SelectItem>
                               <SelectItem value="admin">Administrador</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="rolEmpresa"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rol en la Empresa</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-rol-empresa">
+                                <SelectValue placeholder="Seleccionar rol" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">Sin rol específico</SelectItem>
+                              {roles.map((role) => (
+                                <SelectItem key={role.id} value={role.id}>
+                                  {role.name}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -718,11 +756,15 @@ export default function Employees() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Departamento:</span>
-                  <span className="font-medium">{employee.department}</span>
+                  <span className="font-medium">
+                    {departments.find(d => d.id === employee.departmentId)?.name || "Sin asignar"}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Posición:</span>
-                  <span className="font-medium">{employee.position}</span>
+                  <span className="text-muted-foreground">Rol:</span>
+                  <span className="font-medium">
+                    {roles.find(r => r.id === employee.rolEmpresa)?.name || "Sin asignar"}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Email:</span>
