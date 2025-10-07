@@ -93,17 +93,19 @@ function EmployeeTimeTracking() {
   });
 
   // Obtener clock_entries del día actual para gestionar pausas
-  const { data: clockEntries, isLoading: clockEntriesLoading } = useQuery({
+  const { data: clockEntries, isLoading: clockEntriesLoading, refetch: refetchClockEntries } = useQuery({
     queryKey: ["/api/fichajes", user?.id, selectedDate],
     queryFn: async () => {
       if (!user?.id) return [];
       const response = await fetch(`/api/fichajes/${user.id}?date=${selectedDate}`, {
         credentials: "include"
       });
-      if (!response.ok) throw new Error("Error al obtener fichajes");
+      if (!response.ok) return [];
       return response.json();
     },
     enabled: !!user?.id,
+    staleTime: 0, // Siempre considerar los datos como obsoletos para refrescar
+    refetchOnMount: true,
   });
 
   const clockInMutation = useMutation({
@@ -314,7 +316,7 @@ function EmployeeTimeTracking() {
     return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
   };
 
-  const isLoading = schedulesLoading || timeEntriesLoading;
+  const isLoading = schedulesLoading || timeEntriesLoading || clockEntriesLoading;
 
   if (isLoading) {
     return (
