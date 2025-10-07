@@ -98,7 +98,7 @@ export default function Schedules() {
   // ⚠️ HOOKS DE MUTACIÓN - DEBEN estar SIEMPRE antes de returns condicionales
   const createDateScheduleMutation = useMutation({
     mutationFn: (data: { employeeId: string; date: string; expectedStartTime: string; expectedEndTime: string }) => 
-      apiRequest("POST", "/api/date-schedules", data),
+      apiRequest("/api/date-schedules", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
       refetchDateSchedules();
@@ -117,7 +117,7 @@ export default function Schedules() {
 
   const deleteDateScheduleMutation = useMutation({
     mutationFn: (id: string) => 
-      apiRequest("DELETE", `/api/date-schedules/${id}`),
+      apiRequest(`/api/date-schedules/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
       refetchDateSchedules();
@@ -134,7 +134,7 @@ export default function Schedules() {
 
   const createBulkDateScheduleMutation = useMutation({
     mutationFn: (data: { schedules: Array<{ employeeId: string; date: string; expectedStartTime: string; expectedEndTime: string }> }) => 
-      apiRequest("POST", "/api/date-schedules/bulk", data),
+      apiRequest("/api/date-schedules/bulk", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
       refetchDateSchedules();
@@ -700,7 +700,7 @@ export default function Schedules() {
         
         // Borrar los horarios antiguos silenciosamente
         for (const scheduleId of schedulesToDelete) {
-          await apiRequest("DELETE", `/api/date-schedules/${scheduleId}`);
+          await apiRequest(`/api/date-schedules/${scheduleId}`, "DELETE");
         }
       }
       

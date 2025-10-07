@@ -540,7 +540,7 @@ function AdminTimeTracking({
 
   const createWorkdayMutation = useMutation({
     mutationFn: async (data: WorkdayFormData) => {
-      return apiRequest("POST", "/api/daily-workday", data);
+      return apiRequest("/api/daily-workday", "POST", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/daily-workday"] });
@@ -558,7 +558,7 @@ function AdminTimeTracking({
 
   const updateWorkdayMutation = useMutation({
     mutationFn: async (data: WorkdayFormData) => {
-      return apiRequest("PUT", `/api/daily-workday/${workdayResponse?.workday?.id}`, data);
+      return apiRequest(`/api/daily-workday/${workdayResponse?.workday?.id}`, "PUT", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/daily-workday"] });
@@ -576,7 +576,7 @@ function AdminTimeTracking({
 
   const deleteWorkdayMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("DELETE", `/api/daily-workday/${workdayResponse?.workday?.id}`);
+      return apiRequest(`/api/daily-workday/${workdayResponse?.workday?.id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/daily-workday"] });

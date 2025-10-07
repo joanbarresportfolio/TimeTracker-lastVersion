@@ -50,7 +50,7 @@ export default function Incidents() {
 
   const createIncidentMutation = useMutation({
     mutationFn: async (data: InsertIncident) => {
-      const response = await apiRequest("POST", "/api/incidents", data);
+      const response = await apiRequest("/api/incidents", "POST", data);
       return response.json();
     },
     onSuccess: () => {
@@ -73,7 +73,7 @@ export default function Incidents() {
 
   const updateIncidentMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertIncident> }) => {
-      const response = await apiRequest("PUT", `/api/incidents/${id}`, data);
+      const response = await apiRequest(`/api/incidents/${id}`, "PUT", data);
       return response.json();
     },
     onSuccess: () => {
@@ -97,7 +97,7 @@ export default function Incidents() {
 
   const deleteIncidentMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/incidents/${id}`);
+      await apiRequest(`/api/incidents/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/incidents"] });
@@ -117,7 +117,7 @@ export default function Incidents() {
 
   const approveIncidentMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest("PUT", `/api/incidents/${id}`, { status: "approved" });
+      const response = await apiRequest(`/api/incidents/${id}`, "PUT", { status: "approved" });
       return response.json();
     },
     onSuccess: () => {
@@ -138,7 +138,7 @@ export default function Incidents() {
 
   const rejectIncidentMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest("PUT", `/api/incidents/${id}`, { status: "rejected" });
+      const response = await apiRequest(`/api/incidents/${id}`, "PUT", { status: "rejected" });
       return response.json();
     },
     onSuccess: () => {

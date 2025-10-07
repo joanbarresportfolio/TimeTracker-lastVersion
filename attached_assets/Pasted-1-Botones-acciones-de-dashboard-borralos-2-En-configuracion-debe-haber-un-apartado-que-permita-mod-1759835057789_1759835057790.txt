@@ -1,0 +1,30 @@
+1 Botones acciones de dashboard borralos.
+2 En configuracion debe haber un apartado que permita modificarlos campos que hay en empleado y incidencias. por ejemplo que el administrador pueda para incidencias crear un nuevo tipo de incidencia o para empleado crear un nuevo campo dni por ejemplo y que este tambien se visualice al ver empleados y modicar empleados o añadir empleados. los campos pueden ser de texto o listas seleccioanables para epmleados
+3 Para cada formulario que exiga informacion obligatoria debe el programas deberia mostrar un mensaje de error indicando que ha fallado y que se espera que el usuario introduzca.
+4. Al modificar eliminar o crear empleado sale un error Failed to execute 'fecth' on 'Window' ... Arreglalo
+5. Al modificar empleado en el formulario debe haber las mismas opciones que al crear, la contraseña del empleado se poder cambiar.
+6. Todos los menajes de error como el anterior se muestran de manera traslucida y deberian mostrarse con fondo blanco opaco para facilitar la lectura.
+7. En empleados has incluido el boton para editar departamentos pero tambien debes añadir otro boton para editar roles y poder eliminar y añadirlos.
+8. En informes cuando das a exportar para excel o para pdf debe salir esto: 
+Pero además se necesita un informe que dependiendo de las fechas y seleccionando el Ɵpo te
+lo muestre por semana o por mes, o por trimestre o por año que muestre lo siguiente:
+-Empleado 
+-periodo seleccionado
+-Horas trabajadas periodo
+-Horas planificadas
+-Diferencia de horas
+-nº Incidencias
+-nº Incidencias justificadas
+-nº Ausencias
+-nº Ausencias justificadas
+-Dias trabajados
+
+Empleado: Nombre y numero
+Periodo: Día, semana, mes, trimestre año, es decir 4 informes
+Horas trabajadas: Total de horas efecƟvas registradas.
+Días trabajados: Número de días en los que hubo algún registro de fichaje.
+Horas planificadas: Total de horas esƟpuladas según calendario aprobado.
+Diferencia de horas: Diferencia entre horas trabajadas y horas planificadas (posiƟva o negaƟva
+Incidencias: Cualquier registro de incidencia asociado a fichadas de salida (retrasos, salidas
+anƟcipadas, moƟvos específicos, etc.).
+Ausencias: Días sin registro de fichaje o con ausencia jusƟficada/no jusƟficada.

@@ -28,7 +28,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const handleLogin = async (data: LoginRequest) => {
     setIsLoading(true);
     try {
-      const response = await apiRequest("POST", "/api/auth/login", data);
+      const response = await apiRequest("/api/auth/login", "POST", data);
       const result = await response.json();
       
       if (result.user) {
