@@ -59,8 +59,8 @@ import { insertIncidentSchema, loginSchema, createUserSchema as createEmployeeSc
 import { requireAuth, requireAdmin, requireEmployeeAccess, generateToken } from "./middleware/auth";
 import { z } from "zod";
 import { db } from "../server/db";
-import { clockEntries } from "@shared/schema";
-import { sql } from "drizzle-orm";
+import { clockEntries, users, dailyWorkday, scheduledShifts, incidents } from "@shared/schema";
+import { sql, eq, and } from "drizzle-orm";
 
 /**
  * FUNCIÓN AUXILIAR DE VALIDACIÓN DE HORARIOS DE FICHAJE
@@ -2017,6 +2017,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Horario por fecha eliminado exitosamente" });
     } catch (error) {
       res.status(500).json({ message: "Error al eliminar horario por fecha" });
+    }
+  });
+
+  /**
+   * GET /api/reports/period-analysis
+   * ==================================
+   * 
+   * Genera un informe detallado por período (día, semana, mes, trimestre, año)
+   * 
+   * QUERY PARAMS:
+   * - startDate: Fecha de inicio (YYYY-MM-DD)
+   * - endDate: Fecha de fin (YYYY-MM-DD)
+   * - periodType: Tipo de período (day, week, month, quarter, year)
+   * - employeeId: (opcional) ID del empleado
+   * - departmentId: (opcional) ID del departamento
+   */
+  app.get("/api/reports/period-analysis", requireAuth, async (req, res) => {
+    try {
+      const { startDate, endDate, periodType = 'day', employeeId, departmentId } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Se requieren startDate y endDate" });
+      }
+
+      // Obtener todos los empleados o filtrar por departamento/empleado
+      let employeesQuery = db.select().from(users);
+      
+      if (employeeId) {
+        employeesQuery = employeesQuery.where(eq(users.id, employeeId as string)) as any;
+      } else if (departmentId) {
+        employeesQuery = employeesQuery.where(eq(users.departmentId, departmentId as string)) as any;
+      }
+
+      const employees = await employeesQuery;
+
+      const reportData = [];
+
+      for (const employee of employees) {
+        // Obtener jornadas diarias (horas trabajadas)
+        const workdays = await db
+          .select()
+          .from(dailyWorkday)
+          .where(
+            and(
+              eq(dailyWorkday.employeeId, employee.id),
+              sql`${dailyWorkday.date} >= ${startDate as string}`,
+              sql`${dailyWorkday.date} <= ${endDate as string}`
+            )
+          );
+
+        // Obtener turnos planificados (horas planificadas)
+        const scheduledShiftsData = await db
+          .select()
+          .from(scheduledShifts)
+          .where(
+            and(
+              eq(scheduledShifts.employeeId, employee.id),
+              sql`${scheduledShifts.date} >= ${startDate as string}`,
+              sql`${scheduledShifts.date} <= ${endDate as string}`
+            )
+          );
+
+        // Obtener incidencias del período
+        const incidentsData = await db
+          .select()
+          .from(incidents)
+          .where(
+            and(
+              eq(incidents.userId, employee.id),
+              sql`DATE(${incidents.createdAt}) >= ${startDate as string}`,
+              sql`DATE(${incidents.createdAt}) <= ${endDate as string}`
+            )
+          );
+
+        // Calcular métricas
+        const totalWorkedMinutes = workdays.reduce((sum, wd) => sum + (wd.workedMinutes || 0), 0);
+        const totalPlannedMinutes = scheduledShiftsData.reduce((sum, shift) => {
+          if (shift.expectedStartTime && shift.expectedEndTime) {
+            const [startH, startM] = shift.expectedStartTime.split(':').map(Number);
+            const [endH, endM] = shift.expectedEndTime.split(':').map(Number);
+            return sum + ((endH * 60 + endM) - (startH * 60 + startM));
+          }
+          return sum;
+        }, 0);
+
+        const daysWorked = workdays.length;
+        const daysScheduled = scheduledShiftsData.length;
+        
+        // Días sin fichaje (ausencias)
+        const workdayDates = new Set(workdays.map(wd => wd.date));
+        const scheduledDates = new Set(scheduledShiftsData.map(s => s.date));
+        const absences = Array.from(scheduledDates).filter(date => !workdayDates.has(date));
+
+        reportData.push({
+          employeeId: employee.id,
+          employeeNumber: employee.employeeNumber,
+          employeeName: `${employee.firstName} ${employee.lastName}`,
+          period: periodType,
+          periodStart: startDate,
+          periodEnd: endDate,
+          hoursWorked: Math.floor(totalWorkedMinutes / 60),
+          minutesWorked: totalWorkedMinutes % 60,
+          hoursPlanned: Math.floor(totalPlannedMinutes / 60),
+          minutesPlanned: totalPlannedMinutes % 60,
+          hoursDifference: Math.floor((totalWorkedMinutes - totalPlannedMinutes) / 60),
+          minutesDifference: Math.abs(totalWorkedMinutes - totalPlannedMinutes) % 60,
+          daysWorked,
+          daysScheduled,
+          absences: absences.length,
+          absenceDates: absences,
+          incidents: incidentsData.map(inc => ({
+            id: inc.id,
+            type: inc.type,
+            description: inc.description,
+            date: inc.createdAt
+          }))
+        });
+      }
+
+      res.json(reportData);
+    } catch (error) {
+      console.error("Error al generar informe por período:", error);
+      res.status(500).json({ message: "Error al generar informe" });
     }
   });
 
