@@ -58,6 +58,9 @@ import { storage } from "./storage";
 import { insertIncidentSchema, loginSchema, createUserSchema as createEmployeeSchema, updateUserSchema as updateEmployeeSchema, bulkScheduledShiftCreateSchema, insertScheduledShiftSchema, manualDailyWorkdaySchema, updateManualDailyWorkdaySchema, insertCustomFieldSchema } from "@shared/schema";
 import { requireAuth, requireAdmin, requireEmployeeAccess, generateToken } from "./middleware/auth";
 import { z } from "zod";
+import { db } from "../server/db";
+import { clockEntries } from "@shared/schema";
+import { sql } from "drizzle-orm";
 
 /**
  * FUNCIÓN AUXILIAR DE VALIDACIÓN DE HORARIOS DE FICHAJE
@@ -1049,6 +1052,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error al crear fichaje:", error);
       const errorMessage = error instanceof Error ? error.message : "Error al crear fichaje";
       res.status(500).json({ message: errorMessage });
+    }
+  });
+
+  /**
+   * GET /api/fichajes/all
+   * =====================
+   * 
+   * Obtiene todos los fichajes de todos los empleados para una fecha
+   */
+  app.get("/api/fichajes/all", requireAuth, async (req, res) => {
+    try {
+      const { date } = req.query;
+      
+      if (!date) {
+        return res.status(400).json({ message: "El parámetro 'date' es requerido (formato YYYY-MM-DD)" });
+      }
+      
+      // Obtener todos los fichajes del día sin filtrar por empleado
+      const fichajes = await db
+        .select()
+        .from(clockEntries)
+        .where(
+          sql`DATE(${clockEntries.timestamp}) = ${date}`
+        )
+        .orderBy(clockEntries.timestamp);
+      
+      res.json(fichajes);
+    } catch (error) {
+      console.error("Error al obtener todos los fichajes:", error);
+      res.status(500).json({ message: "Error al obtener fichajes" });
     }
   });
 

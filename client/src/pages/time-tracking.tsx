@@ -573,6 +573,18 @@ function AdminTimeTracking({
     queryKey: ["/api/departments"],
   });
 
+  // Obtener clock_entries para detectar pausas activas
+  const { data: allClockEntries } = useQuery({
+    queryKey: ["/api/fichajes/all", selectedDate],
+    queryFn: async () => {
+      const response = await fetch(`/api/fichajes/all?date=${selectedDate}`, {
+        credentials: "include"
+      });
+      if (!response.ok) return [];
+      return response.json();
+    },
+  });
+
   // Estados y form para gestión de jornadas
   const workdayForm = useForm<WorkdayFormData>({
     resolver: zodResolver(workdayFormSchema),
@@ -749,6 +761,7 @@ function AdminTimeTracking({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes/all", selectedDate] });
       toast({
         title: "Pausa iniciada",
         description: "La pausa ha sido registrada exitosamente.",
@@ -774,6 +787,7 @@ function AdminTimeTracking({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes/all", selectedDate] });
       toast({
         title: "Pausa finalizada",
         description: "La pausa ha sido finalizada exitosamente.",
@@ -806,9 +820,23 @@ function AdminTimeTracking({
     );
   };
 
+  const hasActiveBreak = (employeeId: string) => {
+    if (!allClockEntries) return false;
+    const employeeEntries = allClockEntries.filter((entry: any) => entry.employeeId === employeeId);
+    const breakStarts = employeeEntries.filter((entry: any) => entry.entryType === 'break_start');
+    const breakEnds = employeeEntries.filter((entry: any) => entry.entryType === 'break_end');
+    return breakStarts.length > breakEnds.length;
+  };
+
   const getEmployeeStatus = (employee: Employee) => {
     const entry = getEmployeeTimeEntry(employee.id);
     if (!entry) return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
+    
+    // Verificar si está en pausa
+    if (entry.clockIn && !entry.clockOut && hasActiveBreak(employee.id)) {
+      return { status: "on_break", label: "En pausa", color: "bg-orange-500/10 text-orange-700" };
+    }
+    
     if (entry.clockIn && !entry.clockOut) return { status: "clocked_in", label: "Presente", color: "bg-green-500/10 text-green-700" };
     if (entry.clockOut) return { status: "completed", label: "Completado", color: "bg-blue-500/10 text-blue-700" };
     return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
@@ -1226,6 +1254,31 @@ function AdminTimeTracking({
                       >
                         <Clock className="w-4 h-4 mr-2" />
                         Iniciar Pausa
+                      </Button>
+                      <Button 
+                        onClick={() => clockOutMutation.mutate(employee.id)}
+                        disabled={clockOutMutation.isPending}
+                        variant="outline"
+                        className="flex-1"
+                        data-testid={`button-clock-out-${employee.id}`}
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Fichar Salida
+                      </Button>
+                    </>
+                  )}
+                  
+                  {status.status === "on_break" && (
+                    <>
+                      <Button 
+                        onClick={() => breakEndMutation.mutate(employee.id)}
+                        disabled={breakEndMutation.isPending}
+                        variant="outline"
+                        className="flex-1"
+                        data-testid={`button-break-end-${employee.id}`}
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        Finalizar Pausa
                       </Button>
                       <Button 
                         onClick={() => clockOutMutation.mutate(employee.id)}
