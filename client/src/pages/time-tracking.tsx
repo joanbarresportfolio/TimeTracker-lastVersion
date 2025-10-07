@@ -92,6 +92,20 @@ function EmployeeTimeTracking() {
     queryKey: ["/api/time-entries"],
   });
 
+  // Obtener clock_entries del día actual para gestionar pausas
+  const { data: clockEntries, isLoading: clockEntriesLoading } = useQuery({
+    queryKey: ["/api/fichajes", user?.id, selectedDate],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const response = await fetch(`/api/fichajes/${user.id}?date=${selectedDate}`, {
+        credentials: "include"
+      });
+      if (!response.ok) throw new Error("Error al obtener fichajes");
+      return response.json();
+    },
+    enabled: !!user?.id,
+  });
+
   const clockInMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("/api/fichajes", "POST", {
@@ -102,6 +116,7 @@ function EmployeeTimeTracking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes", user?.id, selectedDate] });
       toast({
         title: "Entrada registrada",
         description: "Has fichado la entrada exitosamente.",
@@ -126,6 +141,7 @@ function EmployeeTimeTracking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes", user?.id, selectedDate] });
       toast({
         title: "Salida registrada",
         description: "Has fichado la salida exitosamente.",
@@ -135,6 +151,56 @@ function EmployeeTimeTracking() {
       toast({
         title: "Error al fichar salida",
         description: error.message || "No se pudo registrar la salida.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const breakStartMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/fichajes", "POST", {
+        tipoRegistro: 'break_start',
+        origen: 'web'
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes", user?.id, selectedDate] });
+      toast({
+        title: "Pausa iniciada",
+        description: "Has iniciado la pausa exitosamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al iniciar pausa",
+        description: error.message || "No se pudo iniciar la pausa.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const breakEndMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("/api/fichajes", "POST", {
+        tipoRegistro: 'break_end',
+        origen: 'web'
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes", user?.id, selectedDate] });
+      toast({
+        title: "Pausa finalizada",
+        description: "Has finalizado la pausa exitosamente.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al finalizar pausa",
+        description: error.message || "No se pudo finalizar la pausa.",
         variant: "destructive",
       });
     },
@@ -224,9 +290,25 @@ function EmployeeTimeTracking() {
     return `${hours}h ${mins}m`;
   };
 
+  const hasActiveBreak = () => {
+    if (!clockEntries || clockEntries.length === 0) return false;
+    
+    // Buscar si hay un break_start sin su correspondiente break_end
+    const breakStarts = clockEntries.filter((entry: any) => entry.entryType === 'break_start');
+    const breakEnds = clockEntries.filter((entry: any) => entry.entryType === 'break_end');
+    
+    return breakStarts.length > breakEnds.length;
+  };
+
   const getStatus = () => {
     const entry = getTodayTimeEntry();
     if (!entry) return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
+    
+    // Verificar si hay una pausa activa
+    if (entry.clockIn && !entry.clockOut && hasActiveBreak()) {
+      return { status: "on_break", label: "En pausa", color: "bg-orange-500/10 text-orange-700" };
+    }
+    
     if (entry.clockIn && !entry.clockOut) return { status: "clocked_in", label: "Presente", color: "bg-green-500/10 text-green-700" };
     if (entry.clockOut) return { status: "completed", label: "Completado", color: "bg-blue-500/10 text-blue-700" };
     return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
@@ -305,15 +387,48 @@ function EmployeeTimeTracking() {
               )}
               
               {status.status === "clocked_in" && (
-                <Button 
-                  onClick={() => clockOutMutation.mutate()}
-                  disabled={clockOutMutation.isPending}
-                  variant="outline"
-                  data-testid="button-clock-out"
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Fichar Salida
-                </Button>
+                <>
+                  <Button 
+                    onClick={() => breakStartMutation.mutate()}
+                    disabled={breakStartMutation.isPending}
+                    variant="outline"
+                    data-testid="button-break-start"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    Iniciar Pausa
+                  </Button>
+                  <Button 
+                    onClick={() => clockOutMutation.mutate()}
+                    disabled={clockOutMutation.isPending}
+                    variant="outline"
+                    data-testid="button-clock-out"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Fichar Salida
+                  </Button>
+                </>
+              )}
+              
+              {status.status === "on_break" && (
+                <>
+                  <Button 
+                    onClick={() => breakEndMutation.mutate()}
+                    disabled={breakEndMutation.isPending}
+                    data-testid="button-break-end"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    Finalizar Pausa
+                  </Button>
+                  <Button 
+                    onClick={() => clockOutMutation.mutate()}
+                    disabled={true}
+                    variant="outline"
+                    data-testid="button-clock-out"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Fichar Salida
+                  </Button>
+                </>
               )}
               
               {status.status === "completed" && (
