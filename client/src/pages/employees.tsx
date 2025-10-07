@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { createUserSchema } from "@shared/schema";
-import type { Employee, CreateUser } from "@shared/schema";
+import type { Employee, CreateUser, Department } from "@shared/schema";
 import { z } from "zod";
 
 // Tipos específicos para las llamadas a la API (con fechas como strings)
@@ -38,11 +38,17 @@ export default function Employees() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false);
+  const [newDepartmentName, setNewDepartmentName] = useState("");
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const { toast } = useToast();
 
   const { data: employees, isLoading } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
+  });
+
+  const { data: departments = [] } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
   });
 
   const createEmployeeMutation = useMutation({
@@ -70,7 +76,7 @@ export default function Employees() {
 
   const updateEmployeeMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateEmployeePayload }) => {
-      const response = await apiRequest("PUT", `/api/employees/${id}`, data);
+      const response = await apiRequest(`/api/employees/${id}`, "PUT", data);
       return response.json();
     },
     onSuccess: () => {
@@ -94,7 +100,7 @@ export default function Employees() {
 
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/employees/${id}`);
+      await apiRequest(`/api/employees/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
@@ -107,6 +113,50 @@ export default function Employees() {
       toast({
         title: "Error",
         description: error.message || "No se pudo eliminar el empleado.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createDepartmentMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const response = await apiRequest("/api/departments", "POST", { name });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      setNewDepartmentName("");
+      toast({
+        title: "Departamento creado",
+        description: "El departamento ha sido creado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el departamento.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteDepartmentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest(`/api/departments/${id}`, "DELETE");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      toast({
+        title: "Departamento eliminado",
+        description: "El departamento ha sido eliminado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el departamento.",
         variant: "destructive",
       });
     },
@@ -140,7 +190,7 @@ export default function Employees() {
       const { passwordHash, role, ...updateData } = data;
       const updatePayload = {
         ...updateData,
-        departmentId: updateData.departmentId === 'none' ? undefined : updateData.departmentId,
+        departmentId: updateData.departmentId === 'none' || !updateData.departmentId ? undefined : updateData.departmentId,
         hireDate: updateData.hireDate.toISOString()
       };
       
@@ -149,7 +199,7 @@ export default function Employees() {
       // Para crear, incluimos todos los datos y convertimos fecha
       const createPayload = {
         ...data,
-        departmentId: data.departmentId === 'none' ? undefined : data.departmentId,
+        departmentId: data.departmentId === 'none' || !data.departmentId ? undefined : data.departmentId,
         hireDate: data.hireDate.toISOString()
       };
       createEmployeeMutation.mutate(createPayload);
@@ -178,7 +228,15 @@ export default function Employees() {
     }
   };
 
-  const departments = Array.from(new Set(employees?.map(emp => emp.department) || []));
+  const handleDeleteDepartment = (id: string) => {
+    const employeesInDept = employees?.filter(emp => emp.department === departments.find(d => d.id === id)?.name).length || 0;
+    if (employeesInDept > 0) {
+      if (!confirm(`Este departamento tiene ${employeesInDept} empleado(s) asignado(s). ¿Estás seguro de que quieres eliminarlo? Los empleados quedarán sin departamento.`)) {
+        return;
+      }
+    }
+    deleteDepartmentMutation.mutate(id);
+  };
   
   const filteredEmployees = employees?.filter(employee => {
     const matchesSearch = 
@@ -256,34 +314,85 @@ export default function Employees() {
                 <SelectContent>
                   <SelectItem value="all">Todos los departamentos</SelectItem>
                   {departments.map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button 
-                  onClick={() => {
-                    setEditingEmployee(null);
-                    form.reset({
-                      employeeNumber: "",
-                      firstName: "",
-                      lastName: "",
-                      email: "",
-                      departmentId: "",
-                      hireDate: new Date(),
-                      isActive: true,
-                      passwordHash: "",
-                      role: "employee",
-                    });
-                  }}
-                  data-testid="button-add-employee"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Empleado
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Dialog open={isDepartmentDialogOpen} onOpenChange={setIsDepartmentDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-edit-departments">
+                    Editar Departamentos
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Gestionar Departamentos</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nombre del departamento"
+                        value={newDepartmentName}
+                        onChange={(e) => setNewDepartmentName(e.target.value)}
+                        data-testid="input-department-name"
+                      />
+                      <Button 
+                        onClick={() => {
+                          if (newDepartmentName.trim()) {
+                            createDepartmentMutation.mutate(newDepartmentName.trim());
+                          }
+                        }}
+                        disabled={createDepartmentMutation.isPending || !newDepartmentName.trim()}
+                        data-testid="button-create-department"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Crear
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {departments.map(dept => (
+                        <div key={dept.id} className="flex items-center justify-between p-2 rounded-md border">
+                          <span>{dept.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteDepartment(dept.id)}
+                            disabled={deleteDepartmentMutation.isPending}
+                            data-testid={`button-delete-department-${dept.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    onClick={() => {
+                      setEditingEmployee(null);
+                      form.reset({
+                        employeeNumber: "",
+                        firstName: "",
+                        lastName: "",
+                        email: "",
+                        departmentId: "",
+                        hireDate: new Date(),
+                        isActive: true,
+                        passwordHash: "",
+                        role: "employee",
+                      });
+                    }}
+                    data-testid="button-add-employee"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nuevo Empleado
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>
@@ -388,7 +497,7 @@ export default function Employees() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Departamento (opcional)</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
                             <FormControl>
                               <SelectTrigger data-testid="select-department">
                                 <SelectValue placeholder="Seleccionar..." />
@@ -396,9 +505,9 @@ export default function Employees() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="none">Ninguno</SelectItem>
-                              <SelectItem value="Administración">Administración</SelectItem>
-                              <SelectItem value="Grupo Chova Felix">Grupo Chova Felix</SelectItem>
-                              <SelectItem value="Marina Fruit">Marina Fruit</SelectItem>
+                              {departments.map(dept => (
+                                <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -445,6 +554,7 @@ export default function Employees() {
                 </Form>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
         </CardHeader>
       </Card>

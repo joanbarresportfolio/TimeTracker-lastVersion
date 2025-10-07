@@ -83,7 +83,7 @@ function EmployeeTimeTracking() {
 
   const clockInMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/fichajes", {
+      const response = await apiRequest("/api/fichajes", "POST", {
         tipoRegistro: 'clock_in',
         origen: 'web'
       });
@@ -107,7 +107,7 @@ function EmployeeTimeTracking() {
 
   const clockOutMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/fichajes", {
+      const response = await apiRequest("/api/fichajes", "POST", {
         tipoRegistro: 'clock_out',
         origen: 'web'
       });
@@ -609,7 +609,7 @@ function AdminTimeTracking({
 
   const clockInMutation = useMutation({
     mutationFn: async (employeeId: string) => {
-      const response = await apiRequest("POST", "/api/fichajes", { 
+      const response = await apiRequest("/api/fichajes", "POST", { 
         employeeId,
         tipoRegistro: 'clock_in',
         origen: 'web'
@@ -634,7 +634,7 @@ function AdminTimeTracking({
 
   const clockOutMutation = useMutation({
     mutationFn: async (employeeId: string) => {
-      const response = await apiRequest("POST", "/api/fichajes", { 
+      const response = await apiRequest("/api/fichajes", "POST", { 
         employeeId,
         tipoRegistro: 'clock_out',
         origen: 'web'
