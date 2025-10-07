@@ -145,8 +145,8 @@ export const clockEntries = pgTable("clock_entries", {
  * Schema for user login
  */
 export const loginSchema = z.object({
-  email: z.string().email("Invalid email"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Correo electrónico inválido"),
+  password: z.string().min(1, "La contraseña es obligatoria"),
 });
 
 /**
@@ -176,17 +176,23 @@ export const insertUserSchema = createInsertSchema(users).omit({
 });
 
 export const createUserSchema = insertUserSchema.extend({
-  passwordHash: z.string().min(4, "Password must be at least 4 characters"),
-  role: z.enum(["admin", "employee"]).default("employee"),
+  employeeNumber: z.string().min(1, "El número de empleado es obligatorio"),
+  firstName: z.string().min(1, "El nombre es obligatorio"),
+  lastName: z.string().min(1, "El apellido es obligatorio"),
+  email: z.string().email("Debe ingresar un correo electrónico válido"),
+  passwordHash: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
+  role: z.enum(["admin", "employee"], {
+    errorMap: () => ({ message: "Debe seleccionar un rol válido" })
+  }).default("employee"),
   hireDate: z.string().transform((str) => new Date(str)),
 });
 
 export const updateUserSchema = z.object({
-  employeeNumber: z.string().min(1).optional(),
-  firstName: z.string().min(1).optional(),
-  lastName: z.string().min(1).optional(),
-  email: z.string().email().optional(),
-  departmentId: z.string().min(1).optional(),
+  employeeNumber: z.string().min(1, "El número de empleado es obligatorio").optional(),
+  firstName: z.string().min(1, "El nombre es obligatorio").optional(),
+  lastName: z.string().min(1, "El apellido es obligatorio").optional(),
+  email: z.string().email("Debe ingresar un correo electrónico válido").optional(),
+  departmentId: z.string().min(1, "Debe seleccionar un departamento").optional(),
   hireDate: z.string().transform((str) => new Date(str)).optional(),
   isActive: z.boolean().optional(),
 });
@@ -197,19 +203,22 @@ export const updateUserSchema = z.object({
 export const insertScheduledShiftSchema = createInsertSchema(scheduledShifts).omit({
   id: true,
 }).extend({
-  shiftType: z.enum(['morning', 'afternoon', 'night']),
+  employeeId: z.string().min(1, "Debe seleccionar un empleado"),
+  shiftType: z.enum(['morning', 'afternoon', 'night'], {
+    errorMap: () => ({ message: "Debe seleccionar un tipo de turno válido" })
+  }),
   status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled']).default('scheduled'),
 });
 
 export const bulkScheduledShiftCreateSchema = z.object({
   schedules: z.array(z.object({
-    employeeId: z.string().min(1, "Employee ID is required"),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
-    expectedStartTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Start time must be in HH:MM format"),
-    expectedEndTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "End time must be in HH:MM format"),
+    employeeId: z.string().min(1, "Debe seleccionar un empleado"),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato AAAA-MM-DD"),
+    expectedStartTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio debe estar en formato HH:MM"),
+    expectedEndTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin debe estar en formato HH:MM"),
     shiftType: z.enum(['morning', 'afternoon', 'night']).default('morning'),
     status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled']).default('scheduled'),
-  })).min(1, "At least one schedule is required"),
+  })).min(1, "Debe haber al menos un horario"),
 });
 
 /**
@@ -236,20 +245,20 @@ export const insertDailyWorkdaySchema = createInsertSchema(dailyWorkday).omit({
 });
 
 export const manualDailyWorkdaySchema = z.object({
-  employeeId: z.string().min(1, "Employee ID is required"),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
-  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Start time must be in HH:MM format"),
-  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "End time must be in HH:MM format"),
-  breakMinutes: z.number().int().min(0, "Break minutes cannot be negative"),
+  employeeId: z.string().min(1, "Debe seleccionar un empleado"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato AAAA-MM-DD"),
+  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio debe estar en formato HH:MM"),
+  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin debe estar en formato HH:MM"),
+  breakMinutes: z.number().int().min(0, "Los minutos de descanso no pueden ser negativos"),
 }).refine(
   (data) => data.startTime < data.endTime,
-  { message: "End time must be after start time", path: ["endTime"] }
+  { message: "La hora de fin debe ser posterior a la hora de inicio", path: ["endTime"] }
 );
 
 export const updateManualDailyWorkdaySchema = z.object({
-  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Start time must be in HH:MM format").optional(),
-  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "End time must be in HH:MM format").optional(),
-  breakMinutes: z.number().int().min(0, "Break minutes cannot be negative").optional(),
+  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio debe estar en formato HH:MM").optional(),
+  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin debe estar en formato HH:MM").optional(),
+  breakMinutes: z.number().int().min(0, "Los minutos de descanso no pueden ser negativos").optional(),
 }).refine(
   (data) => {
     if (data.startTime && data.endTime) {
@@ -257,7 +266,7 @@ export const updateManualDailyWorkdaySchema = z.object({
     }
     return true;
   },
-  { message: "End time must be after start time", path: ["endTime"] }
+  { message: "La hora de fin debe ser posterior a la hora de inicio", path: ["endTime"] }
 );
 
 /**
@@ -267,7 +276,11 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
   id: true,
   createdAt: true,
 }).extend({
-  incidentType: z.enum(["late", "absence", "sick_leave", "vacation", "forgot_clock_in", "other"]),
+  employeeId: z.string().min(1, "Debe seleccionar un empleado"),
+  incidentType: z.enum(["late", "absence", "sick_leave", "vacation", "forgot_clock_in", "other"], {
+    errorMap: () => ({ message: "Debe seleccionar un tipo de incidente válido" })
+  }),
+  description: z.string().min(1, "La descripción es obligatoria"),
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
 });
 
