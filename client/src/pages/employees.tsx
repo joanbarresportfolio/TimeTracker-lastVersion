@@ -931,16 +931,12 @@ export default function Employees() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Departamento:</span>
-                  <span className="font-medium">
-                    {departments.find((d) => d.id === employee.departmentId)?.name ||
-                      "Sin asignar"}
-                  </span>
+                  <span className="font-medium">{employee.department}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Rol:</span>
                   <span className="font-medium">
-                    {roles.find((r) => r.id === employee.rolEmpresa)?.name ||
-                      "Sin asignar"}
+                    {employee."}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
