@@ -931,9 +931,7 @@ export default function Employees() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Departamento:</span>
-                  <span className="font-medium">
-                    {employee.departmentId} || "Sin asignar"}
-                  </span>
+                  <span className="font-medium">{employee.departmentId}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Rol:</span>
