@@ -4,29 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
@@ -49,10 +30,7 @@ type CreateEmployeePayload = {
   rolEmpresa?: string;
 };
 
-type UpdateEmployeePayload = Omit<
-  CreateEmployeePayload,
-  "passwordHash" | "role"
-> & {
+type UpdateEmployeePayload = Omit<CreateEmployeePayload, 'passwordHash' | 'role'> & {
   passwordHash?: string;
   role?: "admin" | "employee";
   rolEmpresa?: string;
@@ -109,13 +87,7 @@ export default function Employees() {
   });
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: UpdateEmployeePayload;
-    }) => {
+    mutationFn: async ({ id, data }: { id: string; data: UpdateEmployeePayload }) => {
       const response = await apiRequest(`/api/employees/${id}`, "PUT", data);
       return response.json();
     },
@@ -250,15 +222,11 @@ export default function Employees() {
   // Hacemos la contraseña opcional para permitir edición sin cambiar la contraseña
   const employeeFormSchema = createUserSchema.extend({
     hireDate: z.date(), // El formulario usa Date objects
-    passwordHash: z
-      .string()
-      .min(4, "La contraseña debe tener al menos 4 caracteres")
-      .or(z.string().length(0))
-      .optional(),
+    passwordHash: z.string().min(4, "La contraseña debe tener al menos 4 caracteres").or(z.string().length(0)).optional(),
   });
-
+  
   type EmployeeFormData = z.infer<typeof employeeFormSchema>;
-
+  
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
@@ -285,32 +253,23 @@ export default function Employees() {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
-        departmentId:
-          data.departmentId === "none" || !data.departmentId
-            ? undefined
-            : data.departmentId,
+        departmentId: data.departmentId === 'none' || !data.departmentId ? undefined : data.departmentId,
         hireDate: data.hireDate.toISOString(),
         isActive: data.isActive,
-        rolEmpresa:
-          data.rolEmpresa === "none" || !data.rolEmpresa
-            ? undefined
-            : data.rolEmpresa,
+        rolEmpresa: data.rolEmpresa === 'none' || !data.rolEmpresa ? undefined : data.rolEmpresa,
       };
-
+      
       // Solo incluir contraseña si se ha proporcionado una nueva
       if (data.passwordHash && data.passwordHash.trim()) {
         updatePayload.passwordHash = data.passwordHash;
       }
-
+      
       // Incluir el rol si se ha especificado
       if (data.role) {
         updatePayload.role = data.role;
       }
-
-      updateEmployeeMutation.mutate({
-        id: editingEmployee.id,
-        data: updatePayload,
-      });
+      
+      updateEmployeeMutation.mutate({ id: editingEmployee.id, data: updatePayload });
     } else {
       // Para crear, incluimos todos los datos y convertimos fecha
       const createPayload: CreateEmployeePayload = {
@@ -319,18 +278,12 @@ export default function Employees() {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
-        departmentId:
-          data.departmentId === "none" || !data.departmentId
-            ? undefined
-            : data.departmentId,
+        departmentId: data.departmentId === 'none' || !data.departmentId ? undefined : data.departmentId,
         hireDate: data.hireDate.toISOString(),
         isActive: data.isActive,
         passwordHash: data.passwordHash || "", // Asegurarse de que sea string
         role: data.role,
-        rolEmpresa:
-          data.rolEmpresa === "none" || !data.rolEmpresa
-            ? undefined
-            : data.rolEmpresa,
+        rolEmpresa: data.rolEmpresa === 'none' || !data.rolEmpresa ? undefined : data.rolEmpresa,
       };
       createEmployeeMutation.mutate(createPayload);
     }
@@ -361,14 +314,9 @@ export default function Employees() {
   };
 
   const handleDeleteDepartment = (id: string) => {
-    const employeesInDept =
-      employees?.filter((emp) => emp.departmentId === id).length || 0;
+    const employeesInDept = employees?.filter(emp => emp.departmentId === id).length || 0;
     if (employeesInDept > 0) {
-      if (
-        !confirm(
-          `Este departamento tiene ${employeesInDept} empleado(s) asignado(s). ¿Estás seguro de que quieres eliminarlo? Los empleados quedarán sin departamento.`,
-        )
-      ) {
+      if (!confirm(`Este departamento tiene ${employeesInDept} empleado(s) asignado(s). ¿Estás seguro de que quieres eliminarlo? Los empleados quedarán sin departamento.`)) {
         return;
       }
     }
@@ -376,37 +324,27 @@ export default function Employees() {
   };
 
   const handleDeleteRole = (id: string) => {
-    const role = roles.find((r) => r.id === id);
-    const employeesWithRole =
-      employees?.filter((emp) => emp.role === role?.name).length || 0;
+    const role = roles.find(r => r.id === id);
+    const employeesWithRole = employees?.filter(emp => emp.role === role?.name).length || 0;
     if (employeesWithRole > 0) {
-      if (
-        !confirm(
-          `Este rol tiene ${employeesWithRole} empleado(s) asignado(s). ¿Estás seguro de que quieres eliminarlo? Los empleados se cambiarán al rol 'employee'.`,
-        )
-      ) {
+      if (!confirm(`Este rol tiene ${employeesWithRole} empleado(s) asignado(s). ¿Estás seguro de que quieres eliminarlo? Los empleados se cambiarán al rol 'employee'.`)) {
         return;
       }
     }
     deleteRoleMutation.mutate(id);
   };
-
-  const filteredEmployees =
-    employees?.filter((employee) => {
-      const matchesSearch =
-        employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.employeeNumber
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        employee.email.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesDepartment =
-        selectedDepartment === "all" ||
-        employee.departmentId === selectedDepartment;
-
-      return matchesSearch && matchesDepartment;
-    }) || [];
+  
+  const filteredEmployees = employees?.filter(employee => {
+    const matchesSearch = 
+      employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesDepartment = selectedDepartment === "all" || employee.departmentId === selectedDepartment;
+    
+    return matchesSearch && matchesDepartment;
+  }) || [];
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -415,7 +353,7 @@ export default function Employees() {
   const getAvatarColor = (name: string) => {
     const colors = [
       "from-blue-500 to-purple-600",
-      "from-green-500 to-teal-600",
+      "from-green-500 to-teal-600", 
       "from-orange-500 to-red-600",
       "from-purple-500 to-pink-600",
       "from-yellow-500 to-orange-600",
@@ -428,9 +366,7 @@ export default function Employees() {
       <div className="p-4 lg:p-6 space-y-6">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-foreground">Empleados</h2>
-          <p className="text-muted-foreground">
-            Gestiona la información de los empleados
-          </p>
+          <p className="text-muted-foreground">Gestiona la información de los empleados</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
@@ -449,9 +385,7 @@ export default function Employees() {
     <div className="p-4 lg:p-6 space-y-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-foreground">Empleados</h2>
-        <p className="text-muted-foreground">
-          Gestiona la información de los empleados
-        </p>
+        <p className="text-muted-foreground">Gestiona la información de los empleados</p>
       </div>
 
       {/* Filtros y acciones */}
@@ -469,36 +403,22 @@ export default function Employees() {
                   data-testid="input-search-employees"
                 />
               </div>
-              <Select
-                value={selectedDepartment}
-                onValueChange={setSelectedDepartment}
-              >
-                <SelectTrigger
-                  className="w-48"
-                  data-testid="select-department-filter"
-                >
+              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+                <SelectTrigger className="w-48" data-testid="select-department-filter">
                   <SelectValue placeholder="Filtrar por departamento" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los departamentos</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>
-                      {dept.name}
-                    </SelectItem>
+                  {departments.map(dept => (
+                    <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex gap-2">
-              <Dialog
-                open={isDepartmentDialogOpen}
-                onOpenChange={setIsDepartmentDialogOpen}
-              >
+              <Dialog open={isDepartmentDialogOpen} onOpenChange={setIsDepartmentDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    data-testid="button-edit-departments"
-                  >
+                  <Button variant="outline" data-testid="button-edit-departments">
                     Editar Departamentos
                   </Button>
                 </DialogTrigger>
@@ -514,18 +434,13 @@ export default function Employees() {
                         onChange={(e) => setNewDepartmentName(e.target.value)}
                         data-testid="input-department-name"
                       />
-                      <Button
+                      <Button 
                         onClick={() => {
                           if (newDepartmentName.trim()) {
-                            createDepartmentMutation.mutate(
-                              newDepartmentName.trim(),
-                            );
+                            createDepartmentMutation.mutate(newDepartmentName.trim());
                           }
                         }}
-                        disabled={
-                          createDepartmentMutation.isPending ||
-                          !newDepartmentName.trim()
-                        }
+                        disabled={createDepartmentMutation.isPending || !newDepartmentName.trim()}
                         data-testid="button-create-department"
                       >
                         <Plus className="w-4 h-4 mr-2" />
@@ -533,11 +448,8 @@ export default function Employees() {
                       </Button>
                     </div>
                     <div className="space-y-2">
-                      {departments.map((dept) => (
-                        <div
-                          key={dept.id}
-                          className="flex items-center justify-between p-2 rounded-md border"
-                        >
+                      {departments.map(dept => (
+                        <div key={dept.id} className="flex items-center justify-between p-2 rounded-md border">
                           <span>{dept.name}</span>
                           <Button
                             variant="ghost"
@@ -554,10 +466,7 @@ export default function Employees() {
                   </div>
                 </DialogContent>
               </Dialog>
-              <Dialog
-                open={isRoleDialogOpen}
-                onOpenChange={setIsRoleDialogOpen}
-              >
+              <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" data-testid="button-edit-roles">
                     Editar Roles
@@ -575,15 +484,13 @@ export default function Employees() {
                         onChange={(e) => setNewRoleName(e.target.value)}
                         data-testid="input-role-name"
                       />
-                      <Button
+                      <Button 
                         onClick={() => {
                           if (newRoleName.trim()) {
                             createRoleMutation.mutate(newRoleName.trim());
                           }
                         }}
-                        disabled={
-                          createRoleMutation.isPending || !newRoleName.trim()
-                        }
+                        disabled={createRoleMutation.isPending || !newRoleName.trim()}
                         data-testid="button-create-role"
                       >
                         <Plus className="w-4 h-4 mr-2" />
@@ -591,11 +498,8 @@ export default function Employees() {
                       </Button>
                     </div>
                     <div className="space-y-2">
-                      {roles.map((role) => (
-                        <div
-                          key={role.id}
-                          className="flex items-center justify-between p-2 rounded-md border"
-                        >
+                      {roles.map(role => (
+                        <div key={role.id} className="flex items-center justify-between p-2 rounded-md border">
                           <span>{role.name}</span>
                           <Button
                             variant="ghost"
@@ -614,7 +518,7 @@ export default function Employees() {
               </Dialog>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button
+                  <Button 
                     onClick={() => {
                       setEditingEmployee(null);
                       form.reset({
@@ -637,28 +541,49 @@ export default function Employees() {
                     Nuevo Empleado
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingEmployee ? "Editar Empleado" : "Nuevo Empleado"}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <Form {...form}>
-                    <form
-                      onSubmit={form.handleSubmit(onSubmit)}
-                      className="space-y-4"
-                    >
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingEmployee ? "Editar Empleado" : "Nuevo Empleado"}
+                  </DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="employeeNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número de Empleado</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-employee-number" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="dni"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>DNI</FormLabel>
+                          <FormControl>
+                            <Input {...field} value={field.value || ""} data-testid="input-dni" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="employeeNumber"
+                        name="firstName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Número de Empleado</FormLabel>
+                            <FormLabel>Nombre</FormLabel>
                             <FormControl>
-                              <Input
-                                {...field}
-                                data-testid="input-employee-number"
-                              />
+                              <Input {...field} data-testid="input-first-name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -666,231 +591,158 @@ export default function Employees() {
                       />
                       <FormField
                         control={form.control}
-                        name="dni"
+                        name="lastName"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>DNI</FormLabel>
+                            <FormLabel>Apellido</FormLabel>
                             <FormControl>
-                              <Input
-                                {...field}
-                                value={field.value || ""}
-                                data-testid="input-dni"
-                              />
+                              <Input {...field} data-testid="input-last-name" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="firstName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nombre</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  data-testid="input-first-name"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="lastName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Apellido</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  data-testid="input-last-name"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} data-testid="input-email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="passwordHash"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contraseña {editingEmployee && "(opcional)"}</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="password" 
+                              {...field} 
+                              placeholder={editingEmployee ? "Dejar en blanco para mantener la actual" : ""} 
+                              data-testid="input-password" 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="role"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rol del Sistema</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <Input
-                                type="email"
-                                {...field}
-                                data-testid="input-email"
-                              />
+                              <SelectTrigger data-testid="select-role">
+                                <SelectValue />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="passwordHash"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              Contraseña {editingEmployee && "(opcional)"}
-                            </FormLabel>
+                            <SelectContent>
+                              <SelectItem value="employee">Empleado</SelectItem>
+                              <SelectItem value="admin">Administrador</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="rolEmpresa"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rol en la Empresa</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <Input
-                                type="password"
-                                {...field}
-                                placeholder={
-                                  editingEmployee
-                                    ? "Dejar en blanco para mantener la actual"
-                                    : ""
-                                }
-                                data-testid="input-password"
-                              />
+                              <SelectTrigger data-testid="select-rol-empresa">
+                                <SelectValue placeholder="Seleccionar rol" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="role"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Rol del Sistema</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger data-testid="select-role">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="employee">
-                                  Empleado
+                            <SelectContent>
+                              <SelectItem value="none">Sin rol específico</SelectItem>
+                              {roles.map((role) => (
+                                <SelectItem key={role.id} value={role.id}>
+                                  {role.name}
                                 </SelectItem>
-                                <SelectItem value="admin">
-                                  Administrador
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="rolEmpresa"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Rol en la Empresa</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger data-testid="select-rol-empresa">
-                                  <SelectValue placeholder="Seleccionar rol" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">
-                                  Sin rol específico
-                                </SelectItem>
-                                {roles.map((role) => (
-                                  <SelectItem key={role.id} value={role.id}>
-                                    {role.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="departmentId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Departamento (opcional)</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              value={field.value || undefined}
-                            >
-                              <FormControl>
-                                <SelectTrigger data-testid="select-department">
-                                  <SelectValue placeholder="Seleccionar..." />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="none">Ninguno</SelectItem>
-                                {departments.map((dept) => (
-                                  <SelectItem key={dept.id} value={dept.name}>
-                                    {dept.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="hireDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Fecha de Contratación</FormLabel>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="departmentId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Departamento (opcional)</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
                             <FormControl>
-                              <Input
-                                type="date"
-                                {...field}
-                                value={
-                                  field.value instanceof Date
-                                    ? field.value.toISOString().split("T")[0]
-                                    : field.value
-                                }
-                                onChange={(e) =>
-                                  field.onChange(new Date(e.target.value))
-                                }
-                                data-testid="input-hire-date"
-                              />
+                              <SelectTrigger data-testid="select-department">
+                                <SelectValue placeholder="Seleccionar..." />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="flex justify-end gap-2 pt-4">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setIsDialogOpen(false)}
-                          data-testid="button-cancel"
-                        >
-                          Cancelar
-                        </Button>
-                        <Button
-                          type="submit"
-                          disabled={
-                            createEmployeeMutation.isPending ||
-                            updateEmployeeMutation.isPending
-                          }
-                          data-testid="button-save-employee"
-                        >
-                          {editingEmployee ? "Actualizar" : "Crear"}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
+                            <SelectContent>
+                              <SelectItem value="none">Ninguno</SelectItem>
+                              {departments.map(dept => (
+                                <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="hireDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fecha de Contratación</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
+                              onChange={(e) => field.onChange(new Date(e.target.value))}
+                              data-testid="input-hire-date"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setIsDialogOpen(false)}
+                        data-testid="button-cancel"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        disabled={createEmployeeMutation.isPending || updateEmployeeMutation.isPending}
+                        data-testid="button-save-employee"
+                      >
+                        {editingEmployee ? "Actualizar" : "Crear"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
             </div>
           </div>
         </CardHeader>
@@ -899,18 +751,12 @@ export default function Employees() {
       {/* Lista de empleados */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredEmployees.map((employee) => (
-          <Card
-            key={employee.id}
-            className="hover:shadow-md transition-shadow"
-            data-testid={`employee-card-${employee.id}`}
-          >
+          <Card key={employee.id} className="hover:shadow-md transition-shadow" data-testid={`employee-card-${employee.id}`}>
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <Avatar className="w-12 h-12">
-                    <AvatarFallback
-                      className={`bg-gradient-to-r ${getAvatarColor(employee.firstName)} text-white font-semibold`}
-                    >
+                    <AvatarFallback className={`bg-gradient-to-r ${getAvatarColor(employee.firstName)} text-white font-semibold`}>
                       {getInitials(employee.firstName, employee.lastName)}
                     </AvatarFallback>
                   </Avatar>
@@ -918,9 +764,7 @@ export default function Employees() {
                     <h3 className="font-semibold text-foreground">
                       {employee.firstName} {employee.lastName}
                     </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {employee.employeeNumber}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{employee.employeeNumber}</p>
                   </div>
                 </div>
                 <Badge variant={employee.isActive ? "default" : "secondary"}>
@@ -931,11 +775,15 @@ export default function Employees() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Departamento:</span>
-                  <span className="font-medium">{employee.department}</span>
+                  <span className="font-medium">
+                    {departments.find(d => d.id === employee.departmentId)?.name || "Sin asignar"}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Rol:</span>
-                  <span className="font-medium">{employee.role}</span>
+                  <span className="font-medium">
+                    {roles.find(r => r.id === employee.rolEmpresa)?.name || "Sin asignar"}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Email:</span>
@@ -944,23 +792,23 @@ export default function Employees() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Contratación:</span>
                   <span className="font-medium">
-                    {new Date(employee.hireDate).toLocaleDateString("es-ES")}
+                    {new Date(employee.hireDate).toLocaleDateString('es-ES')}
                   </span>
                 </div>
               </div>
 
               <div className="flex justify-end space-x-2">
-                <Button
-                  variant="outline"
+                <Button 
+                  variant="outline" 
                   size="icon"
                   onClick={() => handleEdit(employee)}
                   data-testid={`button-edit-${employee.id}`}
                 >
                   <Edit className="w-4 h-4" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
+                <Button 
+                  variant="outline" 
+                  size="icon" 
                   onClick={() => handleDelete(employee.id)}
                   data-testid={`button-delete-${employee.id}`}
                 >
@@ -978,16 +826,12 @@ export default function Employees() {
             <div className="text-muted-foreground">
               {employees?.length === 0 ? (
                 <>
-                  <h3 className="text-lg font-semibold mb-2">
-                    No hay empleados registrados
-                  </h3>
+                  <h3 className="text-lg font-semibold mb-2">No hay empleados registrados</h3>
                   <p>Comienza agregando tu primer empleado</p>
                 </>
               ) : (
                 <>
-                  <h3 className="text-lg font-semibold mb-2">
-                    No se encontraron empleados
-                  </h3>
+                  <h3 className="text-lg font-semibold mb-2">No se encontraron empleados</h3>
                   <p>Intenta modificar los filtros de búsqueda</p>
                 </>
               )}
