@@ -935,9 +935,7 @@ export default function Employees() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Rol:</span>
-                  <span className="font-medium">
-                    {employee."}
-                  </span>
+                  <span className="font-medium">{employee.role}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Email:</span>
