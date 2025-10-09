@@ -36,7 +36,7 @@ import { z } from "zod";
 
 // Tipos específicos para las llamadas a la API (con fechas como strings)
 type CreateEmployeePayload = {
-  employeeNumber: string;
+  numEmployee: string;
   dni?: string;
   firstName: string;
   lastName: string;
@@ -45,17 +45,17 @@ type CreateEmployeePayload = {
   hireDate: string; // String para el backend
   isActive?: boolean;
   passwordHash: string;
-  role: "admin" | "employee";
-  rolEmpresa?: string;
+  roleSystem: "admin" | "employee";
+  roleEnterpriseId?: string;
 };
 
 type UpdateEmployeePayload = Omit<
   CreateEmployeePayload,
-  "passwordHash" | "role"
+  "passwordHash" | "roleSystem"
 > & {
   passwordHash?: string;
-  role?: "admin" | "employee";
-  rolEmpresa?: string;
+  roleSystem?: "admin" | "employee";
+  roleEnterpriseId?: string;
 };
 
 import { apiRequest } from "@/lib/queryClient";
@@ -262,7 +262,7 @@ export default function Employees() {
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
-      employeeNumber: "",
+      numEmployee: "",
       dni: "",
       firstName: "",
       lastName: "",
@@ -271,16 +271,16 @@ export default function Employees() {
       hireDate: new Date(),
       isActive: true,
       passwordHash: "",
-      role: "employee",
-      rolEmpresa: "",
+      roleSystem: "employee",
+      roleEnterpriseId: "",
     },
   });
 
   const onSubmit = (data: EmployeeFormData) => {
     if (editingEmployee) {
-      // Para actualizar, incluimos todos los campos excepto passwordHash y role si están vacíos
+      // Para actualizar, incluimos todos los campos excepto passwordHash y roleSystem si están vacíos
       const updatePayload: UpdateEmployeePayload = {
-        employeeNumber: data.employeeNumber,
+        numEmployee: data.numEmployee,
         dni: data.dni || undefined,
         firstName: data.firstName,
         lastName: data.lastName,
@@ -291,10 +291,10 @@ export default function Employees() {
             : data.departmentId,
         hireDate: data.hireDate.toISOString(),
         isActive: data.isActive,
-        rolEmpresa:
-          data.rolEmpresa === "none" || !data.rolEmpresa
+        roleEnterpriseId:
+          data.roleEnterpriseId === "none" || !data.roleEnterpriseId
             ? undefined
-            : data.rolEmpresa,
+            : data.roleEnterpriseId,
       };
 
       // Solo incluir contraseña si se ha proporcionado una nueva
@@ -303,8 +303,8 @@ export default function Employees() {
       }
 
       // Incluir el rol si se ha especificado
-      if (data.role) {
-        updatePayload.role = data.role;
+      if (data.roleSystem) {
+        updatePayload.roleSystem = data.roleSystem;
       }
 
       updateEmployeeMutation.mutate({
@@ -314,7 +314,7 @@ export default function Employees() {
     } else {
       // Para crear, incluimos todos los datos y convertimos fecha
       const createPayload: CreateEmployeePayload = {
-        employeeNumber: data.employeeNumber,
+        numEmployee: data.numEmployee,
         dni: data.dni || undefined,
         firstName: data.firstName,
         lastName: data.lastName,
@@ -326,11 +326,11 @@ export default function Employees() {
         hireDate: data.hireDate.toISOString(),
         isActive: data.isActive,
         passwordHash: data.passwordHash || "", // Asegurarse de que sea string
-        role: data.role,
-        rolEmpresa:
-          data.rolEmpresa === "none" || !data.rolEmpresa
+        roleSystem: data.roleSystem,
+        roleEnterpriseId:
+          data.roleEnterpriseId === "none" || !data.roleEnterpriseId
             ? undefined
-            : data.rolEmpresa,
+            : data.roleEnterpriseId,
       };
       createEmployeeMutation.mutate(createPayload);
     }
@@ -339,7 +339,7 @@ export default function Employees() {
   const handleEdit = (employee: Employee) => {
     setEditingEmployee(employee);
     form.reset({
-      employeeNumber: employee.employeeNumber,
+      numEmployee: employee.numEmployee,
       dni: employee.dni || "",
       firstName: employee.firstName,
       lastName: employee.lastName,
@@ -348,8 +348,8 @@ export default function Employees() {
       hireDate: new Date(employee.hireDate), // Convertir string a Date object
       isActive: employee.isActive,
       passwordHash: "", // Vacío por defecto, opcional al editar
-      role: employee.role as "admin" | "employee",
-      rolEmpresa: employee.rolEmpresa || "",
+      roleSystem: employee.roleSystem as "admin" | "employee",
+      roleEnterpriseId: employee.roleEnterpriseId || "",
     });
     setIsDialogOpen(true);
   };
@@ -378,11 +378,11 @@ export default function Employees() {
   const handleDeleteRole = (id: string) => {
     const role = roles.find((r) => r.id === id);
     const employeesWithRole =
-      employees?.filter((emp) => emp.role === role?.name).length || 0;
+      employees?.filter((emp) => emp.roleEnterpriseId === id).length || 0;
     if (employeesWithRole > 0) {
       if (
         !confirm(
-          `Este rol tiene ${employeesWithRole} empleado(s) asignado(s). ¿Estás seguro de que quieres eliminarlo? Los empleados se cambiarán al rol 'employee'.`,
+          `Este rol tiene ${employeesWithRole} empleado(s) asignado(s). ¿Estás seguro de que quieres eliminarlo? Los empleados quedarán sin rol específico.`,
         )
       ) {
         return;
@@ -396,7 +396,7 @@ export default function Employees() {
       const matchesSearch =
         employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.employeeNumber
+        employee.numEmployee
           .toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
         employee.email.toLowerCase().includes(searchTerm.toLowerCase());
@@ -618,7 +618,7 @@ export default function Employees() {
                     onClick={() => {
                       setEditingEmployee(null);
                       form.reset({
-                        employeeNumber: "",
+                        numEmployee: "",
                         dni: "",
                         firstName: "",
                         lastName: "",
@@ -627,8 +627,8 @@ export default function Employees() {
                         hireDate: new Date(),
                         isActive: true,
                         passwordHash: "",
-                        role: "employee",
-                        rolEmpresa: "",
+                        roleSystem: "employee",
+                        roleEnterpriseId: "",
                       });
                     }}
                     data-testid="button-add-employee"
@@ -650,7 +650,7 @@ export default function Employees() {
                     >
                       <FormField
                         control={form.control}
-                        name="employeeNumber"
+                        name="numEmployee"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Número de Empleado</FormLabel>
@@ -758,7 +758,7 @@ export default function Employees() {
                       />
                       <FormField
                         control={form.control}
-                        name="role"
+                        name="roleSystem"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Rol del Sistema</FormLabel>
@@ -786,7 +786,7 @@ export default function Employees() {
                       />
                       <FormField
                         control={form.control}
-                        name="rolEmpresa"
+                        name="roleEnterpriseId"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Rol en la Empresa</FormLabel>
@@ -919,7 +919,7 @@ export default function Employees() {
                       {employee.firstName} {employee.lastName}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {employee.employeeNumber}
+                      {employee.numEmployee}
                     </p>
                   </div>
                 </div>
@@ -939,7 +939,7 @@ export default function Employees() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Rol:</span>
                   <span className="font-medium">
-                    {roles.find((r) => r.id === employee.rolEmpresa)?.name ||
+                    {roles.find((r) => r.id === employee.roleEnterpriseId)?.name ||
                       "Sin asignar"}
                   </span>
                 </div>
