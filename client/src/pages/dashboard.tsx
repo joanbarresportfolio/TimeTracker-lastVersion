@@ -6,15 +6,50 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Clock, Users, TrendingUp, AlertTriangle, Eye, Calendar, Plus } from "lucide-react";
-import type { Employee, TimeEntry, InsertIncident, InsertScheduledShift, Department } from "@shared/schema";
-import { insertIncidentSchema, insertScheduledShiftSchema } from "@shared/schema";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Clock,
+  Users,
+  TrendingUp,
+  AlertTriangle,
+  Eye,
+  Calendar,
+  Plus,
+} from "lucide-react";
+import type {
+  Employee,
+  TimeEntry,
+  InsertIncident,
+  InsertScheduledShift,
+  Department,
+} from "@shared/schema";
+import {
+  insertIncidentSchema,
+  insertScheduledShiftSchema,
+} from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -34,15 +69,18 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const isEmployee = user?.role === "employee";
-  const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<Employee | null>(null);
-  const [selectedEmployeeSchedule, setSelectedEmployeeSchedule] = useState<Employee | null>(null);
-  const [selectedEmployeeIncident, setSelectedEmployeeIncident] = useState<Employee | null>(null);
+  const [selectedEmployeeDetails, setSelectedEmployeeDetails] =
+    useState<Employee | null>(null);
+  const [selectedEmployeeSchedule, setSelectedEmployeeSchedule] =
+    useState<Employee | null>(null);
+  const [selectedEmployeeIncident, setSelectedEmployeeIncident] =
+    useState<Employee | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [isIncidentDialogOpen, setIsIncidentDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
+
   // Filtros
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
@@ -52,12 +90,16 @@ export default function Dashboard() {
   });
 
   // Solo cargar empleados si es admin
-  const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>({
-    queryKey: ["/api/employees"],
-    enabled: !isEmployee, // Solo cargar si no es empleado
-  });
+  const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>(
+    {
+      queryKey: ["/api/employees"],
+      enabled: !isEmployee, // Solo cargar si no es empleado
+    },
+  );
 
-  const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<TimeEntry[]>({
+  const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<
+    TimeEntry[]
+  >({
     queryKey: ["/api/time-entries"],
   });
 
@@ -65,6 +107,24 @@ export default function Dashboard() {
     queryKey: ["/api/departments"],
     enabled: !isEmployee,
   });
+
+  const { data: roles } = useQuery<any[]>({
+    queryKey: ["/api/roles"],
+    enabled: !isEmployee,
+  });
+
+  // Helper functions
+  const getDepartmentName = (departmentId: string | null) => {
+    if (!departmentId || !departments) return "-";
+    const dept = departments.find((d) => d.id === departmentId);
+    return dept?.name || "-";
+  };
+
+  const getRoleName = (roleId: string | null) => {
+    if (!roleId || !roles) return "-";
+    const role = roles.find((r) => r.id === roleId);
+    return role?.name || "-";
+  };
 
   // Forms for dialogs
   const incidentForm = useForm<InsertIncident>({
@@ -81,7 +141,7 @@ export default function Dashboard() {
     resolver: zodResolver(insertScheduledShiftSchema),
     defaultValues: {
       employeeId: "",
-      date: new Date().toISOString().split('T')[0], // today
+      date: new Date().toISOString().split("T")[0], // today
       expectedStartTime: "09:00",
       expectedEndTime: "17:00",
       shiftType: "morning",
@@ -91,7 +151,8 @@ export default function Dashboard() {
 
   // Mutations
   const createIncidentMutation = useMutation({
-    mutationFn: (data: InsertIncident) => apiRequest("/api/incidents", "POST", data),
+    mutationFn: (data: InsertIncident) =>
+      apiRequest("/api/incidents", "POST", data),
     onSuccess: () => {
       toast({
         title: "Incidencia reportada",
@@ -113,7 +174,8 @@ export default function Dashboard() {
   });
 
   const createScheduleMutation = useMutation({
-    mutationFn: (data: InsertScheduledShift) => apiRequest("/api/scheduled-shifts", "POST", data),
+    mutationFn: (data: InsertScheduledShift) =>
+      apiRequest("/api/scheduled-shifts", "POST", data),
     onSuccess: () => {
       toast({
         title: "Horario creado",
@@ -134,51 +196,59 @@ export default function Dashboard() {
     },
   });
 
-  const today = new Date().toISOString().split('T')[0];
-  const todayEntries = timeEntries?.filter(entry => entry.date === today) || [];
+  const today = new Date().toISOString().split("T")[0];
+  const todayEntries =
+    timeEntries?.filter((entry) => entry.date === today) || [];
 
   // Para empleados, filtrar solo sus entradas de tiempo
-  const userTimeEntries = isEmployee 
-    ? timeEntries?.filter(entry => entry.employeeId === user?.id) || []
+  const userTimeEntries = isEmployee
+    ? timeEntries?.filter((entry) => entry.employeeId === user?.id) || []
     : timeEntries || [];
 
   // Últimas 7 entradas para empleados
-  const recentUserEntries = isEmployee 
+  const recentUserEntries = isEmployee
     ? userTimeEntries
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 7)
     : [];
 
   const getEmployeeStatus = (employee: Employee) => {
-    const entry = todayEntries.find(e => e.employeeId === employee.id);
-    if (!entry) return { status: "absent", color: "bg-red-500/10 text-red-700" };
-    if (entry.clockIn && !entry.clockOut) return { status: "present", color: "bg-green-500/10 text-green-700" };
-    if (entry.clockOut) return { status: "completed", color: "bg-blue-500/10 text-blue-700" };
+    const entry = todayEntries.find((e) => e.employeeId === employee.id);
+    if (!entry)
+      return { status: "absent", color: "bg-red-500/10 text-red-700" };
+    if (entry.clockIn && !entry.clockOut)
+      return { status: "present", color: "bg-green-500/10 text-green-700" };
+    if (entry.clockOut)
+      return { status: "completed", color: "bg-blue-500/10 text-blue-700" };
     return { status: "absent", color: "bg-red-500/10 text-red-700" };
   };
 
   // Filtrar empleados
-  const filteredEmployees = employees?.filter(employee => {
-    // Filtro por departamento
-    if (selectedDepartment !== "all" && employee.department !== selectedDepartment) {
-      return false;
-    }
-    
-    // Filtro por estado
-    if (selectedStatus !== "all") {
-      const status = getEmployeeStatus(employee).status;
-      if (status !== selectedStatus) {
+  const filteredEmployees =
+    employees?.filter((employee) => {
+      // Filtro por departamento
+      if (
+        selectedDepartment !== "all" &&
+        employee.departmentId !== selectedDepartment
+      ) {
         return false;
       }
-    }
-    
-    return true;
-  }) || [];
+
+      // Filtro por estado
+      if (selectedStatus !== "all") {
+        const status = getEmployeeStatus(employee).status;
+        if (status !== selectedStatus) {
+          return false;
+        }
+      }
+
+      return true;
+    }) || [];
 
   const formatTime = (date: Date | string) => {
-    return new Date(date).toLocaleTimeString('es-ES', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(date).toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -196,7 +266,7 @@ export default function Dashboard() {
   const getAvatarColor = (name: string) => {
     const colors = [
       "from-blue-500 to-purple-600",
-      "from-green-500 to-teal-600", 
+      "from-green-500 to-teal-600",
       "from-orange-500 to-red-600",
       "from-purple-500 to-pink-600",
       "from-yellow-500 to-orange-600",
@@ -211,9 +281,9 @@ export default function Dashboard() {
 
   const handleEditSchedule = (employee: Employee) => {
     // Guardar empleado en sessionStorage para que schedules pueda leerlo
-    sessionStorage.setItem('selectedEmployeeId', employee.id);
+    sessionStorage.setItem("selectedEmployeeId", employee.id);
     // Redirigir a /schedules
-    setLocation('/schedules');
+    setLocation("/schedules");
   };
 
   const handleReportIncident = (employee: Employee) => {
@@ -268,8 +338,13 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-muted-foreground text-sm font-medium">Total Empleados</p>
-                <p className="text-3xl font-bold text-foreground" data-testid="stat-total-employees">
+                <p className="text-muted-foreground text-sm font-medium">
+                  Total Empleados
+                </p>
+                <p
+                  className="text-3xl font-bold text-foreground"
+                  data-testid="stat-total-employees"
+                >
                   {stats?.totalEmployees || 0}
                 </p>
               </div>
@@ -280,7 +355,9 @@ export default function Dashboard() {
             <div className="mt-4 flex items-center text-sm">
               <TrendingUp className="text-green-500 w-4 h-4 mr-1" />
               <span className="text-green-500 font-medium">+5</span>
-              <span className="text-muted-foreground ml-1">vs mes anterior</span>
+              <span className="text-muted-foreground ml-1">
+                vs mes anterior
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -289,8 +366,13 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-muted-foreground text-sm font-medium">Presentes Hoy</p>
-                <p className="text-3xl font-bold text-foreground" data-testid="stat-present-today">
+                <p className="text-muted-foreground text-sm font-medium">
+                  Presentes Hoy
+                </p>
+                <p
+                  className="text-3xl font-bold text-foreground"
+                  data-testid="stat-present-today"
+                >
                   {stats?.presentToday || 0}
                 </p>
               </div>
@@ -301,8 +383,12 @@ export default function Dashboard() {
             <div className="mt-4 flex items-center text-sm">
               <span className="text-muted-foreground">Asistencia:</span>
               <span className="font-medium ml-1 text-foreground">
-                {stats?.totalEmployees && stats.presentToday ? 
-                  Math.round((stats.presentToday / stats.totalEmployees) * 100) : 0}%
+                {stats?.totalEmployees && stats.presentToday
+                  ? Math.round(
+                      (stats.presentToday / stats.totalEmployees) * 100,
+                    )
+                  : 0}
+                %
               </span>
             </div>
           </CardContent>
@@ -312,8 +398,13 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-muted-foreground text-sm font-medium">Horas Trabajadas</p>
-                <p className="text-3xl font-bold text-foreground" data-testid="stat-hours-worked">
+                <p className="text-muted-foreground text-sm font-medium">
+                  Horas Trabajadas
+                </p>
+                <p
+                  className="text-3xl font-bold text-foreground"
+                  data-testid="stat-hours-worked"
+                >
                   {stats?.hoursWorked || 0}
                 </p>
               </div>
@@ -331,8 +422,13 @@ export default function Dashboard() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-muted-foreground text-sm font-medium">Incidencias</p>
-                <p className="text-3xl font-bold text-foreground" data-testid="stat-incidents">
+                <p className="text-muted-foreground text-sm font-medium">
+                  Incidencias
+                </p>
+                <p
+                  className="text-3xl font-bold text-foreground"
+                  data-testid="stat-incidents"
+                >
                   {stats?.incidents || 0}
                 </p>
               </div>
@@ -343,7 +439,9 @@ export default function Dashboard() {
             <div className="mt-4 flex items-center text-sm">
               <TrendingUp className="text-green-500 w-4 h-4 mr-1 rotate-180" />
               <span className="text-green-500 font-medium">-3</span>
-              <span className="text-muted-foreground ml-1">vs semana anterior</span>
+              <span className="text-muted-foreground ml-1">
+                vs semana anterior
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -357,20 +455,34 @@ export default function Dashboard() {
             <div className="flex flex-col gap-4">
               <CardTitle>Control de Fichaje Rápido</CardTitle>
               <div className="flex gap-4">
-                <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                  <SelectTrigger className="w-[200px]" data-testid="select-department-filter">
+                <Select
+                  value={selectedDepartment}
+                  onValueChange={setSelectedDepartment}
+                >
+                  <SelectTrigger
+                    className="w-[200px]"
+                    data-testid="select-department-filter"
+                  >
                     <SelectValue placeholder="Todos los departamentos" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos los departamentos</SelectItem>
-                    {departments?.map(dept => (
-                      <SelectItem key={dept.id} value={dept.name}>{dept.name}</SelectItem>
+                    {departments?.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.name}>
+                        {dept.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
-                <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                  <SelectTrigger className="w-[200px]" data-testid="select-status-filter">
+                <Select
+                  value={selectedStatus}
+                  onValueChange={setSelectedStatus}
+                >
+                  <SelectTrigger
+                    className="w-[200px]"
+                    data-testid="select-status-filter"
+                  >
                     <SelectValue placeholder="Todos los estados" />
                   </SelectTrigger>
                   <SelectContent>
@@ -383,136 +495,200 @@ export default function Dashboard() {
               </div>
             </div>
           </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-secondary/30">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Empleado</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Departamento</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Entrada</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Salida</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Horas</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredEmployees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((employee) => {
-                  const entry = todayEntries.find(e => e.employeeId === employee.id);
-                  const status = getEmployeeStatus(employee);
-                  
-                  return (
-                    <tr key={employee.id} className="hover:bg-muted/50" data-testid={`employee-row-${employee.id}`}>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className={`bg-gradient-to-r ${getAvatarColor(employee.firstName)} text-white text-sm font-semibold`}>
-                              {getInitials(employee.firstName, employee.lastName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium text-foreground">
-                              {employee.firstName} {employee.lastName}
-                            </p>
-                            <p className="text-sm text-muted-foreground">{employee.employeeNumber}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground">{employee.department}</td>
-                      <td className="py-3 px-4">
-                        <Badge className={status.color}>
-                          <div className="w-2 h-2 rounded-full bg-current mr-2"></div>
-                          {status.status === "present" ? "Presente" : 
-                           status.status === "completed" ? "Completado" : "Ausente"}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {entry?.clockIn ? formatTime(entry.clockIn) : "--:--"}
-                      </td>
-                      <td className="py-3 px-4 text-muted-foreground">
-                        {entry?.clockOut ? formatTime(entry.clockOut) : "--:--"}
-                      </td>
-                      <td className="py-3 px-4 text-foreground">
-                        {formatHours(entry?.totalHours || 0)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center space-x-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Ver detalles" 
-                            onClick={() => handleViewDetails(employee)}
-                            data-testid={`button-view-${employee.id}`}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Crear horario" 
-                            onClick={() => handleEditSchedule(employee)}
-                            data-testid={`button-schedule-${employee.id}`}
-                          >
-                            <Calendar className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            title="Reportar incidencia" 
-                            onClick={() => handleReportIncident(employee)}
-                            data-testid={`button-incident-${employee.id}`}
-                          >
-                            <AlertTriangle className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          
-          <div className="flex items-center justify-between mt-4 pt-4">
-            <p className="text-sm text-muted-foreground">
-              Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, employees?.length || 0)} - {Math.min(currentPage * itemsPerPage, employees?.length || 0)} de {employees?.length || 0} empleados
-            </p>
-            <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                data-testid="button-previous-page"
-              >
-                Anterior
-              </Button>
-              {Array.from({ length: Math.ceil(filteredEmployees.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 text-sm rounded ${
-                    currentPage === page 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setCurrentPage(prev => Math.min(Math.ceil((employees?.length || 0) / itemsPerPage), prev + 1))}
-                disabled={currentPage >= Math.ceil((employees?.length || 0) / itemsPerPage)}
-                data-testid="button-next-page"
-              >
-                Siguiente
-              </Button>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-secondary/30">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Empleado
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Departamento
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Estado
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Entrada
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Salida
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Horas
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredEmployees
+                    .slice(
+                      (currentPage - 1) * itemsPerPage,
+                      currentPage * itemsPerPage,
+                    )
+                    .map((employee) => {
+                      const entry = todayEntries.find(
+                        (e) => e.employeeId === employee.id,
+                      );
+                      const status = getEmployeeStatus(employee);
+
+                      return (
+                        <tr
+                          key={employee.id}
+                          className="hover:bg-muted/50"
+                          data-testid={`employee-row-${employee.id}`}
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center space-x-3">
+                              <Avatar className="w-8 h-8">
+                                <AvatarFallback
+                                  className={`bg-gradient-to-r ${getAvatarColor(employee.firstName)} text-white text-sm font-semibold`}
+                                >
+                                  {getInitials(
+                                    employee.firstName,
+                                    employee.lastName,
+                                  )}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-foreground">
+                                  {employee.firstName} {employee.lastName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {employee.employeeNumber}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-muted-foreground">
+                            {employee.department}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge className={status.color}>
+                              <div className="w-2 h-2 rounded-full bg-current mr-2"></div>
+                              {status.status === "present"
+                                ? "Presente"
+                                : status.status === "completed"
+                                  ? "Completado"
+                                  : "Ausente"}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-foreground">
+                            {entry?.clockIn
+                              ? formatTime(entry.clockIn)
+                              : "--:--"}
+                          </td>
+                          <td className="py-3 px-4 text-muted-foreground">
+                            {entry?.clockOut
+                              ? formatTime(entry.clockOut)
+                              : "--:--"}
+                          </td>
+                          <td className="py-3 px-4 text-foreground">
+                            {formatHours(entry?.totalHours || 0)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Ver detalles"
+                                onClick={() => handleViewDetails(employee)}
+                                data-testid={`button-view-${employee.id}`}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Crear horario"
+                                onClick={() => handleEditSchedule(employee)}
+                                data-testid={`button-schedule-${employee.id}`}
+                              >
+                                <Calendar className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Reportar incidencia"
+                                onClick={() => handleReportIncident(employee)}
+                                data-testid={`button-incident-${employee.id}`}
+                              >
+                                <AlertTriangle className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
             </div>
-          </div>
-        </CardContent>
+
+            <div className="flex items-center justify-between mt-4 pt-4">
+              <p className="text-sm text-muted-foreground">
+                Mostrando{" "}
+                {Math.min(
+                  (currentPage - 1) * itemsPerPage + 1,
+                  employees?.length || 0,
+                )}{" "}
+                - {Math.min(currentPage * itemsPerPage, employees?.length || 0)}{" "}
+                de {employees?.length || 0} empleados
+              </p>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                  data-testid="button-previous-page"
+                >
+                  Anterior
+                </Button>
+                {Array.from(
+                  {
+                    length: Math.ceil(filteredEmployees.length / itemsPerPage),
+                  },
+                  (_, i) => i + 1,
+                ).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1 text-sm rounded ${
+                      currentPage === page
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((prev) =>
+                      Math.min(
+                        Math.ceil((employees?.length || 0) / itemsPerPage),
+                        prev + 1,
+                      ),
+                    )
+                  }
+                  disabled={
+                    currentPage >=
+                    Math.ceil((employees?.length || 0) / itemsPerPage)
+                  }
+                  data-testid="button-next-page"
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          </CardContent>
         </Card>
       ) : (
         // Vista de Empleado: Mis Turnos Trabajados
@@ -530,18 +706,28 @@ export default function Dashboard() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-secondary/30">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Entrada</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Salida</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Horas Trabajadas</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Fecha
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Entrada
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Salida
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Horas Trabajadas
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Estado
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {recentUserEntries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-muted/50">
                       <td className="py-3 px-4 text-foreground">
-                        {new Date(entry.date).toLocaleDateString('es-ES')}
+                        {new Date(entry.date).toLocaleDateString("es-ES")}
                       </td>
                       <td className="py-3 px-4 text-foreground">
                         {entry.clockIn ? formatTime(entry.clockIn) : "--:--"}
@@ -553,7 +739,13 @@ export default function Dashboard() {
                         {formatHours(entry.totalHours || 0)}
                       </td>
                       <td className="py-3 px-4">
-                        <Badge className={entry.clockOut ? "bg-green-500/10 text-green-700" : "bg-blue-500/10 text-blue-700"}>
+                        <Badge
+                          className={
+                            entry.clockOut
+                              ? "bg-green-500/10 text-green-700"
+                              : "bg-blue-500/10 text-blue-700"
+                          }
+                        >
                           {entry.clockOut ? "Completado" : "En progreso"}
                         </Badge>
                       </td>
@@ -561,7 +753,10 @@ export default function Dashboard() {
                   ))}
                   {recentUserEntries.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                      <td
+                        colSpan={5}
+                        className="py-8 text-center text-muted-foreground"
+                      >
                         No hay turnos trabajados registrados
                       </td>
                     </tr>
@@ -583,71 +778,112 @@ export default function Dashboard() {
             <div className="space-y-6">
               <div className="flex items-center space-x-4">
                 <Avatar className="w-16 h-16">
-                  <AvatarFallback className={`bg-gradient-to-r ${getAvatarColor(selectedEmployeeDetails.firstName)} text-white text-lg font-semibold`}>
-                    {getInitials(selectedEmployeeDetails.firstName, selectedEmployeeDetails.lastName)}
+                  <AvatarFallback
+                    className={`bg-gradient-to-r ${getAvatarColor(selectedEmployeeDetails.firstName)} text-white text-lg font-semibold`}
+                  >
+                    {getInitials(
+                      selectedEmployeeDetails.firstName,
+                      selectedEmployeeDetails.lastName,
+                    )}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <h3 className="text-xl font-semibold">
-                    {selectedEmployeeDetails.firstName} {selectedEmployeeDetails.lastName}
+                    {selectedEmployeeDetails.firstName}{" "}
+                    {selectedEmployeeDetails.lastName}
                   </h3>
-                  <p className="text-muted-foreground">{selectedEmployeeDetails.employeeNumber}</p>
+                  <p className="text-muted-foreground">
+                    {selectedEmployeeDetails.employeeNumber}
+                  </p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="font-medium">Email</Label>
-                  <p className="text-sm text-muted-foreground">{selectedEmployeeDetails.email}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedEmployeeDetails.email}
+                  </p>
                 </div>
                 <div>
                   <Label className="font-medium">Departamento</Label>
-                  <p className="text-sm text-muted-foreground">{selectedEmployeeDetails.department}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedEmployeeDetails.department}
+                  </p>
                 </div>
                 <div>
                   <Label className="font-medium">Posición</Label>
-                  <p className="text-sm text-muted-foreground">{selectedEmployeeDetails.position}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedEmployeeDetails.position}
+                  </p>
                 </div>
                 <div>
                   <Label className="font-medium">Fecha de Contratación</Label>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(selectedEmployeeDetails.hireDate).toLocaleDateString('es-ES')}
+                    {new Date(
+                      selectedEmployeeDetails.hireDate,
+                    ).toLocaleDateString("es-ES")}
                   </p>
                 </div>
                 <div>
                   <Label className="font-medium">Estado</Label>
-                  <Badge className={selectedEmployeeDetails.isActive ? "bg-green-500/10 text-green-700" : "bg-red-500/10 text-red-700"}>
+                  <Badge
+                    className={
+                      selectedEmployeeDetails.isActive
+                        ? "bg-green-500/10 text-green-700"
+                        : "bg-red-500/10 text-red-700"
+                    }
+                  >
                     {selectedEmployeeDetails.isActive ? "Activo" : "Inactivo"}
                   </Badge>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <Label className="font-medium">Registros de Tiempo de Hoy</Label>
+                <Label className="font-medium">
+                  Registros de Tiempo de Hoy
+                </Label>
                 <div className="bg-secondary/30 p-4 rounded-lg">
                   {(() => {
-                    const todayEntry = todayEntries.find(e => e.employeeId === selectedEmployeeDetails.id);
+                    const todayEntry = todayEntries.find(
+                      (e) => e.employeeId === selectedEmployeeDetails.id,
+                    );
                     if (!todayEntry) {
-                      return <p className="text-sm text-muted-foreground">No hay registros para hoy</p>;
+                      return (
+                        <p className="text-sm text-muted-foreground">
+                          No hay registros para hoy
+                        </p>
+                      );
                     }
                     return (
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-sm font-medium">Entrada:</span>
-                          <span className="text-sm">{todayEntry.clockIn ? formatTime(todayEntry.clockIn) : "--:--"}</span>
+                          <span className="text-sm">
+                            {todayEntry.clockIn
+                              ? formatTime(todayEntry.clockIn)
+                              : "--:--"}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-sm font-medium">Salida:</span>
-                          <span className="text-sm">{todayEntry.clockOut ? formatTime(todayEntry.clockOut) : "--:--"}</span>
+                          <span className="text-sm">
+                            {todayEntry.clockOut
+                              ? formatTime(todayEntry.clockOut)
+                              : "--:--"}
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-sm font-medium">Horas Trabajadas:</span>
-                          <span className="text-sm">{formatHours(todayEntry.totalHours || 0)}</span>
+                          <span className="text-sm font-medium">
+                            Horas Trabajadas:
+                          </span>
+                          <span className="text-sm">
+                            {formatHours(todayEntry.totalHours || 0)}
+                          </span>
                         </div>
                       </div>
                     );
-                  })()
-                  }
+                  })()}
                 </div>
               </div>
             </div>
@@ -656,13 +892,16 @@ export default function Dashboard() {
       </Dialog>
 
       {/* Diálogo de editar horario */}
-      <Dialog open={isScheduleDialogOpen} onOpenChange={(open) => {
-        setIsScheduleDialogOpen(open);
-        if (!open) {
-          setSelectedEmployeeSchedule(null);
-          scheduleForm.reset();
-        }
-      }}>
+      <Dialog
+        open={isScheduleDialogOpen}
+        onOpenChange={(open) => {
+          setIsScheduleDialogOpen(open);
+          if (!open) {
+            setSelectedEmployeeSchedule(null);
+            scheduleForm.reset();
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Crear Horario</DialogTitle>
@@ -672,12 +911,16 @@ export default function Dashboard() {
               <div>
                 <Label>Empleado</Label>
                 <p className="text-sm font-medium">
-                  {selectedEmployeeSchedule.firstName} {selectedEmployeeSchedule.lastName}
+                  {selectedEmployeeSchedule.firstName}{" "}
+                  {selectedEmployeeSchedule.lastName}
                 </p>
               </div>
-              
+
               <Form {...scheduleForm}>
-                <form onSubmit={scheduleForm.handleSubmit(onScheduleSubmit)} className="space-y-4">
+                <form
+                  onSubmit={scheduleForm.handleSubmit(onScheduleSubmit)}
+                  className="space-y-4"
+                >
                   <FormField
                     control={scheduleForm.control}
                     name="date"
@@ -685,8 +928,8 @@ export default function Dashboard() {
                       <FormItem>
                         <FormLabel>Fecha</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="date" 
+                          <Input
+                            type="date"
                             {...field}
                             data-testid="input-schedule-date"
                           />
@@ -695,7 +938,7 @@ export default function Dashboard() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={scheduleForm.control}
@@ -704,8 +947,8 @@ export default function Dashboard() {
                         <FormItem>
                           <FormLabel>Hora de inicio</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="time" 
+                            <Input
+                              type="time"
                               {...field}
                               data-testid="input-start-time"
                             />
@@ -714,7 +957,7 @@ export default function Dashboard() {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={scheduleForm.control}
                       name="expectedEndTime"
@@ -722,8 +965,8 @@ export default function Dashboard() {
                         <FormItem>
                           <FormLabel>Hora de fin</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="time" 
+                            <Input
+                              type="time"
                               {...field}
                               data-testid="input-end-time"
                             />
@@ -733,22 +976,24 @@ export default function Dashboard() {
                       )}
                     />
                   </div>
-                  
+
                   <div className="flex justify-end gap-2 pt-4">
-                    <Button 
+                    <Button
                       type="button"
-                      variant="outline" 
+                      variant="outline"
                       onClick={() => setIsScheduleDialogOpen(false)}
                       data-testid="button-cancel-schedule"
                     >
                       Cancelar
                     </Button>
-                    <Button 
+                    <Button
                       type="submit"
                       disabled={createScheduleMutation.isPending}
                       data-testid="button-save-schedule"
                     >
-                      {createScheduleMutation.isPending ? "Guardando..." : "Guardar Horario"}
+                      {createScheduleMutation.isPending
+                        ? "Guardando..."
+                        : "Guardar Horario"}
                     </Button>
                   </div>
                 </form>
@@ -759,13 +1004,16 @@ export default function Dashboard() {
       </Dialog>
 
       {/* Diálogo de reportar incidencia */}
-      <Dialog open={isIncidentDialogOpen} onOpenChange={(open) => {
-        setIsIncidentDialogOpen(open);
-        if (!open) {
-          setSelectedEmployeeIncident(null);
-          incidentForm.reset();
-        }
-      }}>
+      <Dialog
+        open={isIncidentDialogOpen}
+        onOpenChange={(open) => {
+          setIsIncidentDialogOpen(open);
+          if (!open) {
+            setSelectedEmployeeIncident(null);
+            incidentForm.reset();
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Reportar Incidencia</DialogTitle>
@@ -775,19 +1023,26 @@ export default function Dashboard() {
               <div>
                 <Label>Empleado</Label>
                 <p className="text-sm font-medium">
-                  {selectedEmployeeIncident.firstName} {selectedEmployeeIncident.lastName}
+                  {selectedEmployeeIncident.firstName}{" "}
+                  {selectedEmployeeIncident.lastName}
                 </p>
               </div>
-              
+
               <Form {...incidentForm}>
-                <form onSubmit={incidentForm.handleSubmit(onIncidentSubmit)} className="space-y-4">
+                <form
+                  onSubmit={incidentForm.handleSubmit(onIncidentSubmit)}
+                  className="space-y-4"
+                >
                   <FormField
                     control={incidentForm.control}
                     name="incidentType"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Tipo de incidencia</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-incident-type">
                               <SelectValue placeholder="Seleccionar tipo" />
@@ -796,9 +1051,13 @@ export default function Dashboard() {
                           <SelectContent>
                             <SelectItem value="late">Tardanza</SelectItem>
                             <SelectItem value="absence">Ausencia</SelectItem>
-                            <SelectItem value="sick_leave">Baja médica</SelectItem>
+                            <SelectItem value="sick_leave">
+                              Baja médica
+                            </SelectItem>
                             <SelectItem value="vacation">Vacaciones</SelectItem>
-                            <SelectItem value="forgot_clock_in">Olvido fichar entrada</SelectItem>
+                            <SelectItem value="forgot_clock_in">
+                              Olvido fichar entrada
+                            </SelectItem>
                             <SelectItem value="other">Otro</SelectItem>
                           </SelectContent>
                         </Select>
@@ -806,7 +1065,7 @@ export default function Dashboard() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={incidentForm.control}
                     name="description"
@@ -814,9 +1073,9 @@ export default function Dashboard() {
                       <FormItem>
                         <FormLabel>Descripción</FormLabel>
                         <FormControl>
-                          <Textarea 
+                          <Textarea
                             {...field}
-                            placeholder="Describe la incidencia..." 
+                            placeholder="Describe la incidencia..."
                             className="min-h-[100px]"
                             data-testid="textarea-incident-description"
                           />
@@ -825,22 +1084,24 @@ export default function Dashboard() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <div className="flex justify-end gap-2 pt-4">
-                    <Button 
+                    <Button
                       type="button"
-                      variant="outline" 
+                      variant="outline"
                       onClick={() => setIsIncidentDialogOpen(false)}
                       data-testid="button-cancel-incident"
                     >
                       Cancelar
                     </Button>
-                    <Button 
+                    <Button
                       type="submit"
                       disabled={createIncidentMutation.isPending}
                       data-testid="button-save-incident"
                     >
-                      {createIncidentMutation.isPending ? "Reportando..." : "Reportar Incidencia"}
+                      {createIncidentMutation.isPending
+                        ? "Reportando..."
+                        : "Reportar Incidencia"}
                     </Button>
                   </div>
                 </form>
