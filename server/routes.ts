@@ -1912,6 +1912,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return hireDate >= oneWeekAgo;
         }).length;
 
+        console.log('🔍 DEBUG Stats:', {
+          totalIncidents: incidents.length,
+          newIncidentsLastWeek,
+          newEmployeesLastWeek,
+          oneWeekAgo: oneWeekAgo.toISOString(),
+        });
+
         // PASO 6: Respuesta con métricas administrativas
         res.json({
           isEmployee: false,
@@ -1920,7 +1927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hoursWorked: totalHoursThisWeek, // Horas de toda la organización
           incidents: pendingIncidents, // Incidencias pendientes globales
           newEmployeesLastWeek,
-          newIncidentsLastWeek, // Empleados nuevos en los últimos 7 días
+          newIncidentsLastWeek, // Incidencias nuevas en los últimos 7 días
         });
       }
     } catch (error) {
