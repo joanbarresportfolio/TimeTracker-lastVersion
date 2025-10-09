@@ -102,7 +102,16 @@ function EmployeeTimeTracking() {
     queryKey: ["/api/time-entries"],
   });
 
-  // Ya no necesitamos clockEntries - todo se maneja con todayEntry
+  const { data: allClockEntries } = useQuery({
+    queryKey: ["/api/fichajes/all", selectedDate],
+    queryFn: async () => {
+      const response = await fetch(`/api/fichajes/all?date=${selectedDate}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Error al cargar fichajes');
+      return response.json();
+    }
+  });
 
   const clockInMutation = useMutation({
     mutationFn: async () => {
@@ -114,7 +123,7 @@ function EmployeeTimeTracking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/fichajes", user?.id, selectedDate] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes/all", selectedDate] });
       toast({
         title: "Entrada registrada",
         description: "Has fichado la entrada exitosamente.",
@@ -139,7 +148,7 @@ function EmployeeTimeTracking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/fichajes", user?.id, selectedDate] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes/all", selectedDate] });
       toast({
         title: "Salida registrada",
         description: "Has fichado la salida exitosamente.",
@@ -164,7 +173,7 @@ function EmployeeTimeTracking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/fichajes", user?.id, selectedDate] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes/all", selectedDate] });
       toast({
         title: "Pausa iniciada",
         description: "Has iniciado la pausa exitosamente.",
@@ -189,7 +198,7 @@ function EmployeeTimeTracking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/fichajes", user?.id, selectedDate] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes/all", selectedDate] });
       toast({
         title: "Pausa finalizada",
         description: "Has finalizado la pausa exitosamente.",
@@ -288,11 +297,24 @@ function EmployeeTimeTracking() {
     return `${hours}h ${mins}m`;
   };
 
+  const hasActiveBreak = () => {
+    if (!allClockEntries || !user?.id) return false;
+    const employeeEntries = allClockEntries.filter((entry: any) => entry.employeeId === user.id);
+    const breakStarts = employeeEntries.filter((entry: any) => entry.entryType === 'break_start');
+    const breakEnds = employeeEntries.filter((entry: any) => entry.entryType === 'break_end');
+    return breakStarts.length > breakEnds.length;
+  };
+
   const getStatus = () => {
     const entry = getTodayTimeEntry();
     if (!entry) return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
     
-    // Simple: si hay clockIn y NO hay clockOut = está presente
+    // Verificar si está en pausa
+    if (entry.clockIn && !entry.clockOut && hasActiveBreak()) {
+      return { status: "on_break", label: "En pausa", color: "bg-orange-500/10 text-orange-700" };
+    }
+    
+    // Si hay clockIn y NO hay clockOut = está presente
     if (entry.clockIn && !entry.clockOut) return { status: "clocked_in", label: "Presente", color: "bg-green-500/10 text-green-700" };
     if (entry.clockOut) return { status: "completed", label: "Completado", color: "bg-blue-500/10 text-blue-700" };
     return { status: "not_started", label: "Sin fichar", color: "bg-gray-500/10 text-gray-700" };
