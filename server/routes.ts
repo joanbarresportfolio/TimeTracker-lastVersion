@@ -1726,13 +1726,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // PASO 4: Contar incidencias pendientes del sistema
         const pendingIncidents = incidents.filter(inc => inc.status === "pending").length;
 
-        // PASO 5: Respuesta con métricas administrativas
+        // PASO 5: Calcular empleados nuevos de la última semana
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
+        
+        const newEmployeesLastWeek = employees.filter(emp => 
+          emp.isActive && emp.hireDate && emp.hireDate >= oneWeekAgoStr
+        ).length;
+
+        // PASO 6: Respuesta con métricas administrativas
         res.json({
           isEmployee: false,
           totalEmployees, // Total empleados activos
           presentToday, // Empleados actualmente fichados
           hoursWorked: totalHoursThisWeek, // Horas de toda la organización
           incidents: pendingIncidents, // Incidencias pendientes globales
+          newEmployeesLastWeek, // Empleados nuevos en los últimos 7 días
         });
       }
     } catch (error) {
