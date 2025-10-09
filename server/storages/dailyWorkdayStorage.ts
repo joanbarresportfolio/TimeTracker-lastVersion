@@ -224,11 +224,21 @@ export async function getTimeEntry(id: string): Promise<TimeEntry | undefined> {
   // Obtener pausas del día
   const breaks = await getBreaksForDay(workday.idUser, workday.date);
   
+  // Obtener clock entries para determinar clockIn y clockOut
+  const clockEntriesForDay = await db
+    .select()
+    .from(clockEntries)
+    .where(eq(clockEntries.idDailyWorkday, workday.id))
+    .orderBy(clockEntries.timestamp);
+  
+  const clockInEntry = clockEntriesForDay.find(e => e.entryType === 'clock_in');
+  const clockOutEntry = clockEntriesForDay.find(e => e.entryType === 'clock_out');
+  
   return {
     id: workday.id,
     employeeId: workday.idUser,
-    clockIn: new Date(), // No hay startTime en schema
-    clockOut: null, // No hay endTime en schema
+    clockIn: clockInEntry ? clockInEntry.timestamp : new Date(),
+    clockOut: clockOutEntry ? clockOutEntry.timestamp : null,
     totalHours: totalHours,
     breakMinutes: workday.breakMinutes,
     breaks: breaks,
@@ -249,11 +259,21 @@ export async function getTimeEntries(): Promise<TimeEntry[]> {
     // Obtener pausas del día
     const breaks = await getBreaksForDay(workday.idUser, workday.date);
     
+    // Obtener clock entries para determinar clockIn y clockOut
+    const clockEntriesForDay = await db
+      .select()
+      .from(clockEntries)
+      .where(eq(clockEntries.idDailyWorkday, workday.id))
+      .orderBy(clockEntries.timestamp);
+    
+    const clockInEntry = clockEntriesForDay.find(e => e.entryType === 'clock_in');
+    const clockOutEntry = clockEntriesForDay.find(e => e.entryType === 'clock_out');
+    
     return {
       id: workday.id,
       employeeId: workday.idUser,
-      clockIn: new Date(), // No hay startTime en schema
-      clockOut: null, // No hay endTime en schema
+      clockIn: clockInEntry ? clockInEntry.timestamp : new Date(),
+      clockOut: clockOutEntry ? clockOutEntry.timestamp : null,
       totalHours: totalHours,
       breakMinutes: workday.breakMinutes,
       breaks: breaks,
@@ -280,11 +300,21 @@ export async function getTimeEntriesByEmployee(employeeId: string): Promise<Time
     // Obtener pausas del día
     const breaks = await getBreaksForDay(workday.idUser, workday.date);
     
+    // Obtener clock entries para determinar clockIn y clockOut
+    const clockEntriesForDay = await db
+      .select()
+      .from(clockEntries)
+      .where(eq(clockEntries.idDailyWorkday, workday.id))
+      .orderBy(clockEntries.timestamp);
+    
+    const clockInEntry = clockEntriesForDay.find(e => e.entryType === 'clock_in');
+    const clockOutEntry = clockEntriesForDay.find(e => e.entryType === 'clock_out');
+    
     return {
       id: workday.id,
       employeeId: workday.idUser,
-      clockIn: new Date(), // No hay startTime en schema
-      clockOut: null, // No hay endTime en schema
+      clockIn: clockInEntry ? clockInEntry.timestamp : new Date(),
+      clockOut: clockOutEntry ? clockOutEntry.timestamp : null,
       totalHours: totalHours,
       breakMinutes: workday.breakMinutes,
       breaks: breaks,
@@ -311,11 +341,21 @@ export async function getTimeEntriesByDate(date: string): Promise<TimeEntry[]> {
     // Obtener pausas del día
     const breaks = await getBreaksForDay(workday.idUser, workday.date);
     
+    // Obtener clock entries para determinar clockIn y clockOut
+    const clockEntriesForDay = await db
+      .select()
+      .from(clockEntries)
+      .where(eq(clockEntries.idDailyWorkday, workday.id))
+      .orderBy(clockEntries.timestamp);
+    
+    const clockInEntry = clockEntriesForDay.find(e => e.entryType === 'clock_in');
+    const clockOutEntry = clockEntriesForDay.find(e => e.entryType === 'clock_out');
+    
     return {
       id: workday.id,
       employeeId: workday.idUser,
-      clockIn: new Date(), // No hay startTime en schema
-      clockOut: null, // No hay endTime en schema
+      clockIn: clockInEntry ? clockInEntry.timestamp : new Date(),
+      clockOut: clockOutEntry ? clockOutEntry.timestamp : null,
       totalHours: totalHours,
       breakMinutes: workday.breakMinutes,
       breaks: breaks,
