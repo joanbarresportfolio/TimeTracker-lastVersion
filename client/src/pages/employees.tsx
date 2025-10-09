@@ -99,12 +99,32 @@ export default function Employees() {
         description: "El empleado ha sido creado exitosamente.",
       });
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo crear el empleado.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      // Si hay errores de validación específicos, marcarlos en el formulario
+      if (error.errors && Array.isArray(error.errors)) {
+        error.errors.forEach((err: any) => {
+          const fieldName = err.path?.[0];
+          if (fieldName) {
+            form.setError(fieldName as any, {
+              type: "manual",
+              message: err.message,
+            });
+          }
+        });
+        // Mostrar mensaje general en el toast
+        toast({
+          title: "Error en el formulario",
+          description: "Por favor, revisa los campos marcados en rojo.",
+          variant: "destructive",
+        });
+      } else {
+        // Error genérico
+        toast({
+          title: "Error",
+          description: error.message || "No se pudo crear el empleado.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -129,12 +149,32 @@ export default function Employees() {
         description: "El empleado ha sido actualizado exitosamente.",
       });
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo actualizar el empleado.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      // Si hay errores de validación específicos, marcarlos en el formulario
+      if (error.errors && Array.isArray(error.errors)) {
+        error.errors.forEach((err: any) => {
+          const fieldName = err.path?.[0];
+          if (fieldName) {
+            form.setError(fieldName as any, {
+              type: "manual",
+              message: err.message,
+            });
+          }
+        });
+        // Mostrar mensaje general en el toast
+        toast({
+          title: "Error en el formulario",
+          description: "Por favor, revisa los campos marcados en rojo.",
+          variant: "destructive",
+        });
+      } else {
+        // Error genérico
+        toast({
+          title: "Error",
+          description: error.message || "No se pudo actualizar el empleado.",
+          variant: "destructive",
+        });
+      }
     },
   });
 

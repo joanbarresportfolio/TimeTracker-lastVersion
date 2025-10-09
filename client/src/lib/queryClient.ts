@@ -1,14 +1,32 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Clase de error personalizada que preserva la estructura completa del backend
+class ApiError extends Error {
+  errors?: any[];
+  statusCode: number;
+
+  constructor(message: string, statusCode: number, errors?: any[]) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.errors = errors;
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     let errorMessage = res.statusText;
+    let errors: any[] | undefined;
     
     try {
       const contentType = res.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const errorData = await res.json();
         errorMessage = errorData.message || errorData.error || errorMessage;
+        // Preservar los errores estructurados de validación
+        if (errorData.errors) {
+          errors = errorData.errors;
+        }
       } else {
         const text = await res.text();
         if (text) errorMessage = text;
@@ -39,7 +57,7 @@ async function throwIfResNotOk(res: Response) {
       errorMessage = `${defaultMessage}: ${errorMessage}`;
     }
     
-    throw new Error(errorMessage);
+    throw new ApiError(errorMessage, res.status, errors);
   }
 }
 
