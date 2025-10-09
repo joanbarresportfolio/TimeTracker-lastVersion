@@ -1,6 +1,6 @@
 /**
- * SHARED DATABASE SCHEMA
- * =====================
+ * SHARED DATABASE SCHEMA - RESTRUCTURED
+ * ======================================
  * 
  * This file defines the entire data structure shared between frontend and backend.
  * Uses Drizzle ORM to define PostgreSQL tables and Zod for validations.
@@ -31,15 +31,16 @@ export const departments = pgTable("departments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   description: text("description"),
+  convenionHours: integer("convenion_hours"), // Horas de convenio del departamento
 });
 
 /**
- * TABLE: roles
- * ============
+ * TABLE: roles_enterprise
+ * =======================
  * 
- * Defines user roles in the system.
+ * Defines enterprise roles/positions (e.g., Manager, Supervisor, Operator).
  */
-export const roles = pgTable("roles", {
+export const rolesEnterprise = pgTable("roles_enterprise", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull().unique(),
   description: text("description"),
@@ -50,10 +51,18 @@ export const roles = pgTable("roles", {
  * ============
  * 
  * Stores information about employees and administrators.
+ * 
+ * RELATIONS:
+ * - users N...1 roles_enterprise
+ * - users N...1 departments
+ * - users 1...N schedules
+ * - users 1...N clock_entries
+ * - users 1...N daily_workday
+ * - users 1...N incidents
  */
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  employeeNumber: text("employee_number").notNull().unique(),
+  numEmployee: text("num_employee").notNull().unique(),
   dni: text("dni"),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
@@ -61,56 +70,9 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   hireDate: timestamp("hire_date").notNull(),
   isActive: boolean("is_active").notNull().default(true),
-  role: text("role").notNull().default("employee"), // "admin" or "employee" - system permission level
-  departmentId: varchar("department_id").references(() => departments.id),
-  rolEmpresa: varchar("rol_empresa").references(() => roles.id), // Company role/position
-});
-
-/**
- * TABLE: scheduled_shifts
- * =======================
- * 
- * Scheduled shifts/schedules for each employee by specific date.
- */
-export const scheduledShifts = pgTable("scheduled_shifts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  employeeId: varchar("employee_id").notNull().references(() => users.id),
-  date: text("date").notNull(), // YYYY-MM-DD
-  expectedStartTime: text("expected_start_time").notNull(), // HH:MM
-  expectedEndTime: text("expected_end_time").notNull(), // HH:MM
-  shiftType: varchar("shift_type").notNull(), // 'morning', 'afternoon', 'night'
-  status: varchar("status").notNull().default('scheduled'), // 'scheduled', 'confirmed', 'completed', 'cancelled'
-});
-
-/**
- * TABLE: incident_types
- * =====================
- * 
- * Configurable types of incidents that can be created in the system.
- */
-export const incidentTypes = pgTable("incident_types", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull().unique(),
-  description: text("description"),
-  isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-});
-
-/**
- * TABLE: incidents
- * ================
- * 
- * Record of work incidents (delays, absences, sick leave, etc.).
- */
-export const incidents = pgTable("incidents", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id),
-  date: text("date").notNull(), // YYYY-MM-DD - date when the incident occurred
-  incidentType: text("incident_type").notNull(),
-  description: text("description").notNull(),
-  registeredBy: varchar("registered_by").references(() => users.id),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  status: text("status").notNull().default("pending"), // "pending", "approved", "rejected"
+  roleSystem: text("role_system").notNull().default("employee"), // "admin" or "employee"
+  roleEnterpriseId: varchar("role_enterprise_id").references(() => rolesEnterprise.id), // FK to roles_enterprise
+  departmentId: varchar("department_id").references(() => departments.id), // FK to departments
 });
 
 /**
@@ -118,16 +80,15 @@ export const incidents = pgTable("incidents", {
  * ====================
  * 
  * Consolidated summary of each employee's work day.
- * Automatically updated with each clock entry of the day.
+ * 
+ * RELATIONS:
+ * - daily_workday 1...N clock_entries
+ * - daily_workday 1...1 schedules
+ * - daily_workday 1...N incidents
  */
 export const dailyWorkday = pgTable("daily_workday", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  employeeId: varchar("employee_id").notNull().references(() => users.id),
-  date: text("date").notNull(), // YYYY-MM-DD
-  shiftId: varchar("shift_id").references(() => scheduledShifts.id), // Reference to scheduled shift for this day
-  incidentId: varchar("incident_id").references(() => incidents.id), // Reference to incident if there's one this day
-  startTime: timestamp("start_time"), // First clock-in entry of the day
-  endTime: timestamp("end_time"), // Last clock-out entry of the day
+  idUser: varchar("id_user").notNull().references(() => users.id), // FK to users
   workedMinutes: integer("worked_minutes").notNull().default(0), // in minutes
   breakMinutes: integer("break_minutes").notNull().default(0), // in minutes
   overtimeMinutes: integer("overtime_minutes").notNull().default(0), // in minutes
@@ -135,23 +96,79 @@ export const dailyWorkday = pgTable("daily_workday", {
 });
 
 /**
+ * TABLE: schedules
+ * ================
+ * 
+ * Scheduled shifts/schedules for each employee.
+ * 
+ * RELATIONS:
+ * - users 1...N schedules
+ * - daily_workday 1...1 schedules
+ */
+export const schedules = pgTable("schedules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  idUser: varchar("id_user").notNull().references(() => users.id), // FK to users
+  idDailyWorkday: varchar("id_daily_workday").references(() => dailyWorkday.id), // FK to daily_workday (1:1)
+  date: text("date").notNull(), // YYYY-MM-DD
+  startTime: text("start_time").notNull(), // HH:MM
+  endTime: text("end_time").notNull(), // HH:MM
+  scheduleType: varchar("schedule_type").notNull(), // 'split', 'total'
+});
+
+/**
  * TABLE: clock_entries
  * ====================
  * 
  * Individual clock entry records (clock in, clock out, breaks).
- * Each entry is a unique event that updates the daily_workday.
+ * 
+ * RELATIONS:
+ * - users 1...N clock_entries
+ * - daily_workday 1...N clock_entries
  */
 export const clockEntries = pgTable("clock_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  employeeId: varchar("employee_id").notNull().references(() => users.id),
-  shiftId: varchar("shift_id").references(() => scheduledShifts.id), // NULL if no shift assigned
-  dailyWorkdayId: varchar("daily_workday_id").references(() => dailyWorkday.id), // Reference to parent daily workday
-  incidentId: varchar("incident_id").references(() => incidents.id), // Reference to related incident if any
+  idUser: varchar("id_user").notNull().references(() => users.id), // FK to users
+  idDailyWorkday: varchar("id_daily_workday").references(() => dailyWorkday.id), // FK to daily_workday
   entryType: varchar("entry_type").notNull(), // 'clock_in', 'clock_out', 'break_start', 'break_end'
   timestamp: timestamp("timestamp").notNull().default(sql`now()`),
-  source: varchar("source"), // 'mobile_app', 'physical_terminal', 'web'
-  notes: text("notes"),
-  autoGenerated: boolean("auto_generated").notNull().default(false), // true if created from manual daily_workday entry
+  source: varchar("source"), // 'web', 'mobile_device'
+});
+
+/**
+ * TABLE: incidents_type
+ * =====================
+ * 
+ * Types of incidents that can be created in the system.
+ * 
+ * RELATIONS:
+ * - incidents N...1 incidents_type
+ */
+export const incidentsType = pgTable("incidents_type", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+});
+
+/**
+ * TABLE: incidents
+ * ================
+ * 
+ * Record of work incidents (delays, absences, sick leave, etc.).
+ * 
+ * RELATIONS:
+ * - users 1...N incidents
+ * - incidents N...1 incidents_type
+ * - daily_workday 1...N incidents
+ */
+export const incidents = pgTable("incidents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  idUser: varchar("id_user").notNull().references(() => users.id), // FK to users
+  idDailyWorkday: varchar("id_daily_workday").references(() => dailyWorkday.id), // FK to daily_workday
+  idIncidentsType: varchar("id_incidents_type").notNull().references(() => incidentsType.id), // FK to incidents_type
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  registeredBy: varchar("registered_by").references(() => users.id), // FK to users (who registered)
+  status: text("status").notNull().default("pending"), // "pending", "approved", "rejected"
 });
 
 // ============================================================================
@@ -174,14 +191,14 @@ export const insertDepartmentSchema = createInsertSchema(departments).omit({
 });
 
 /**
- * SCHEMAS FOR ROLES
+ * SCHEMAS FOR ROLES_ENTERPRISE
  */
-export const insertRoleSchema = createInsertSchema(roles).omit({
+export const insertRoleEnterpriseSchema = createInsertSchema(rolesEnterprise).omit({
   id: true,
 });
 
-export type Role = typeof roles.$inferSelect;
-export type InsertRole = z.infer<typeof insertRoleSchema>;
+export type RoleEnterprise = typeof rolesEnterprise.$inferSelect;
+export type InsertRoleEnterprise = z.infer<typeof insertRoleEnterpriseSchema>;
 
 /**
  * SCHEMAS FOR USERS
@@ -189,25 +206,25 @@ export type InsertRole = z.infer<typeof insertRoleSchema>;
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   passwordHash: true,
-  role: true,
+  roleSystem: true,
 });
 
 export const createUserSchema = insertUserSchema.extend({
-  employeeNumber: z.string().min(1, "El número de empleado es obligatorio"),
+  numEmployee: z.string().min(1, "El número de empleado es obligatorio"),
   dni: z.string().optional(),
   firstName: z.string().min(1, "El nombre es obligatorio"),
   lastName: z.string().min(1, "El apellido es obligatorio"),
   email: z.string().email("Debe ingresar un correo electrónico válido"),
   passwordHash: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
-  role: z.enum(["admin", "employee"], {
+  roleSystem: z.enum(["admin", "employee"], {
     errorMap: () => ({ message: "Debe seleccionar un rol válido" })
   }).default("employee"),
   hireDate: z.string().transform((str) => new Date(str)),
-  rolEmpresa: z.string().optional(),
+  roleEnterpriseId: z.string().optional(),
 });
 
 export const updateUserSchema = z.object({
-  employeeNumber: z.string().min(1, "El número de empleado es obligatorio").optional(),
+  numEmployee: z.string().min(1, "El número de empleado es obligatorio").optional(),
   dni: z.string().optional(),
   firstName: z.string().min(1, "El nombre es obligatorio").optional(),
   lastName: z.string().min(1, "El apellido es obligatorio").optional(),
@@ -216,33 +233,31 @@ export const updateUserSchema = z.object({
   hireDate: z.string().transform((str) => new Date(str)).optional(),
   isActive: z.boolean().optional(),
   passwordHash: z.string().min(4, "La contraseña debe tener al menos 4 caracteres").optional(),
-  role: z.enum(["admin", "employee"], {
+  roleSystem: z.enum(["admin", "employee"], {
     errorMap: () => ({ message: "Debe seleccionar un rol válido" })
   }).optional(),
-  rolEmpresa: z.string().optional(),
+  roleEnterpriseId: z.string().optional(),
 });
 
 /**
- * SCHEMAS FOR SCHEDULED SHIFTS
+ * SCHEMAS FOR SCHEDULES
  */
-export const insertScheduledShiftSchema = createInsertSchema(scheduledShifts).omit({
+export const insertScheduleSchema = createInsertSchema(schedules).omit({
   id: true,
 }).extend({
-  employeeId: z.string().min(1, "Debe seleccionar un empleado"),
-  shiftType: z.enum(['morning', 'afternoon', 'night'], {
-    errorMap: () => ({ message: "Debe seleccionar un tipo de turno válido" })
+  idUser: z.string().min(1, "Debe seleccionar un empleado"),
+  scheduleType: z.enum(['split', 'total'], {
+    errorMap: () => ({ message: "Debe seleccionar un tipo de horario válido" })
   }),
-  status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled']).default('scheduled'),
 });
 
-export const bulkScheduledShiftCreateSchema = z.object({
+export const bulkScheduleCreateSchema = z.object({
   schedules: z.array(z.object({
-    employeeId: z.string().min(1, "Debe seleccionar un empleado"),
+    idUser: z.string().min(1, "Debe seleccionar un empleado"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato AAAA-MM-DD"),
-    expectedStartTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio debe estar en formato HH:MM"),
-    expectedEndTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin debe estar en formato HH:MM"),
-    shiftType: z.enum(['morning', 'afternoon', 'night']).default('morning'),
-    status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled']).default('scheduled'),
+    startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio debe estar en formato HH:MM"),
+    endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin debe estar en formato HH:MM"),
+    scheduleType: z.enum(['split', 'total']).default('total'),
   })).min(1, "Debe haber al menos un horario"),
 });
 
@@ -254,7 +269,7 @@ export const insertClockEntrySchema = createInsertSchema(clockEntries).omit({
   timestamp: true,
 }).extend({
   entryType: z.enum(['clock_in', 'clock_out', 'break_start', 'break_end']),
-  source: z.enum(['mobile_app', 'physical_terminal', 'web']).optional(),
+  source: z.enum(['web', 'mobile_device']).optional(),
 });
 
 /**
@@ -269,41 +284,14 @@ export const insertDailyWorkdaySchema = createInsertSchema(dailyWorkday).omit({
   status: z.enum(['open', 'closed']).default('open'),
 });
 
-export const manualDailyWorkdaySchema = z.object({
-  employeeId: z.string().min(1, "Debe seleccionar un empleado"),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato AAAA-MM-DD"),
-  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio debe estar en formato HH:MM"),
-  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin debe estar en formato HH:MM"),
-  breakMinutes: z.number().int().min(0, "Los minutos de descanso no pueden ser negativos"),
-}).refine(
-  (data) => data.startTime < data.endTime,
-  { message: "La hora de fin debe ser posterior a la hora de inicio", path: ["endTime"] }
-);
-
-export const updateManualDailyWorkdaySchema = z.object({
-  startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio debe estar en formato HH:MM").optional(),
-  endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin debe estar en formato HH:MM").optional(),
-  breakMinutes: z.number().int().min(0, "Los minutos de descanso no pueden ser negativos").optional(),
-}).refine(
-  (data) => {
-    if (data.startTime && data.endTime) {
-      return data.startTime < data.endTime;
-    }
-    return true;
-  },
-  { message: "La hora de fin debe ser posterior a la hora de inicio", path: ["endTime"] }
-);
-
 /**
- * SCHEMAS FOR INCIDENT TYPES
+ * SCHEMAS FOR INCIDENTS_TYPE
  */
-export const insertIncidentTypeSchema = createInsertSchema(incidentTypes).omit({
+export const insertIncidentsTypeSchema = createInsertSchema(incidentsType).omit({
   id: true,
-  createdAt: true,
 }).extend({
   name: z.string().min(1, "El nombre del tipo de incidencia es obligatorio"),
   description: z.string().optional(),
-  isActive: z.boolean().default(true),
 });
 
 /**
@@ -313,9 +301,8 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
   id: true,
   createdAt: true,
 }).extend({
-  userId: z.string().min(1, "Debe seleccionar un empleado"),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato YYYY-MM-DD"),
-  incidentType: z.string().min(1, "Debe seleccionar un tipo de incidencia"),
+  idUser: z.string().min(1, "Debe seleccionar un empleado"),
+  idIncidentsType: z.string().min(1, "Debe seleccionar un tipo de incidencia"),
   description: z.string().min(1, "La descripción es obligatoria"),
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
 });
@@ -332,108 +319,34 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type CreateUser = z.infer<typeof createUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 
-export type ScheduledShift = typeof scheduledShifts.$inferSelect;
-export type InsertScheduledShift = z.infer<typeof insertScheduledShiftSchema>;
-export type BulkScheduledShiftCreate = z.infer<typeof bulkScheduledShiftCreateSchema>;
+export type Schedule = typeof schedules.$inferSelect;
+export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
+export type BulkScheduleCreate = z.infer<typeof bulkScheduleCreateSchema>;
 
 export type ClockEntry = typeof clockEntries.$inferSelect;
 export type InsertClockEntry = z.infer<typeof insertClockEntrySchema>;
 
 export type DailyWorkday = typeof dailyWorkday.$inferSelect;
 export type InsertDailyWorkday = z.infer<typeof insertDailyWorkdaySchema>;
-export type ManualDailyWorkday = z.infer<typeof manualDailyWorkdaySchema>;
-export type UpdateManualDailyWorkday = z.infer<typeof updateManualDailyWorkdaySchema>;
 
-export type IncidentType = typeof incidentTypes.$inferSelect;
-export type InsertIncidentType = z.infer<typeof insertIncidentTypeSchema>;
+export type IncidentsType = typeof incidentsType.$inferSelect;
+export type InsertIncidentsType = z.infer<typeof insertIncidentsTypeSchema>;
 
 export type Incident = typeof incidents.$inferSelect;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 
 // ============================================================================
-// LEGACY TYPES FOR API COMPATIBILITY
+// LEGACY TYPE ALIASES FOR COMPATIBILITY
 // ============================================================================
 
-/**
- * Employee type - alias for User
- */
 export type Employee = User;
+export type ScheduledShift = Schedule;
+export type InsertScheduledShift = InsertSchedule;
+export type BulkScheduledShiftCreate = BulkScheduleCreate;
+export type IncidentType = IncidentsType;
+export type InsertIncidentType = InsertIncidentsType;
+export type Role = RoleEnterprise;
+export type InsertRole = InsertRoleEnterprise;
 
-/**
- * Break entry for TimeEntry
- */
-export interface BreakEntry {
-  start: Date;
-  end: Date | null;
-}
-
-/**
- * Legacy TimeEntry interface - maps to DailyWorkday
- */
-export interface TimeEntry {
-  id: string;
-  employeeId: string;
-  clockIn: Date;
-  clockOut: Date | null;
-  totalHours: number | null;
-  breakMinutes: number | null;
-  breaks: BreakEntry[];
-  date: string;
-}
-
-/**
- * Legacy InsertTimeEntry interface
- */
-export interface InsertTimeEntry {
-  employeeId: string;
-  clockIn: Date;
-  clockOut?: Date | null;
-  date: string;
-}
-
-/**
- * Legacy Schedule interface - maps to ScheduledShift
- */
-export interface Schedule {
-  id: string;
-  employeeId: string;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  isActive: boolean;
-}
-
-/**
- * Legacy DateSchedule interface - maps to ScheduledShift
- */
-export interface DateSchedule {
-  id: string;
-  employeeId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  workHours: number;
-  isActive: boolean;
-}
-
-/**
- * Legacy InsertDateSchedule interface
- */
-export interface InsertDateSchedule {
-  employeeId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  workHours: number;
-  isActive?: boolean;
-}
-
-/**
- * Legacy types
- */
+// Login types
 export type LoginRequest = z.infer<typeof loginSchema>;
-export type InsertEmployee = Omit<Employee, 'id' | 'password'>;
-export type CreateEmployee = InsertEmployee & { password: string; role: "admin" | "employee" };
-export type UpdateEmployee = Partial<InsertEmployee>;
-export type InsertSchedule = Omit<Schedule, 'id'>;
-export type BulkDateScheduleCreate = z.infer<typeof bulkScheduledShiftCreateSchema>;
