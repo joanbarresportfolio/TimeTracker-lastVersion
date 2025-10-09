@@ -146,7 +146,7 @@ export default function Schedules() {
     mutationFn: (data: { schedules: Array<{ employeeId: string; date: string; startTime: string; endTime: string }> }) => 
       apiRequest("/api/date-schedules/bulk", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules", selectedEmployee?.id, calendarYear] });
       refetchDateSchedules();
       setSelectedDates([]);
       setShowScheduleDialog(false);

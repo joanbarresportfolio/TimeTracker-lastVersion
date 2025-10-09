@@ -107,26 +107,22 @@ export function registerScheduleRoutes(app: Express) {
       }
 
       const dateSchedules = scheduledShifts.map((shift) => {
-        const [startHour, startMin] = shift.expectedStartTime
+        const [startHour, startMin] = shift.startTime
           .split(":")
           .map(Number);
-        const [endHour, endMin] = shift.expectedEndTime.split(":").map(Number);
+        const [endHour, endMin] = shift.endTime.split(":").map(Number);
         const startMinutes = startHour * 60 + startMin;
         const endMinutes = endHour * 60 + endMin;
         const workMinutes = endMinutes - startMinutes;
 
         return {
           id: shift.id,
-          employeeId: shift.employeeId,
+          employeeId: shift.idUser,
           date: shift.date,
-          startTime: shift.expectedStartTime,
-          endTime: shift.expectedEndTime,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
           workHours: workMinutes,
-          isActive:
-            shift.status === "scheduled" || shift.status === "confirmed",
-          expectedStartTime: shift.expectedStartTime,
-          expectedEndTime: shift.expectedEndTime,
-          status: shift.status,
+          isActive: true,
         };
       });
 
