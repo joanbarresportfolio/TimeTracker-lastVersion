@@ -851,9 +851,9 @@ function AdminTimeTracking({
 
   const filteredEmployees = employees?.filter(employee => {
     const matchesSearch = 
-      employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      employee.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.employeeNumber?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesDepartment = selectedDepartment === "all" || employee.department === selectedDepartment;
     
