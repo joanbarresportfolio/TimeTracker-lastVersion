@@ -183,7 +183,7 @@ export function registerDailyWorkdayRoutes(app: Express) {
       }
 
       const hasClockEntries = await storage.hasClockEntriesForDate(
-        existingWorkday.employeeId,
+        existingWorkday.idUser,
         existingWorkday.date,
       );
       if (hasClockEntries) {
@@ -202,9 +202,12 @@ export function registerDailyWorkdayRoutes(app: Express) {
 
       const updatedWorkday = await storage.updateDailyWorkdayWithAutoClockEntries(
         workdayId,
+        existingWorkday.idUser,
+        existingWorkday.date,
         startDateTime,
         endDateTime,
-        data.breakMinutes,
+        data.breakMinutes || 0,
+        null
       );
 
       res.json(updatedWorkday);
@@ -241,7 +244,7 @@ export function registerDailyWorkdayRoutes(app: Express) {
       }
 
       const hasClockEntries = await storage.hasClockEntriesForDate(
-        existingWorkday.employeeId,
+        existingWorkday.idUser,
         existingWorkday.date,
       );
       if (hasClockEntries) {
