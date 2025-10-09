@@ -1729,11 +1729,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // PASO 5: Calcular empleados nuevos de la última semana
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0];
+        oneWeekAgo.setHours(0, 0, 0, 0); // Normalizar a medianoche
         
-        const newEmployeesLastWeek = employees.filter(emp => 
-          emp.isActive && emp.hireDate && emp.hireDate >= oneWeekAgoStr
-        ).length;
+        const newEmployeesLastWeek = employees.filter(emp => {
+          if (!emp.isActive || !emp.hireDate) return false;
+          const hireDate = new Date(emp.hireDate);
+          hireDate.setHours(0, 0, 0, 0); // Normalizar a medianoche
+          return hireDate >= oneWeekAgo;
+        }).length;
 
         // PASO 6: Respuesta con métricas administrativas
         res.json({
