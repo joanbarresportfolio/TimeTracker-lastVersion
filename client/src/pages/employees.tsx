@@ -832,7 +832,7 @@ export default function Employees() {
                               <SelectContent>
                                 <SelectItem value="none">Ninguno</SelectItem>
                                 {departments.map((dept) => (
-                                  <SelectItem key={dept.id} value={dept.name}>
+                                  <SelectItem key={dept.id} value={dept.id}>
                                     {dept.name}
                                   </SelectItem>
                                 ))}
