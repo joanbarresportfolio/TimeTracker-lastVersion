@@ -393,6 +393,18 @@ function EmployeeTimeTracking() {
                 </>
               )}
               
+              {status.status === "on_break" && (
+                <Button 
+                  onClick={() => breakEndMutation.mutate()}
+                  disabled={breakEndMutation.isPending}
+                  variant="outline"
+                  data-testid="button-break-end"
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Finalizar Pausa
+                </Button>
+              )}
+              
               {status.status === "completed" && (
                 <Badge variant="outline" className="px-4 py-2">
                   Jornada Completada
@@ -1313,28 +1325,16 @@ function AdminTimeTracking({
                   )}
                   
                   {status.status === "on_break" && (
-                    <>
-                      <Button 
-                        onClick={() => breakEndMutation.mutate(employee.id)}
-                        disabled={breakEndMutation.isPending}
-                        variant="outline"
-                        className="flex-1"
-                        data-testid={`button-break-end-${employee.id}`}
-                      >
-                        <Clock className="w-4 h-4 mr-2" />
-                        Finalizar Pausa
-                      </Button>
-                      <Button 
-                        onClick={() => clockOutMutation.mutate(employee.id)}
-                        disabled={clockOutMutation.isPending}
-                        variant="outline"
-                        className="flex-1"
-                        data-testid={`button-clock-out-${employee.id}`}
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Fichar Salida
-                      </Button>
-                    </>
+                    <Button 
+                      onClick={() => breakEndMutation.mutate(employee.id)}
+                      disabled={breakEndMutation.isPending}
+                      variant="outline"
+                      className="flex-1"
+                      data-testid={`button-break-end-${employee.id}`}
+                    >
+                      <Clock className="w-4 h-4 mr-2" />
+                      Finalizar Pausa
+                    </Button>
                   )}
                   
                   {status.status === "completed" && (
