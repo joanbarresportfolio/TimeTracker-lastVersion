@@ -279,9 +279,17 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="mt-4 flex items-center text-sm">
-              <TrendingUp className="text-green-500 w-4 h-4 mr-1" />
-              <span className="text-green-500 font-medium">+5</span>
-              <span className="text-muted-foreground ml-1">vs mes anterior</span>
+              {stats?.newEmployeesLastWeek && stats.newEmployeesLastWeek > 0 ? (
+                <>
+                  <TrendingUp className="text-green-500 w-4 h-4 mr-1" />
+                  <span className="text-green-500 font-medium" data-testid="text-new-employees">
+                    +{stats.newEmployeesLastWeek}
+                  </span>
+                  <span className="text-muted-foreground ml-1">vs semana anterior</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">Sin cambios esta semana</span>
+              )}
             </div>
           </CardContent>
         </Card>
