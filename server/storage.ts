@@ -99,6 +99,15 @@ export interface IStorage {
   updateManualDailyWorkday(id: string, data: { startTime?: string; endTime?: string; breakMinutes?: number }): Promise<DailyWorkday | undefined>;
   deleteDailyWorkday(id: string): Promise<boolean>;
   hasClockEntriesForDate(employeeId: string, date: string): Promise<boolean>;
+  
+  // Métodos de Fichaje (Clock Entry)
+  crearFichaje(
+    employeeId: string,
+    entryType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end',
+    shiftId: string | null,
+    source: 'web' | 'mobile_app' | 'physical_terminal',
+    notes: string | null
+  ): Promise<TimeEntry>;
 }
 
 /**

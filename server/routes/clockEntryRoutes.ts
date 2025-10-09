@@ -41,7 +41,7 @@ export function registerClockEntryRoutes(app: Express) {
       const { employeeId, date } = req.query;
 
       const targetEmployeeId =
-        req.user!.role === "employee"
+        req.user!.roleSystem === "employee"
           ? req.user!.id
           : (employeeId as string | undefined);
 
@@ -86,7 +86,7 @@ export function registerClockEntryRoutes(app: Express) {
   app.post("/api/time-entries/clock-in", requireAuth, async (req, res) => {
     try {
       let employeeId = req.user!.id;
-      if (req.user!.role === "admin" && req.body.employeeId) {
+      if (req.user!.roleSystem === "admin" && req.body.employeeId) {
         employeeId = req.body.employeeId;
       }
 
@@ -103,7 +103,7 @@ export function registerClockEntryRoutes(app: Express) {
           .json({ message: "El empleado ya ha marcado entrada hoy" });
       }
 
-      if (req.user!.role === "employee") {
+      if (req.user!.roleSystem === "employee") {
         const validationResult = await validateClockingTime(
           employeeId,
           new Date(),
@@ -144,7 +144,7 @@ export function registerClockEntryRoutes(app: Express) {
   app.post("/api/time-entries/clock-out", requireAuth, async (req, res) => {
     try {
       let employeeId = req.user!.id;
-      if (req.user!.role === "admin" && req.body.employeeId) {
+      if (req.user!.roleSystem === "admin" && req.body.employeeId) {
         employeeId = req.body.employeeId;
       }
 
@@ -161,7 +161,7 @@ export function registerClockEntryRoutes(app: Express) {
           .json({ message: "El empleado no ha marcado entrada hoy" });
       }
 
-      if (req.user!.role === "employee") {
+      if (req.user!.roleSystem === "employee") {
         const validationResult = await validateClockingTime(
           employeeId,
           new Date(),
@@ -201,7 +201,7 @@ export function registerClockEntryRoutes(app: Express) {
   app.post("/api/fichajes", requireAuth, async (req, res) => {
     try {
       let employeeId = req.user!.id;
-      if (req.user!.role === "admin" && req.body.employeeId) {
+      if (req.user!.roleSystem === "admin" && req.body.employeeId) {
         employeeId = req.body.employeeId;
       }
 

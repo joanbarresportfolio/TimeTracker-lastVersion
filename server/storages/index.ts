@@ -262,6 +262,16 @@ export class DatabaseStorage implements IStorage {
     return dailyWorkdayStorage.hasClockEntriesForDate(employeeId, date);
   }
 
+  async crearFichaje(
+    employeeId: string,
+    entryType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end',
+    shiftId: string | null,
+    source: 'web' | 'mobile_app' | 'physical_terminal',
+    notes: string | null
+  ): Promise<TimeEntry> {
+    return clockEntryStorage.crearFichaje(employeeId, entryType, shiftId, source, notes);
+  }
+
   // ==========================================
   // MÉTODOS ADICIONALES DEL STORAGE ORIGINAL
   // ==========================================
@@ -365,5 +375,5 @@ export class DatabaseStorage implements IStorage {
  */
 export const storage = new DatabaseStorage();
 
-// También exportar la función de cálculo para uso externo
-export { calcularYActualizarJornada } from "./clockEntryStorage";
+// También exportar funciones de clock entry para uso externo
+export { calcularYActualizarJornada, crearFichaje } from "./clockEntryStorage";

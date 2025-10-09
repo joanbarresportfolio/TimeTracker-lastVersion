@@ -6,6 +6,7 @@ import {
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, and, sql } from "drizzle-orm";
+import { getDailyWorkdayByEmployeeAndDate } from "./dailyWorkdayStorage";
 
 /**
  * CLOCK ENTRY STORAGE MODULE
@@ -226,4 +227,61 @@ export async function calcularYActualizarJornada(employeeId: string, fecha: stri
     .where(
       sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
     );
+}
+
+/**
+ * CREAR FICHAJE (WRAPPER DE ALTO NIVEL)
+ * ======================================
+ * 
+ * Orquesta la creación de un fichaje gestionando automáticamente
+ * la creación/actualización del daily_workday asociado.
+ * 
+ * Esta función:
+ * 1. Encuentra o crea el daily_workday para el día del fichaje
+ * 2. Crea el clock_entry con el idDailyWorkday correcto
+ * 3. Actualiza los totales del daily_workday
+ */
+export async function crearFichaje(
+  employeeId: string,
+  entryType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end',
+  shiftId: string | null,
+  source: 'web' | 'mobile_app' | 'physical_terminal',
+  notes: string | null
+): Promise<ClockEntry> {
+  const now = new Date();
+  const fecha = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  
+  // 1. Buscar o crear daily_workday para hoy
+  let workday = await getDailyWorkdayByEmployeeAndDate(employeeId, fecha);
+  
+  if (!workday) {
+    // Crear daily_workday con valores iniciales
+    const [newWorkday] = await db
+      .insert(dailyWorkday)
+      .values({
+        idUser: employeeId,
+        date: fecha,
+        workedMinutes: 0,
+        breakMinutes: 0,
+        overtimeMinutes: 0,
+        status: 'open',
+      })
+      .returning();
+    
+    workday = newWorkday;
+  }
+  
+  // 2. Crear clock_entry
+  const entry = await createClockEntry({
+    idUser: employeeId,
+    idDailyWorkday: workday.id,
+    entryType,
+    timestamp: now,
+    source: source || 'web',
+  });
+  
+  // 3. Actualizar totales del daily_workday
+  await calcularYActualizarJornada(employeeId, fecha);
+  
+  return entry;
 }
