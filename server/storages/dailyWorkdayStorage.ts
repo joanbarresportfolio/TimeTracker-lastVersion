@@ -24,7 +24,7 @@ async function getBreaksForDay(employeeId: string, date: string): Promise<BreakE
     .select()
     .from(clockEntries)
     .where(
-      sql`DATE(${clockEntries.timestamp}) = ${date} AND ${clockEntries.employeeId} = ${employeeId} AND (${clockEntries.entryType} = 'break_start' OR ${clockEntries.entryType} = 'break_end')`
+      sql`DATE(${clockEntries.timestamp}) = ${date} AND ${clockEntries.idUser} = ${employeeId} AND (${clockEntries.entryType} = 'break_start' OR ${clockEntries.entryType} = 'break_end')`
     )
     .orderBy(clockEntries.timestamp);
 
@@ -63,7 +63,7 @@ export async function getDailyWorkdayByEmployeeAndDate(employeeId: string, date:
     .from(dailyWorkday)
     .where(
       and(
-        eq(dailyWorkday.employeeId, employeeId),
+        eq(dailyWorkday.idUser, employeeId),
         eq(dailyWorkday.date, date)
       )
     );
@@ -79,7 +79,7 @@ export async function getDailyWorkdaysByEmployeeAndRange(employeeId: string, sta
     .from(dailyWorkday)
     .where(
       and(
-        eq(dailyWorkday.employeeId, employeeId),
+        eq(dailyWorkday.idUser, employeeId),
         sql`${dailyWorkday.date} >= ${startDate} AND ${dailyWorkday.date} <= ${endDate}`
       )
     );
@@ -190,7 +190,7 @@ export async function hasClockEntriesForDate(employeeId: string, date: string): 
     .select()
     .from(clockEntries)
     .where(
-      sql`DATE(${clockEntries.timestamp}) = ${date} AND ${clockEntries.employeeId} = ${employeeId}`
+      sql`DATE(${clockEntries.timestamp}) = ${date} AND ${clockEntries.idUser} = ${employeeId}`
     )
     .limit(1);
   
@@ -212,13 +212,13 @@ export async function getTimeEntry(id: string): Promise<TimeEntry | undefined> {
   const totalHours = totalMinutes / 60;
   
   // Obtener pausas del día
-  const breaks = await getBreaksForDay(workday.employeeId, workday.date);
+  const breaks = await getBreaksForDay(workday.idUser, workday.date);
   
   return {
     id: workday.id,
-    employeeId: workday.employeeId,
-    clockIn: workday.startTime || new Date(),
-    clockOut: workday.endTime,
+    employeeId: workday.idUser,
+    clockIn: new Date(), // No hay startTime en schema
+    clockOut: null, // No hay endTime en schema
     totalHours: totalHours,
     breakMinutes: workday.breakMinutes,
     breaks: breaks,
@@ -237,13 +237,13 @@ export async function getTimeEntries(): Promise<TimeEntry[]> {
     const totalHours = totalMinutes / 60;
     
     // Obtener pausas del día
-    const breaks = await getBreaksForDay(workday.employeeId, workday.date);
+    const breaks = await getBreaksForDay(workday.idUser, workday.date);
     
     return {
       id: workday.id,
-      employeeId: workday.employeeId,
-      clockIn: workday.startTime || new Date(),
-      clockOut: workday.endTime,
+      employeeId: workday.idUser,
+      clockIn: new Date(), // No hay startTime en schema
+      clockOut: null, // No hay endTime en schema
       totalHours: totalHours,
       breakMinutes: workday.breakMinutes,
       breaks: breaks,
@@ -261,20 +261,20 @@ export async function getTimeEntriesByEmployee(employeeId: string): Promise<Time
   const workdays = await db
     .select()
     .from(dailyWorkday)
-    .where(eq(dailyWorkday.employeeId, employeeId));
+    .where(eq(dailyWorkday.idUser, employeeId));
   
   const entries = await Promise.all(workdays.map(async workday => {
     const totalMinutes = workday.workedMinutes - workday.breakMinutes;
     const totalHours = totalMinutes / 60;
     
     // Obtener pausas del día
-    const breaks = await getBreaksForDay(workday.employeeId, workday.date);
+    const breaks = await getBreaksForDay(workday.idUser, workday.date);
     
     return {
       id: workday.id,
-      employeeId: workday.employeeId,
-      clockIn: workday.startTime || new Date(),
-      clockOut: workday.endTime,
+      employeeId: workday.idUser,
+      clockIn: new Date(), // No hay startTime en schema
+      clockOut: null, // No hay endTime en schema
       totalHours: totalHours,
       breakMinutes: workday.breakMinutes,
       breaks: breaks,
@@ -299,13 +299,13 @@ export async function getTimeEntriesByDate(date: string): Promise<TimeEntry[]> {
     const totalHours = totalMinutes / 60;
     
     // Obtener pausas del día
-    const breaks = await getBreaksForDay(workday.employeeId, workday.date);
+    const breaks = await getBreaksForDay(workday.idUser, workday.date);
     
     return {
       id: workday.id,
-      employeeId: workday.employeeId,
-      clockIn: workday.startTime || new Date(),
-      clockOut: workday.endTime,
+      employeeId: workday.idUser,
+      clockIn: new Date(), // No hay startTime en schema
+      clockOut: null, // No hay endTime en schema
       totalHours: totalHours,
       breakMinutes: workday.breakMinutes,
       breaks: breaks,
@@ -346,7 +346,7 @@ export async function obtenerFichajesDelDia(employeeId: string, fecha: string) {
     .select()
     .from(clockEntries)
     .where(
-      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
+      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.idUser} = ${employeeId}`
     )
     .orderBy(clockEntries.timestamp);
 }
@@ -357,7 +357,7 @@ export async function obtenerJornadaDiaria(employeeId: string, fecha: string): P
     .from(dailyWorkday)
     .where(
       and(
-        eq(dailyWorkday.employeeId, employeeId),
+        eq(dailyWorkday.idUser, employeeId),
         eq(dailyWorkday.date, fecha)
       )
     );
@@ -378,11 +378,8 @@ export async function createDailyWorkdayWithAutoClockEntries(
   const [workday] = await db
     .insert(dailyWorkday)
     .values({
-      employeeId,
+      idUser: employeeId,
       date,
-      shiftId,
-      startTime,
-      endTime,
       workedMinutes,
       breakMinutes,
       overtimeMinutes: 0,

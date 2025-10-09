@@ -363,6 +363,26 @@ export type Incident = typeof incidents.$inferSelect;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 
 // ============================================================================
+// ADDITIONAL TYPES
+// ============================================================================
+
+export type BreakEntry = {
+  start: Date;
+  end: Date | null;
+};
+
+export type TimeEntry = {
+  id: string;
+  employeeId: string;
+  clockIn: Date;
+  clockOut: Date | null;
+  totalHours: number;
+  breakMinutes: number;
+  breaks: BreakEntry[];
+  date: string;
+};
+
+// ============================================================================
 // LEGACY TYPE ALIASES FOR COMPATIBILITY
 // ============================================================================
 
