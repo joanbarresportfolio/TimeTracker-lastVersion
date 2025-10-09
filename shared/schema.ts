@@ -89,6 +89,7 @@ export const users = pgTable("users", {
 export const dailyWorkday = pgTable("daily_workday", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   idUser: varchar("id_user").notNull().references(() => users.id), // FK to users
+  date: text("date").notNull(), // YYYY-MM-DD format
   workedMinutes: integer("worked_minutes").notNull().default(0), // in minutes
   breakMinutes: integer("break_minutes").notNull().default(0), // in minutes
   overtimeMinutes: integer("overtime_minutes").notNull().default(0), // in minutes
@@ -103,12 +104,12 @@ export const dailyWorkday = pgTable("daily_workday", {
  * 
  * RELATIONS:
  * - users 1...N schedules
- * - daily_workday 1...1 schedules (enforced by unique constraint on id_daily_workday)
+ * - daily_workday 1...1 schedules (optional, linked when workday exists)
  */
 export const schedules = pgTable("schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   idUser: varchar("id_user").notNull().references(() => users.id), // FK to users
-  idDailyWorkday: varchar("id_daily_workday").notNull().unique().references(() => dailyWorkday.id), // FK to daily_workday (1:1, enforced by unique)
+  idDailyWorkday: varchar("id_daily_workday").unique().references(() => dailyWorkday.id), // FK to daily_workday (optional, 1:1 when exists)
   date: text("date").notNull(), // YYYY-MM-DD
   startTime: text("start_time").notNull(), // HH:MM
   endTime: text("end_time").notNull(), // HH:MM
@@ -246,7 +247,7 @@ export const insertScheduleSchema = createInsertSchema(schedules).omit({
   id: true,
 }).extend({
   idUser: z.string().min(1, "Debe seleccionar un empleado"),
-  idDailyWorkday: z.string().min(1, "Debe seleccionar una jornada diaria"),
+  idDailyWorkday: z.string().optional(), // Now optional since it's nullable
   scheduleType: z.enum(['split', 'total'], {
     errorMap: () => ({ message: "Debe seleccionar un tipo de horario válido" })
   }),
@@ -284,6 +285,8 @@ export const insertDailyWorkdaySchema = createInsertSchema(dailyWorkday).omit({
   breakMinutes: true,
   overtimeMinutes: true,
 }).extend({
+  idUser: z.string().min(1, "Debe seleccionar un empleado"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato YYYY-MM-DD"),
   status: z.enum(['open', 'closed']).default('open'),
 });
 
