@@ -76,12 +76,12 @@ export class ScheduleService {
    * @returns Información sobre conflictos
    */
   detectScheduleConflicts(
-    newSchedule: { employeeId: string; date: string },
+    newSchedule: { idUser: string; date: string },
     existingSchedules: Schedule[]
   ): ScheduleConflict {
     const conflicting = existingSchedules.filter(
       schedule => 
-        schedule.employeeId === newSchedule.employeeId &&
+        schedule.idUser === newSchedule.idUser &&
         schedule.date === newSchedule.date
     );
 
@@ -89,7 +89,7 @@ export class ScheduleService {
       return {
         hasConflict: true,
         conflictingSchedules: conflicting,
-        message: `Ya existe un horario para el empleado ${newSchedule.employeeId} en la fecha ${newSchedule.date}`
+        message: `Ya existe un horario para el empleado ${newSchedule.idUser} en la fecha ${newSchedule.date}`
       };
     }
 
@@ -201,17 +201,17 @@ export class ScheduleService {
     endTime: string,
     excludeWeekends: boolean = true
   ): Array<{
-    employeeId: string;
+    idUser: string;
     date: string;
-    expectedStartTime: string;
-    expectedEndTime: string;
+    startTime: string;
+    endTime: string;
     status: "scheduled";
   }> {
     const schedules: Array<{
-      employeeId: string;
+      idUser: string;
       date: string;
-      expectedStartTime: string;
-      expectedEndTime: string;
+      startTime: string;
+      endTime: string;
       status: "scheduled";
     }> = [];
 
@@ -224,10 +224,10 @@ export class ScheduleService {
       
       if (!excludeWeekends || (dayOfWeek !== 0 && dayOfWeek !== 6)) {
         schedules.push({
-          employeeId,
+          idUser: employeeId,
           date: current.toISOString().split('T')[0],
-          expectedStartTime: startTime,
-          expectedEndTime: endTime,
+          startTime: startTime,
+          endTime: endTime,
           status: "scheduled"
         });
       }
@@ -252,10 +252,10 @@ export class ScheduleService {
     existingSchedules: Schedule[],
     targetYear: number
   ): Array<{
-    employeeId: string;
+    idUser: string;
     date: string;
-    expectedStartTime: string;
-    expectedEndTime: string;
+    startTime: string;
+    endTime: string;
     status: "scheduled";
   }> {
     return existingSchedules.map(schedule => {
@@ -263,10 +263,10 @@ export class ScheduleService {
       const newDate = new Date(targetYear, originalDate.getMonth(), originalDate.getDate());
 
       return {
-        employeeId: schedule.employeeId,
+        idUser: schedule.idUser,
         date: newDate.toISOString().split('T')[0],
-        expectedStartTime: schedule.expectedStartTime,
-        expectedEndTime: schedule.expectedEndTime,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
         status: "scheduled" as const
       };
     });
@@ -283,10 +283,10 @@ export class ScheduleService {
    */
   calculateTotalScheduledHours(schedules: Schedule[]): number {
     return schedules.reduce((total, schedule) => {
-      if (schedule.expectedStartTime && schedule.expectedEndTime) {
+      if (schedule.startTime && schedule.endTime) {
         const hours = this.calculateScheduleHours(
-          schedule.expectedStartTime,
-          schedule.expectedEndTime
+          schedule.startTime,
+          schedule.endTime
         );
         return total + hours;
       }
@@ -307,9 +307,9 @@ export class ScheduleService {
     const grouped = new Map<string, Schedule[]>();
 
     for (const schedule of schedules) {
-      const existing = grouped.get(schedule.employeeId) || [];
+      const existing = grouped.get(schedule.idUser) || [];
       existing.push(schedule);
-      grouped.set(schedule.employeeId, existing);
+      grouped.set(schedule.idUser, existing);
     }
 
     return grouped;
@@ -333,7 +333,7 @@ export class ScheduleService {
   ): boolean {
     return schedules.some(
       schedule => 
-        schedule.employeeId === employeeId && 
+        schedule.idUser === employeeId && 
         schedule.date === date
     );
   }
@@ -356,7 +356,7 @@ export class ScheduleService {
   ): Schedule | undefined {
     return schedules.find(
       schedule => 
-        schedule.employeeId === employeeId && 
+        schedule.idUser === employeeId && 
         schedule.date === date
     );
   }

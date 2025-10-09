@@ -49,8 +49,8 @@ export class UserService {
       }
     }
 
-    if (employeeData.password) {
-      const passwordValidation = this.validatePassword(employeeData.password);
+    if (employeeData.passwordHash) {
+      const passwordValidation = this.validatePassword(employeeData.passwordHash);
       if (!passwordValidation.isValid) {
         throw new Error(passwordValidation.message);
       }

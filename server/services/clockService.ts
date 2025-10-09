@@ -120,7 +120,7 @@ export class ClockService {
       clock_out: []
     };
 
-    const allowedNext = validTransitions[lastEntry.entryType] || [];
+    const allowedNext = validTransitions[lastEntry.entryType as ClockEntryType] || [];
 
     if (!allowedNext.includes(newEntryType)) {
       return {

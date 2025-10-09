@@ -41,7 +41,7 @@ export function registerDashboardRoutes(app: Express) {
    */
   app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
-      if (req.user!.role === "employee") {
+      if (req.user!.roleSystem === "employee") {
         // ==== VISTA DE EMPLEADO: Solo datos propios ====
 
         const userEntries = await storage.getTimeEntriesByEmployee(

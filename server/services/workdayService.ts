@@ -101,14 +101,14 @@ export class WorkdayService {
     workedMinutes: number,
     scheduledShift?: Schedule
   ): number {
-    if (!scheduledShift || !scheduledShift.expectedStartTime || !scheduledShift.expectedEndTime) {
+    if (!scheduledShift || !scheduledShift.startTime || !scheduledShift.endTime) {
       return 0;
     }
 
-    const [startHour, startMin] = scheduledShift.expectedStartTime
+    const [startHour, startMin] = scheduledShift.startTime
       .split(":")
       .map(Number);
-    const [endHour, endMin] = scheduledShift.expectedEndTime
+    const [endHour, endMin] = scheduledShift.endTime
       .split(":")
       .map(Number);
     
@@ -306,14 +306,15 @@ export class WorkdayService {
    */
   compareWithSchedule(
     workday: DailyWorkday,
-    scheduledShift?: Schedule
+    scheduledShift?: Schedule,
+    clockEntries?: ClockEntry[]
   ): {
     isOnTime: boolean;
     minutesDifference: number;
     startedEarly: boolean;
     finishedLate: boolean;
   } {
-    if (!scheduledShift || !workday.startTime || !workday.endTime) {
+    if (!scheduledShift || !clockEntries || clockEntries.length === 0) {
       return {
         isOnTime: true,
         minutesDifference: 0,
@@ -322,15 +323,27 @@ export class WorkdayService {
       };
     }
 
-    const [expectedStartHour, expectedStartMin] = scheduledShift.expectedStartTime
+    const [expectedStartHour, expectedStartMin] = scheduledShift.startTime
       .split(":")
       .map(Number);
-    const [expectedEndHour, expectedEndMin] = scheduledShift.expectedEndTime
+    const [expectedEndHour, expectedEndMin] = scheduledShift.endTime
       .split(":")
       .map(Number);
 
-    const actualStart = workday.startTime.getHours() * 60 + workday.startTime.getMinutes();
-    const actualEnd = workday.endTime.getHours() * 60 + workday.endTime.getMinutes();
+    const clockInEntry = clockEntries.find(e => e.entryType === "clock_in");
+    const clockOutEntry = clockEntries.filter(e => e.entryType === "clock_out").pop();
+
+    if (!clockInEntry) {
+      return {
+        isOnTime: false,
+        minutesDifference: 0,
+        startedEarly: false,
+        finishedLate: false
+      };
+    }
+
+    const actualStart = clockInEntry.timestamp.getHours() * 60 + clockInEntry.timestamp.getMinutes();
+    const actualEnd = clockOutEntry ? clockOutEntry.timestamp.getHours() * 60 + clockOutEntry.timestamp.getMinutes() : 0;
     const expectedStart = expectedStartHour * 60 + expectedStartMin;
     const expectedEnd = expectedEndHour * 60 + expectedEndMin;
 

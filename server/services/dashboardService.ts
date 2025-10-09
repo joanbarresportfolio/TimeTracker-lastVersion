@@ -56,7 +56,7 @@ export class DashboardService {
     const today = new Date().toISOString().split("T")[0];
     const todayEntry = todayEntries.find(
       (entry) => 
-        entry.employeeId === employeeId &&
+        entry.idUser === employeeId &&
         new Date(entry.timestamp).toISOString().split("T")[0] === today
     );
 
@@ -64,14 +64,14 @@ export class DashboardService {
       todayEntry.entryType === "clock_in" &&
       !todayEntries.some(
         e => 
-          e.employeeId === employeeId && 
+          e.idUser === employeeId && 
           e.entryType === "clock_out" &&
           e.timestamp > todayEntry.timestamp
       );
 
     const userHoursThisWeek = Math.floor(
       weekEntries
-        .filter(wd => wd.employeeId === employeeId)
+        .filter(wd => wd.idUser === employeeId)
         .reduce((sum, entry) => sum + (entry.workedMinutes || 0), 0) / 60
     );
 
@@ -171,9 +171,9 @@ export class DashboardService {
       const entryDate = new Date(entry.timestamp).toISOString().split("T")[0];
       if (entryDate === today) {
         if (entry.entryType === "clock_in") {
-          employeeStatus.set(entry.employeeId, true);
+          employeeStatus.set(entry.idUser, true);
         } else if (entry.entryType === "clock_out") {
-          employeeStatus.set(entry.employeeId, false);
+          employeeStatus.set(entry.idUser, false);
         }
       }
     }
@@ -210,12 +210,12 @@ export class DashboardService {
       const deptEmployeeIds = new Set(deptEmployees.map((e) => e.id));
 
       const presentToday = this.calculatePresentEmployees(
-        todayEntries.filter((e) => deptEmployeeIds.has(e.employeeId)),
+        todayEntries.filter((e) => deptEmployeeIds.has(e.idUser)),
         today
       );
 
       const deptWeekWorkdays = weekWorkdays.filter((wd) =>
-        deptEmployeeIds.has(wd.employeeId)
+        deptEmployeeIds.has(wd.idUser)
       );
 
       const totalMinutes = deptWeekWorkdays.reduce(
@@ -327,6 +327,7 @@ export class DashboardService {
    * ===================================
    * 
    * Calcula el promedio de horas trabajadas por día en la semana.
+   * Nota: DailyWorkday ya no tiene campo date, calculamos por número de jornadas únicas.
    * 
    * @param weekWorkdays - Jornadas de la semana
    * @returns Promedio de horas por día
@@ -339,8 +340,8 @@ export class DashboardService {
       0
     );
 
-    const uniqueDates = new Set(weekWorkdays.map((wd) => wd.date));
-    const daysWithWork = uniqueDates.size;
+    const uniqueWorkdays = new Set(weekWorkdays.map((wd) => wd.id));
+    const daysWithWork = uniqueWorkdays.size;
 
     if (daysWithWork === 0) return 0;
 

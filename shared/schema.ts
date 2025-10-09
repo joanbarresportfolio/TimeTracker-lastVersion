@@ -361,6 +361,8 @@ export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 // ============================================================================
 
 export type Employee = User;
+export type CreateEmployee = CreateUser;
+export type InsertEmployee = InsertUser;
 export type ScheduledShift = Schedule;
 export type InsertScheduledShift = InsertSchedule;
 export type BulkScheduledShiftCreate = BulkScheduleCreate;

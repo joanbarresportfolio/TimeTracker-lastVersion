@@ -48,21 +48,34 @@ export class IncidentService {
    * ===============================
    * 
    * Encuentra la jornada diaria correspondiente a una incidencia.
+   * Nota: DailyWorkday ya no tiene campo date, debe obtenerse del Schedule relacionado.
    * 
    * @param incidentDate - Fecha de la incidencia
    * @param employeeId - ID del empleado
    * @param workdays - Jornadas existentes
+   * @param schedules - Horarios para obtener fechas
    * @returns ID de la jornada o null
    */
   associateWithWorkday(
     incidentDate: Date,
     employeeId: string,
-    workdays: DailyWorkday[]
+    workdays: DailyWorkday[],
+    schedules?: { idDailyWorkday: string; date: string; idUser: string }[]
   ): string | null {
     const dateStr = incidentDate.toISOString().split('T')[0];
     
+    if (!schedules) {
+      return workdays.find(wd => wd.idUser === employeeId)?.id || null;
+    }
+
+    const matchingSchedule = schedules.find(
+      s => s.idUser === employeeId && s.date === dateStr
+    );
+
+    if (!matchingSchedule) return null;
+
     const matchingWorkday = workdays.find(
-      wd => wd.employeeId === employeeId && wd.date === dateStr
+      wd => wd.id === matchingSchedule.idDailyWorkday && wd.idUser === employeeId
     );
 
     return matchingWorkday?.id || null;
@@ -237,7 +250,7 @@ export class IncidentService {
     const grouped = new Map<string, Incident[]>();
 
     for (const incident of incidents) {
-      const type = incident.type || "otro";
+      const type = incident.idIncidentsType || "otro";
       const existing = grouped.get(type) || [];
       existing.push(incident);
       grouped.set(type, existing);

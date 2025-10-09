@@ -74,18 +74,21 @@ export class ReportService {
     );
 
     const totalPlannedMinutes = schedules.reduce((sum, shift) => {
-      if (shift.expectedStartTime && shift.expectedEndTime) {
-        const [startH, startM] = shift.expectedStartTime.split(":").map(Number);
-        const [endH, endM] = shift.expectedEndTime.split(":").map(Number);
+      if (shift.startTime && shift.endTime) {
+        const [startH, startM] = shift.startTime.split(":").map(Number);
+        const [endH, endM] = shift.endTime.split(":").map(Number);
         return sum + (endH * 60 + endM - (startH * 60 + startM));
       }
       return sum;
     }, 0);
 
-    const workdayDates = new Set(workdays.map((wd) => wd.date));
+    const workdayIds = new Set(workdays.map((wd) => wd.id));
     const scheduledDates = new Set(schedules.map((s) => s.date));
     const absences = Array.from(scheduledDates).filter(
-      (date) => !workdayDates.has(date)
+      (date) => {
+        const scheduleForDate = schedules.find(s => s.date === date);
+        return scheduleForDate && !workdayIds.has(scheduleForDate.idDailyWorkday);
+      }
     );
 
     const difference = totalWorkedMinutes - totalPlannedMinutes;
