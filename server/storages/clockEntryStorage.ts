@@ -50,7 +50,7 @@ export async function getActiveClockEntry(employeeId: string): Promise<ClockEntr
     .from(clockEntries)
     .where(
       and(
-        eq(clockEntries.employeeId, employeeId),
+        eq(clockEntries.idUser, employeeId),
         eq(clockEntries.entryType, 'clock_in')
       )
     )
@@ -65,7 +65,7 @@ export async function getActiveClockEntry(employeeId: string): Promise<ClockEntr
     .from(clockEntries)
     .where(
       and(
-        eq(clockEntries.employeeId, employeeId),
+        eq(clockEntries.idUser, employeeId),
         eq(clockEntries.entryType, 'clock_out'),
         sql`${clockEntries.timestamp} > ${lastClockIn.timestamp}`
       )
@@ -91,8 +91,8 @@ export async function closeClockEntry(employeeId: string): Promise<ClockEntry> {
   const [clockOut] = await db
     .insert(clockEntries)
     .values({
-      employeeId,
-      shiftId: activeEntry.shiftId,
+      idUser: employeeId,
+      idDailyWorkday: activeEntry.idDailyWorkday,
       entryType: 'clock_out',
       timestamp: new Date(),
       source: activeEntry.source,
@@ -117,7 +117,7 @@ export async function calcularYActualizarJornada(employeeId: string, fecha: stri
     .select()
     .from(clockEntries)
     .where(
-      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
+      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.idUser} = ${employeeId}`
     )
     .orderBy(clockEntries.timestamp);
 
@@ -180,7 +180,7 @@ export async function calcularYActualizarJornada(employeeId: string, fecha: stri
     .from(dailyWorkday)
     .where(
       and(
-        eq(dailyWorkday.employeeId, employeeId),
+        eq(dailyWorkday.idUser, employeeId),
         eq(dailyWorkday.date, fecha)
       )
     );
@@ -191,9 +191,6 @@ export async function calcularYActualizarJornada(employeeId: string, fecha: stri
     await db
       .update(dailyWorkday)
       .set({
-        shiftId,
-        startTime,
-        endTime,
         workedMinutes,
         breakMinutes,
         status,
@@ -205,11 +202,8 @@ export async function calcularYActualizarJornada(employeeId: string, fecha: stri
     const [newWorkday] = await db
       .insert(dailyWorkday)
       .values({
-        employeeId,
+        idUser: employeeId,
         date: fecha,
-        shiftId,
-        startTime,
-        endTime,
         workedMinutes,
         breakMinutes,
         overtimeMinutes: 0,
