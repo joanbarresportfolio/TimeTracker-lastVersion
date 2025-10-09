@@ -905,7 +905,7 @@ function AdminTimeTracking({
 
   const hasActiveBreak = (employeeId: string) => {
     if (!allClockEntries) return false;
-    const employeeEntries = allClockEntries.filter((entry: any) => entry.employeeId === employeeId);
+    const employeeEntries = allClockEntries.filter((entry: any) => entry.idUser === employeeId);
     const breakStarts = employeeEntries.filter((entry: any) => entry.entryType === 'break_start');
     const breakEnds = employeeEntries.filter((entry: any) => entry.entryType === 'break_end');
     return breakStarts.length > breakEnds.length;
