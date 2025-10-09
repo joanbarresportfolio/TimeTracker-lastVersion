@@ -78,7 +78,7 @@ import {
   clockEntries,
   users,
   dailyWorkday,
-  scheduledShifts,
+  schedules,
   incidents,
 } from "@shared/schema";
 import { sql, eq, and } from "drizzle-orm";
@@ -2343,22 +2343,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .select()
           .from(dailyWorkday)
           .where(
-            and(
-              eq(dailyWorkday.employeeId, employee.id),
-              sql`${dailyWorkday.date} >= ${startDate as string}`,
-              sql`${dailyWorkday.date} <= ${endDate as string}`,
-            ),
+            eq(dailyWorkday.idUser, employee.id)
           );
 
         // Obtener turnos planificados (horas planificadas)
         const scheduledShiftsData = await db
           .select()
-          .from(scheduledShifts)
+          .from(schedules)
           .where(
             and(
-              eq(scheduledShifts.employeeId, employee.id),
-              sql`${scheduledShifts.date} >= ${startDate as string}`,
-              sql`${scheduledShifts.date} <= ${endDate as string}`,
+              eq(schedules.idUser, employee.id),
+              sql`${schedules.date} >= ${startDate as string}`,
+              sql`${schedules.date} <= ${endDate as string}`,
             ),
           );
 
@@ -2368,7 +2364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .from(incidents)
           .where(
             and(
-              eq(incidents.userId, employee.id),
+              eq(incidents.idUser, employee.id),
               sql`DATE(${incidents.createdAt}) >= ${startDate as string}`,
               sql`DATE(${incidents.createdAt}) <= ${endDate as string}`,
             ),
@@ -2380,11 +2376,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           0,
         );
         const totalPlannedMinutes = scheduledShiftsData.reduce((sum, shift) => {
-          if (shift.expectedStartTime && shift.expectedEndTime) {
-            const [startH, startM] = shift.expectedStartTime
+          if (shift.startTime && shift.endTime) {
+            const [startH, startM] = shift.startTime
               .split(":")
               .map(Number);
-            const [endH, endM] = shift.expectedEndTime.split(":").map(Number);
+            const [endH, endM] = shift.endTime.split(":").map(Number);
             return sum + (endH * 60 + endM - (startH * 60 + startM));
           }
           return sum;

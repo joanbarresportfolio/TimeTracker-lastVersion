@@ -15,7 +15,7 @@
  */
 
 import { db } from "./db";
-import { users, roles } from "@shared/schema";
+import { users, rolesEnterprise } from "@shared/schema";
 import { storage } from "./storage";
 import { eq, or } from "drizzle-orm";
 
@@ -28,9 +28,9 @@ export async function seedDatabase() {
     console.log("🌱 Iniciando proceso de semilla de base de datos...");
 
     // PASO 0: Crear roles por defecto si no existen
-    const existingRoles = await db.select().from(roles);
+    const existingRoles = await db.select().from(rolesEnterprise);
     if (existingRoles.length === 0) {
-      await db.insert(roles).values([
+      await db.insert(rolesEnterprise).values([
         { name: "admin", description: "Administrador del sistema" },
         { name: "employee", description: "Empleado regular" },
         { name: "manager", description: "Gerente de departamento" },
@@ -42,12 +42,12 @@ export async function seedDatabase() {
     }
 
     // PASO 1: Crear usuario administrador si no existe
-    // Verifica por email Y employeeNumber para evitar duplicados
+    // Verifica por email Y numEmployee para evitar duplicados
     let adminEmployee = await db.select()
       .from(users)
       .where(
         or(
-          eq(users.employeeNumber, "ADMIN001"),
+          eq(users.numEmployee, "ADMIN001"),
           eq(users.email, "admin@admin.com")
         )
       )
@@ -56,7 +56,7 @@ export async function seedDatabase() {
     if (adminEmployee.length === 0) {
       // No existe admin, crearlo usando el storage para aprovechar el hashing
       const newAdmin = await storage.createEmployeeWithPassword({
-        employeeNumber: "ADMIN001",
+        numEmployee: "ADMIN001",
         firstName: "Administrador",
         lastName: "Sistema",
         email: "admin@admin.com",
@@ -77,7 +77,7 @@ export async function seedDatabase() {
     const sampleEmployees = [
       // Grupo Chova Felix (9 empleados - 1752 horas convenio)
       {
-        employeeNumber: "000001",
+        numEmployee: "000001",
         firstName: "ANTONIO",
         lastName: "CHOVA FELIX",
         email: "antonio.chova@grupochovafelix.com",
@@ -90,7 +90,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "000034",
+        numEmployee: "000034",
         firstName: "EDUARDO",
         lastName: "CHOVA FELIX",
         email: "eduardo.chova@grupochovafelix.com",
@@ -103,7 +103,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "000035",
+        numEmployee: "000035",
         firstName: "SARA ISABEL",
         lastName: "SANTOS MIÑANA",
         email: "sara.santos@grupochovafelix.com",
@@ -116,7 +116,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "000036",
+        numEmployee: "000036",
         firstName: "ELEGIDO Mª MAR",
         lastName: "CHOVA GOMEZ",
         email: "mar.chova@grupochovafelix.com",
@@ -129,7 +129,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "000037",
+        numEmployee: "000037",
         firstName: "MONICA VICTO",
         lastName: "SERER PALOMARES",
         email: "monica.serer@grupochovafelix.com",
@@ -142,7 +142,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "000038",
+        numEmployee: "000038",
         firstName: "LARRY ALVIN",
         lastName: "MEJIA NACES",
         email: "larry.mejia@grupochovafelix.com",
@@ -155,7 +155,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "000039",
+        numEmployee: "000039",
         firstName: "JUAN ENRIQUE",
         lastName: "BARRES MAGRANER",
         email: "juan.barres@grupochovafelix.com",
@@ -168,7 +168,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "000040",
+        numEmployee: "000040",
         firstName: "ELEGIDO EDUA",
         lastName: "CHOVA GOMEZ",
         email: "eduardo.chova2@grupochovafelix.com",
@@ -181,7 +181,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "000041",
+        numEmployee: "000041",
         firstName: "ELONAH JANE",
         lastName: "OCHINANG NACES",
         email: "elonah.ochinang@grupochovafelix.com",
@@ -195,7 +195,7 @@ export async function seedDatabase() {
       },
       // Marina Fruit (3 empleados - 1803 horas convenio)
       {
-        employeeNumber: "MF001",
+        numEmployee: "MF001",
         firstName: "JUAN MARCIAL",
         lastName: "COMPANY PEREZ",
         email: "juan.company@marinafruit.com",
@@ -208,7 +208,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "MF002",
+        numEmployee: "MF002",
         firstName: "JAVIER",
         lastName: "SOLANES CAMARA",
         email: "javier.solanes@marinafruit.com",
@@ -221,7 +221,7 @@ export async function seedDatabase() {
         isActive: true,
       },
       {
-        employeeNumber: "MF003",
+        numEmployee: "MF003",
         firstName: "ARTUR ISMAEL",
         lastName: "COMPANY RIBELLES",
         email: "artur.company@marinafruit.com",

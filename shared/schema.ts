@@ -311,6 +311,23 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
 });
 
+/**
+ * SCHEMAS FOR MANUAL DAILY WORKDAY
+ */
+export const manualDailyWorkdaySchema = z.object({
+  employeeId: z.string(),
+  date: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  breakMinutes: z.number().optional(),
+});
+
+export const updateManualDailyWorkdaySchema = z.object({
+  startTime: z.string(),
+  endTime: z.string(),
+  breakMinutes: z.number().optional(),
+});
+
 // ============================================================================
 // TYPESCRIPT TYPES
 // ============================================================================
