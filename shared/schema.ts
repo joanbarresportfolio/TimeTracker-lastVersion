@@ -13,7 +13,7 @@
  */
 
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -94,7 +94,10 @@ export const dailyWorkday = pgTable("daily_workday", {
   breakMinutes: integer("break_minutes").notNull().default(0), // in minutes
   overtimeMinutes: integer("overtime_minutes").notNull().default(0), // in minutes
   status: varchar("status").notNull().default('open'), // 'open', 'closed'
-});
+}, (table) => ({
+  // Unique constraint: one workday per user per day
+  userDateIdx: uniqueIndex("idx_daily_workday_user_date").on(table.idUser, table.date),
+}));
 
 /**
  * TABLE: schedules
