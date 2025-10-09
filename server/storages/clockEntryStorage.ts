@@ -217,9 +217,9 @@ export async function calcularYActualizarJornada(employeeId: string, fecha: stri
   // ACTUALIZAR TODOS LOS CLOCK_ENTRIES DEL DÍA CON EL daily_workday_id
   await db
     .update(clockEntries)
-    .set({ dailyWorkdayId: workdayId })
+    .set({ idDailyWorkday: workdayId })
     .where(
-      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.employeeId} = ${employeeId}`
+      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.idUser} = ${employeeId}`
     );
 }
 
