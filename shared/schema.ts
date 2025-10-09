@@ -219,7 +219,7 @@ export const createUserSchema = insertUserSchema.extend({
   firstName: z.string().min(1, "El nombre es obligatorio"),
   lastName: z.string().min(1, "El apellido es obligatorio"),
   email: z.string().email("Debe ingresar un correo electrónico válido"),
-  passwordHash: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
+  password: z.string().min(4, "La contraseña debe tener al menos 4 caracteres"),
   roleSystem: z.enum(["admin", "employee"], {
     errorMap: () => ({ message: "Debe seleccionar un rol válido" })
   }).default("employee"),

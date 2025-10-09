@@ -63,7 +63,7 @@ export function AppSidebar() {
   
   // Filter items based on user role
   const items = allItems.filter(item => 
-    !item.adminOnly || user?.role === "admin"
+    !item.adminOnly || user?.roleSystem === "admin"
   );
 
   return (
@@ -112,7 +112,7 @@ export function AppSidebar() {
                   {user.firstName} {user.lastName}
                 </p>
                 <p className="text-sm opacity-80 text-sidebar-foreground truncate">
-                  {user.role === "admin" ? "Administrador" : "Empleado"}
+                  {user.roleSystem === "admin" ? "Administrador" : "Empleado"}
                 </p>
                 <p className="text-xs opacity-60 text-sidebar-foreground truncate">
                   {user.employeeNumber}

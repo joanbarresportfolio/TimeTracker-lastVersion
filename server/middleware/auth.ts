@@ -61,7 +61,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     const user = verifyToken(token);
     
     if (user) {
-      if (user.role !== "admin") {
+      if (user.roleSystem !== "admin") {
         return res.status(403).json({ message: "Acceso denegado. Se requieren permisos de administrador." });
       }
       req.user = user;
@@ -74,7 +74,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ message: "No autorizado. Debe iniciar sesión." });
   }
   
-  if (req.session.user.role !== "admin") {
+  if (req.session.user.roleSystem !== "admin") {
     return res.status(403).json({ message: "Acceso denegado. Se requieren permisos de administrador." });
   }
   
@@ -105,7 +105,7 @@ export function requireEmployeeAccess(req: Request, res: Response, next: NextFun
   const employeeId = req.params.employeeId || req.query.employeeId || req.body.employeeId;
   
   // Admin can access all employee data
-  if (user.role === "admin") {
+  if (user.roleSystem === "admin") {
     req.user = user;
     return next();
   }
