@@ -31,8 +31,8 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  role: "admin" | "employee";
-  employeeNumber: string;
+  roleSystem: "admin" | "employee";
+  numEmployee: string;
   departmentId?: string | null;
 }
 

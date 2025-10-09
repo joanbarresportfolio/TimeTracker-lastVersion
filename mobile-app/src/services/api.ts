@@ -313,15 +313,16 @@ export async function getCurrentTimeEntry(): Promise<TimeEntry | null> {
 /**
  * Realiza fichaje de entrada (clock-in)
  */
-export async function clockIn(): Promise<void> {
+export async function clockIn(): Promise<TimeEntry> {
   try {
-    await apiRequest("/fichajes", {
+    const result = await apiRequest<TimeEntry>("/fichajes", {
       method: "POST",
       body: {
         tipoRegistro: "clock_in",
         origen: "mobile_app",
       },
     });
+    return result;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Error al marcar entrada";
@@ -332,15 +333,16 @@ export async function clockIn(): Promise<void> {
 /**
  * Realiza fichaje de salida (clock-out)
  */
-export async function clockOut(): Promise<void> {
+export async function clockOut(): Promise<TimeEntry> {
   try {
-    await apiRequest("/fichajes", {
+    const result = await apiRequest<TimeEntry>("/fichajes", {
       method: "POST",
       body: {
         tipoRegistro: "clock_out",
         origen: "mobile_app",
       },
     });
+    return result;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Error al marcar salida";

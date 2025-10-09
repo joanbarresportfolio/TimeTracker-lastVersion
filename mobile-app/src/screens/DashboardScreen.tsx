@@ -274,7 +274,7 @@ export default function DashboardScreen({ route }: DashboardScreenProps) {
             <Text style={styles.greeting}>¡Hola, {user.firstName}!</Text>
             <Text style={styles.date}>{formatDate(new Date())}</Text>
             <Text style={styles.role}>
-              {user.roleSystem === 'admin' ? 'Administrador' : 'Empleado'} • #{user.employeeNumber}
+              {user.roleSystem === 'admin' ? 'Administrador' : 'Empleado'} • #{user.numEmployee}
             </Text>
           </View>
           <TouchableOpacity 
