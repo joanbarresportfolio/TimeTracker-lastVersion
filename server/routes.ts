@@ -1912,13 +1912,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return hireDate >= oneWeekAgo;
         }).length;
 
-        console.log('🔍 DEBUG Stats:', {
-          totalIncidents: incidents.length,
-          newIncidentsLastWeek,
-          newEmployeesLastWeek,
-          oneWeekAgo: oneWeekAgo.toISOString(),
-        });
-
         // PASO 6: Respuesta con métricas administrativas
         res.json({
           isEmployee: false,
