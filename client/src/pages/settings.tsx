@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertIncidentTypeSchema, type InsertIncidentType, type IncidentType } from "@shared/schema";
+import { insertIncidentsTypeSchema, type InsertIncidentsType, type IncidentsType } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Dialog,
@@ -67,23 +67,22 @@ export default function SettingsPage() {
 
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingIncidentType, setEditingIncidentType] = useState<IncidentType | null>(null);
+  const [editingIncidentType, setEditingIncidentType] = useState<IncidentsType | null>(null);
 
-  const { data: incidentTypes, isLoading: loadingTypes } = useQuery<IncidentType[]>({
+  const { data: incidentTypes, isLoading: loadingTypes } = useQuery<IncidentsType[]>({
     queryKey: ["/api/incident-types"],
   });
 
-  const form = useForm<InsertIncidentType>({
-    resolver: zodResolver(insertIncidentTypeSchema),
+  const form = useForm<InsertIncidentsType>({
+    resolver: zodResolver(insertIncidentsTypeSchema),
     defaultValues: {
       name: "",
       description: "",
-      isActive: true,
     },
   });
 
   const createTypeMutation = useMutation({
-    mutationFn: (data: InsertIncidentType) =>
+    mutationFn: (data: InsertIncidentsType) =>
       apiRequest("/api/incident-types", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
@@ -104,7 +103,7 @@ export default function SettingsPage() {
   });
 
   const updateTypeMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<InsertIncidentType> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<InsertIncidentsType> }) =>
       apiRequest(`/api/incident-types/${id}`, "PUT", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
@@ -144,7 +143,7 @@ export default function SettingsPage() {
     },
   });
 
-  const onSubmitIncidentType = (data: InsertIncidentType) => {
+  const onSubmitIncidentType = (data: InsertIncidentsType) => {
     if (editingIncidentType) {
       updateTypeMutation.mutate({ id: editingIncidentType.id, data });
     } else {
@@ -509,28 +508,6 @@ export default function SettingsPage() {
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="isActive"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                data-testid="checkbox-incident-type-active"
-                              />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                              <FormLabel>Tipo Activo</FormLabel>
-                              <p className="text-sm text-muted-foreground">
-                                Los tipos inactivos no aparecerán en el desplegable
-                              </p>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-
                       <div className="flex justify-end gap-2">
                         <Button
                           type="button"
@@ -579,11 +556,6 @@ export default function SettingsPage() {
                             {type.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant={type.isActive ? "default" : "secondary"}>
-                            {type.isActive ? "Activo" : "Inactivo"}
-                          </Badge>
-                        </div>
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -594,7 +566,6 @@ export default function SettingsPage() {
                             form.reset({
                               name: type.name,
                               description: type.description || "",
-                              isActive: type.isActive,
                             });
                             setDialogOpen(true);
                           }}

@@ -41,14 +41,13 @@ import {
 } from "lucide-react";
 import type {
   Employee,
-  TimeEntry,
   InsertIncident,
-  InsertScheduledShift,
+  InsertSchedule,
   Department,
 } from "@shared/schema";
 import {
   insertIncidentSchema,
-  insertScheduledShiftSchema,
+  insertScheduleSchema,
 } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -66,11 +65,21 @@ interface DashboardStats {
   newIncidentsLastWeek?: number;
 }
 
+// Custom type for time entries as returned by the dashboard API
+interface TimeEntry {
+  id: string;
+  employeeId: string;
+  date: string;
+  clockIn?: Date | string;
+  clockOut?: Date | string;
+  totalHours?: number;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const isEmployee = user?.role === "employee";
+  const isEmployee = user?.roleSystem === "employee";
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] =
     useState<Employee | null>(null);
   const [selectedEmployeeSchedule, setSelectedEmployeeSchedule] =
@@ -114,22 +123,23 @@ export default function Dashboard() {
   const incidentForm = useForm<InsertIncident>({
     resolver: zodResolver(insertIncidentSchema),
     defaultValues: {
-      userId: "",
-      incidentType: "late",
+      idUser: "",
+      idDailyWorkday: "",
+      idIncidentsType: "",
       description: "",
       status: "pending",
     },
   });
 
-  const scheduleForm = useForm<InsertScheduledShift>({
-    resolver: zodResolver(insertScheduledShiftSchema),
+  const scheduleForm = useForm<InsertSchedule>({
+    resolver: zodResolver(insertScheduleSchema),
     defaultValues: {
-      employeeId: "",
+      idUser: "",
+      idDailyWorkday: "",
       date: new Date().toISOString().split("T")[0], // today
-      expectedStartTime: "09:00",
-      expectedEndTime: "17:00",
-      shiftType: "morning",
-      status: "scheduled",
+      startTime: "09:00",
+      endTime: "17:00",
+      scheduleType: "total",
     },
   });
 
@@ -158,7 +168,7 @@ export default function Dashboard() {
   });
 
   const createScheduleMutation = useMutation({
-    mutationFn: (data: InsertScheduledShift) =>
+    mutationFn: (data: InsertSchedule) =>
       apiRequest("/api/scheduled-shifts", "POST", data),
     onSuccess: () => {
       toast({
@@ -213,7 +223,7 @@ export default function Dashboard() {
       // Filtro por departamento
       if (
         selectedDepartment !== "all" &&
-        employee.department !== selectedDepartment
+        employee.departmentId !== selectedDepartment
       ) {
         return false;
       }
@@ -273,8 +283,9 @@ export default function Dashboard() {
   const handleReportIncident = (employee: Employee) => {
     setSelectedEmployeeIncident(employee);
     incidentForm.reset({
-      userId: employee.id,
-      incidentType: "late",
+      idUser: employee.id,
+      idDailyWorkday: "",
+      idIncidentsType: "",
       description: "",
       status: "pending",
     });
@@ -285,7 +296,7 @@ export default function Dashboard() {
     createIncidentMutation.mutate(data);
   };
 
-  const onScheduleSubmit = (data: InsertScheduledShift) => {
+  const onScheduleSubmit = (data: InsertSchedule) => {
     createScheduleMutation.mutate(data);
   };
 
@@ -568,13 +579,13 @@ export default function Dashboard() {
                                   {employee.firstName} {employee.lastName}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                  {employee.employeeNumber}
+                                  {employee.numEmployee}
                                 </p>
                               </div>
                             </div>
                           </td>
                           <td className="py-3 px-4 text-muted-foreground">
-                            {employee.department}
+                            {employee.departmentId}
                           </td>
                           <td className="py-3 px-4">
                             <Badge className={status.color}>
@@ -803,7 +814,7 @@ export default function Dashboard() {
                     {selectedEmployeeDetails.lastName}
                   </h3>
                   <p className="text-muted-foreground">
-                    {selectedEmployeeDetails.employeeNumber}
+                    {selectedEmployeeDetails.numEmployee}
                   </p>
                 </div>
               </div>
@@ -818,13 +829,7 @@ export default function Dashboard() {
                 <div>
                   <Label className="font-medium">Departamento</Label>
                   <p className="text-sm text-muted-foreground">
-                    {selectedEmployeeDetails.department}
-                  </p>
-                </div>
-                <div>
-                  <Label className="font-medium">Posición</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedEmployeeDetails.position}
+                    {selectedEmployeeDetails.departmentId}
                   </p>
                 </div>
                 <div>
@@ -952,7 +957,7 @@ export default function Dashboard() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={scheduleForm.control}
-                      name="expectedStartTime"
+                      name="startTime"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hora de inicio</FormLabel>
@@ -970,7 +975,7 @@ export default function Dashboard() {
 
                     <FormField
                       control={scheduleForm.control}
-                      name="expectedEndTime"
+                      name="endTime"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hora de fin</FormLabel>
@@ -1045,13 +1050,13 @@ export default function Dashboard() {
                 >
                   <FormField
                     control={incidentForm.control}
-                    name="incidentType"
+                    name="idIncidentsType"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Tipo de incidencia</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          value={field.value}
+                          value={field.value || ""}
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-incident-type">
