@@ -63,19 +63,19 @@ import {
   type BulkDateScheduleCreate,
   users,
   departments,
-  roles,
-  scheduledShifts,
+  rolesEnterprise,
+  schedules,
   clockEntries,
   dailyWorkday,
   incidents,
-  incidentTypes,
+  incidentsType,
   type Department,
-  type Role,
+  type RoleEnterprise,
   type ScheduledShift,
   type ClockEntry,
   type DailyWorkday,
-  type IncidentType,
-  type InsertIncidentType
+  type IncidentsType,
+  type InsertIncidentsType
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
@@ -137,23 +137,23 @@ export interface IStorage {
   
   // Métodos de Roles
   /** Obtiene todos los roles del sistema */
-  getRoles(): Promise<Role[]>;
+  getRoles(): Promise<RoleEnterprise[]>;
   
   /** Crea un nuevo rol */
-  createRole(data: { name: string; description?: string }): Promise<Role>;
+  createRole(data: { name: string; description?: string }): Promise<RoleEnterprise>;
   
   /** Elimina un rol y actualiza empleados que lo tienen asignado al rol por defecto */
   deleteRole(id: string): Promise<void>;
   
   // Métodos de Tipos de Incidencias
   /** Obtiene todos los tipos de incidencias */
-  getIncidentTypes(): Promise<IncidentType[]>;
+  getIncidentTypes(): Promise<IncidentsType[]>;
   
   /** Crea un nuevo tipo de incidencia */
-  createIncidentType(data: InsertIncidentType): Promise<IncidentType>;
+  createIncidentType(data: InsertIncidentsType): Promise<IncidentsType>;
   
   /** Actualiza un tipo de incidencia */
-  updateIncidentType(id: string, data: Partial<InsertIncidentType>): Promise<IncidentType>;
+  updateIncidentType(id: string, data: Partial<InsertIncidentsType>): Promise<IncidentsType>;
   
   /** Elimina un tipo de incidencia */
   deleteIncidentType(id: string): Promise<void>;
@@ -323,34 +323,13 @@ export class DatabaseStorage implements IStorage {
    * @returns Empleado encontrado o undefined si no existe
    */
   async getEmployeeByEmail(email: string): Promise<Employee | undefined> {
-    const result = await db
-      .select({
-        user: users,
-        department: departments,
-      })
+    const [user] = await db
+      .select()
       .from(users)
-      .leftJoin(departments, eq(users.departmentId, departments.id))
       .where(eq(users.email, email))
       .limit(1);
     
-    if (result.length === 0) return undefined;
-    
-    const { user, department } = result[0];
-    
-    return {
-      id: user.id,
-      employeeNumber: user.employeeNumber,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      password: user.passwordHash,
-      role: user.role,
-      department: department?.name || "",
-      position: "",
-      hireDate: user.hireDate,
-      conventionHours: 1752,
-      isActive: user.isActive,
-    };
+    return user;
   }
 
   /**
@@ -410,61 +389,24 @@ export class DatabaseStorage implements IStorage {
   async createEmployeeWithPassword(employeeData: CreateEmployee): Promise<Employee> {
     const hashedPassword = await bcrypt.hash(employeeData.password, 10);
     
-    let departmentId: string | null = null;
-    let departmentData: Department | undefined = undefined;
-    
-    if (employeeData.department) {
-      const [existingDept] = await db
-        .select()
-        .from(departments)
-        .where(eq(departments.name, employeeData.department))
-        .limit(1);
-      
-      if (existingDept) {
-        departmentId = existingDept.id;
-        departmentData = existingDept;
-      } else {
-        const [newDept] = await db
-          .insert(departments)
-          .values({
-            name: employeeData.department,
-            description: null,
-          })
-          .returning();
-        departmentId = newDept.id;
-        departmentData = newDept;
-      }
-    }
-    
     const [user] = await db
       .insert(users)
       .values({
-        employeeNumber: employeeData.employeeNumber,
+        numEmployee: employeeData.numEmployee,
+        dni: employeeData.dni,
         firstName: employeeData.firstName,
         lastName: employeeData.lastName,
         email: employeeData.email,
         passwordHash: hashedPassword,
         hireDate: employeeData.hireDate,
         isActive: employeeData.isActive,
-        role: employeeData.role,
-        departmentId: departmentId,
+        roleSystem: employeeData.roleSystem,
+        roleEnterpriseId: employeeData.roleEnterpriseId,
+        departmentId: employeeData.departmentId,
       })
       .returning();
       
-    return {
-      id: user.id,
-      employeeNumber: user.employeeNumber,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      password: user.passwordHash,
-      role: user.role,
-      department: departmentData?.name || "",
-      position: "",
-      hireDate: user.hireDate,
-      conventionHours: 1752,
-      isActive: user.isActive,
-    };
+    return user;
   }
 
   // ==========================================
@@ -484,34 +426,13 @@ export class DatabaseStorage implements IStorage {
    * @returns Empleado encontrado o undefined si no existe
    */
   async getEmployee(id: string): Promise<Employee | undefined> {
-    const result = await db
-      .select({
-        user: users,
-        department: departments,
-      })
+    const [user] = await db
+      .select()
       .from(users)
-      .leftJoin(departments, eq(users.departmentId, departments.id))
       .where(eq(users.id, id))
       .limit(1);
     
-    if (result.length === 0) return undefined;
-    
-    const { user, department } = result[0];
-    
-    return {
-      id: user.id,
-      employeeNumber: user.employeeNumber,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      password: user.passwordHash,
-      role: user.role,
-      department: department?.name || "",
-      position: "",
-      hireDate: user.hireDate,
-      conventionHours: 1752,
-      isActive: user.isActive,
-    };
+    return user;
   }
 
   /**
@@ -527,28 +448,7 @@ export class DatabaseStorage implements IStorage {
    * @returns Array con todos los empleados (puede estar vacío)
    */
   async getEmployees(): Promise<Employee[]> {
-    const results = await db
-      .select({
-        user: users,
-        department: departments,
-      })
-      .from(users)
-      .leftJoin(departments, eq(users.departmentId, departments.id));
-    
-    return results.map(({ user, department }) => ({
-      id: user.id,
-      employeeNumber: user.employeeNumber,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      password: user.passwordHash,
-      role: user.role,
-      department: department?.name || "",
-      position: "",
-      hireDate: user.hireDate,
-      conventionHours: 1752,
-      isActive: user.isActive,
-    }));
+    return await db.select().from(users);
   }
 
   /**
@@ -564,34 +464,13 @@ export class DatabaseStorage implements IStorage {
    * @returns Empleado encontrado o undefined si no existe
    */
   async getEmployeeByNumber(employeeNumber: string): Promise<Employee | undefined> {
-    const result = await db
-      .select({
-        user: users,
-        department: departments,
-      })
+    const [user] = await db
+      .select()
       .from(users)
-      .leftJoin(departments, eq(users.departmentId, departments.id))
-      .where(eq(users.employeeNumber, employeeNumber))
+      .where(eq(users.numEmployee, employeeNumber))
       .limit(1);
     
-    if (result.length === 0) return undefined;
-    
-    const { user, department } = result[0];
-    
-    return {
-      id: user.id,
-      employeeNumber: user.employeeNumber,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      password: user.passwordHash,
-      role: user.role,
-      department: department?.name || "",
-      position: "",
-      hireDate: user.hireDate,
-      conventionHours: 1752,
-      isActive: user.isActive,
-    };
+    return user;
   }
 
   /**
@@ -644,8 +523,8 @@ export class DatabaseStorage implements IStorage {
    * 
    * @returns Array de todos los roles
    */
-  async getRoles(): Promise<Role[]> {
-    return await db.select().from(roles);
+  async getRoles(): Promise<RoleEnterprise[]> {
+    return await db.select().from(rolesEnterprise);
   }
 
   /**
@@ -657,8 +536,8 @@ export class DatabaseStorage implements IStorage {
    * @param data - Nombre y descripción opcional del rol
    * @returns Rol creado
    */
-  async createRole(data: { name: string; description?: string }): Promise<Role> {
-    const [role] = await db.insert(roles).values(data).returning();
+  async createRole(data: { name: string; description?: string }): Promise<RoleEnterprise> {
+    const [role] = await db.insert(rolesEnterprise).values(data).returning();
     return role;
   }
 
@@ -672,41 +551,36 @@ export class DatabaseStorage implements IStorage {
    * @param id - ID del rol a eliminar
    */
   async deleteRole(id: string): Promise<void> {
-    // Primero buscar el rol para obtener su nombre
-    const [roleToDelete] = await db.select().from(roles).where(eq(roles.id, id));
+    // Actualizar empleados que tienen este rol enterprise a null
+    await db.update(users).set({ roleEnterpriseId: null }).where(eq(users.roleEnterpriseId, id));
     
-    if (roleToDelete) {
-      // Actualizar empleados que tienen este rol al rol por defecto
-      await db.update(users).set({ role: 'employee' }).where(eq(users.role, roleToDelete.name));
-      
-      // Luego eliminar el rol
-      await db.delete(roles).where(eq(roles.id, id));
-    }
+    // Luego eliminar el rol
+    await db.delete(rolesEnterprise).where(eq(rolesEnterprise.id, id));
   }
 
   /**
    * TIPOS DE INCIDENCIAS
    * ====================
    */
-  async getIncidentTypes(): Promise<IncidentType[]> {
-    return await db.select().from(incidentTypes).orderBy(incidentTypes.name);
+  async getIncidentTypes(): Promise<IncidentsType[]> {
+    return await db.select().from(incidentsType).orderBy(incidentsType.name);
   }
 
-  async createIncidentType(data: InsertIncidentType): Promise<IncidentType> {
-    const [incidentType] = await db.insert(incidentTypes).values(data).returning();
+  async createIncidentType(data: InsertIncidentsType): Promise<IncidentsType> {
+    const [incidentType] = await db.insert(incidentsType).values(data).returning();
     return incidentType;
   }
 
-  async updateIncidentType(id: string, data: Partial<InsertIncidentType>): Promise<IncidentType> {
-    const [incidentType] = await db.update(incidentTypes)
+  async updateIncidentType(id: string, data: Partial<InsertIncidentsType>): Promise<IncidentsType> {
+    const [incidentType] = await db.update(incidentsType)
       .set(data)
-      .where(eq(incidentTypes.id, id))
+      .where(eq(incidentsType.id, id))
       .returning();
     return incidentType;
   }
 
   async deleteIncidentType(id: string): Promise<void> {
-    await db.delete(incidentTypes).where(eq(incidentTypes.id, id));
+    await db.delete(incidentsType).where(eq(incidentsType.id, id));
   }
 
   /**
@@ -736,67 +610,13 @@ export class DatabaseStorage implements IStorage {
    * @returns Empleado actualizado o undefined si no existía
    */
   async updateEmployee(id: string, employeeData: Partial<InsertEmployee>): Promise<Employee | undefined> {
-    const updateData: any = {};
-    
-    if (employeeData.employeeNumber !== undefined) updateData.employeeNumber = employeeData.employeeNumber;
-    if (employeeData.firstName !== undefined) updateData.firstName = employeeData.firstName;
-    if (employeeData.lastName !== undefined) updateData.lastName = employeeData.lastName;
-    if (employeeData.email !== undefined) updateData.email = employeeData.email;
-    if (employeeData.hireDate !== undefined) updateData.hireDate = employeeData.hireDate;
-    if (employeeData.isActive !== undefined) updateData.isActive = employeeData.isActive;
-    if (employeeData.role !== undefined) updateData.role = employeeData.role;
-    
-    if (employeeData.department !== undefined) {
-      if (employeeData.department) {
-        const [existingDept] = await db
-          .select()
-          .from(departments)
-          .where(eq(departments.name, employeeData.department))
-          .limit(1);
-        
-        if (existingDept) {
-          updateData.departmentId = existingDept.id;
-        } else {
-          const [newDept] = await db
-            .insert(departments)
-            .values({
-              name: employeeData.department,
-              description: null,
-            })
-            .returning();
-          updateData.departmentId = newDept.id;
-        }
-      } else {
-        updateData.departmentId = null;
-      }
-    }
-    
     const [updatedUser] = await db
       .update(users)
-      .set(updateData)
+      .set(employeeData)
       .where(eq(users.id, id))
       .returning();
     
-    if (!updatedUser) return undefined;
-    
-    const [dept] = updatedUser.departmentId 
-      ? await db.select().from(departments).where(eq(departments.id, updatedUser.departmentId)).limit(1)
-      : [undefined];
-    
-    return {
-      id: updatedUser.id,
-      employeeNumber: updatedUser.employeeNumber,
-      firstName: updatedUser.firstName,
-      lastName: updatedUser.lastName,
-      email: updatedUser.email,
-      password: updatedUser.passwordHash,
-      role: updatedUser.role,
-      department: dept?.name || "",
-      position: "",
-      hireDate: updatedUser.hireDate,
-      conventionHours: 1752,
-      isActive: updatedUser.isActive,
-    };
+    return updatedUser;
   }
 
   /**
