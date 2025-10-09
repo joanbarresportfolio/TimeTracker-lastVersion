@@ -93,6 +93,7 @@ export interface IStorage {
   deleteScheduledShift(id: string): Promise<boolean>;
 
   // Métodos de Daily Workday
+  getDailyWorkdayById(id: string): Promise<DailyWorkday | undefined>;
   getDailyWorkdayByEmployeeAndDate(employeeId: string, date: string): Promise<DailyWorkday | undefined>;
   getDailyWorkdaysByEmployeeAndRange(employeeId: string, startDate: string, endDate: string): Promise<DailyWorkday[]>;
   createManualDailyWorkday(data: { employeeId: string; date: string; startTime: string; endTime: string; breakMinutes: number }): Promise<DailyWorkday>;

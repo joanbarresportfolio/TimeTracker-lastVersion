@@ -238,6 +238,10 @@ export class DatabaseStorage implements IStorage {
   // MÉTODOS DE DAILY WORKDAY
   // ==========================================
   
+  async getDailyWorkdayById(id: string): Promise<DailyWorkday | undefined> {
+    return dailyWorkdayStorage.getDailyWorkdayById(id);
+  }
+
   async getDailyWorkdayByEmployeeAndDate(employeeId: string, date: string): Promise<DailyWorkday | undefined> {
     return dailyWorkdayStorage.getDailyWorkdayByEmployeeAndDate(employeeId, date);
   }

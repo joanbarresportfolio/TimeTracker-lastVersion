@@ -55,6 +55,17 @@ async function getBreaksForDay(employeeId: string, date: string): Promise<BreakE
 }
 
 /**
+ * OBTENER JORNADA LABORAL POR ID
+ */
+export async function getDailyWorkdayById(id: string): Promise<DailyWorkday | undefined> {
+  const [workday] = await db
+    .select()
+    .from(dailyWorkday)
+    .where(eq(dailyWorkday.id, id));
+  return workday;
+}
+
+/**
  * OBTENER JORNADA LABORAL POR EMPLEADO Y FECHA
  */
 export async function getDailyWorkdayByEmployeeAndDate(employeeId: string, date: string): Promise<DailyWorkday | undefined> {
