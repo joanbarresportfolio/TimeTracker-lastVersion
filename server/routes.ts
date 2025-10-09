@@ -1904,7 +1904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const createdAt = new Date(inc.createdAt);
           createdAt.setHours(0, 0, 0, 0); // Normalizar a medianoche
           return createdAt >= oneWeekAgo;
-        });
+        }).length;
         const newEmployeesLastWeek = employees.filter((emp) => {
           if (!emp.isActive || !emp.hireDate) return false;
           const hireDate = new Date(emp.hireDate);
