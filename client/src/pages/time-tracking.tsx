@@ -792,6 +792,7 @@ function AdminTimeTracking({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes/all", selectedDate] });
       toast({
         title: "Entrada registrada",
         description: "El empleado ha fichado la entrada exitosamente.",
@@ -817,6 +818,7 @@ function AdminTimeTracking({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/time-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fichajes/all", selectedDate] });
       toast({
         title: "Salida registrada",
         description: "El empleado ha fichado la salida exitosamente.",
