@@ -60,11 +60,11 @@ import {
   loginSchema,
   createUserSchema as createEmployeeSchema,
   updateUserSchema as updateEmployeeSchema,
-  bulkScheduledShiftCreateSchema,
-  insertScheduledShiftSchema,
+  bulkScheduleCreateSchema,
+  insertScheduleSchema,
   manualDailyWorkdaySchema,
   updateManualDailyWorkdaySchema,
-  insertIncidentTypeSchema,
+  insertIncidentsTypeSchema,
 } from "@shared/schema";
 import {
   requireAuth,
@@ -791,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/incident-types", requireAdmin, async (req, res) => {
     try {
-      const validation = insertIncidentTypeSchema.safeParse(req.body);
+      const validation = insertIncidentsTypeSchema.safeParse(req.body);
 
       if (!validation.success) {
         return res.status(400).json({
@@ -816,7 +816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.put("/api/incident-types/:id", requireAdmin, async (req, res) => {
     try {
-      const validation = insertIncidentTypeSchema.partial().safeParse(req.body);
+      const validation = insertIncidentsTypeSchema.partial().safeParse(req.body);
 
       if (!validation.success) {
         return res.status(400).json({
@@ -2088,8 +2088,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/date-schedules", requireAdmin, async (req, res) => {
     try {
-      // El schema correcto es insertScheduledShiftSchema
-      const shiftData = insertScheduledShiftSchema.parse(req.body);
+      // El schema correcto es insertScheduleSchema
+      const shiftData = insertScheduleSchema.parse(req.body);
 
       // Convertir al formato legacy que espera el storage (InsertDateSchedule)
       const [startHour, startMin] = shiftData.expectedStartTime
@@ -2161,8 +2161,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
    */
   app.post("/api/date-schedules/bulk", requireAdmin, async (req, res) => {
     try {
-      // El schema correcto es bulkScheduledShiftCreateSchema
-      const bulkData = bulkScheduledShiftCreateSchema.parse(req.body);
+      // El schema correcto es bulkScheduleCreateSchema
+      const bulkData = bulkScheduleCreateSchema.parse(req.body);
 
       // El storage ya está adaptado para trabajar con el nuevo formato
       const createdSchedules = await storage.createBulkDateSchedules(bulkData);
@@ -2201,8 +2201,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/date-schedules/:id", requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      // El schema correcto es insertScheduledShiftSchema
-      const shiftUpdateData = insertScheduledShiftSchema
+      // El schema correcto es insertScheduleSchema
+      const shiftUpdateData = insertScheduleSchema
         .partial()
         .parse(req.body);
 
