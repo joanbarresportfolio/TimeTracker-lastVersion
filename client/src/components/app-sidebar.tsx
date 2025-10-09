@@ -115,7 +115,7 @@ export function AppSidebar() {
                   {user.roleSystem === "admin" ? "Administrador" : "Empleado"}
                 </p>
                 <p className="text-xs opacity-60 text-sidebar-foreground truncate">
-                  {user.employeeNumber}
+                  {user.numEmployee}
                 </p>
               </div>
             </div>
