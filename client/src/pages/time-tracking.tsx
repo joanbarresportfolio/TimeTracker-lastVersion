@@ -1365,12 +1365,12 @@ function AdminTimeTracking({
           handleCancel();
         }
       }}>
-        <AlertDialogContent data-testid="dialog-confirm-workday-action">
+        <AlertDialogContent className="bg-card border-2 shadow-2xl" data-testid="dialog-confirm-workday-action">
           <AlertDialogHeader>
-            <AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground">
               {confirmAction === 'update' ? '¿Actualizar jornada con fichajes?' : '¿Eliminar jornada con fichajes?'}
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-muted-foreground">
               Esta jornada tiene fichajes registrados. {confirmAction === 'update' ? 'Si actualizas' : 'Si eliminas'} esta jornada, los fichajes asociados serán eliminados automáticamente. Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
