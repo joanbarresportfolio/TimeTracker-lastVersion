@@ -103,12 +103,12 @@ export const dailyWorkday = pgTable("daily_workday", {
  * 
  * RELATIONS:
  * - users 1...N schedules
- * - daily_workday 1...1 schedules
+ * - daily_workday 1...1 schedules (enforced by unique constraint on id_daily_workday)
  */
 export const schedules = pgTable("schedules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   idUser: varchar("id_user").notNull().references(() => users.id), // FK to users
-  idDailyWorkday: varchar("id_daily_workday").references(() => dailyWorkday.id), // FK to daily_workday (1:1)
+  idDailyWorkday: varchar("id_daily_workday").notNull().unique().references(() => dailyWorkday.id), // FK to daily_workday (1:1, enforced by unique)
   date: text("date").notNull(), // YYYY-MM-DD
   startTime: text("start_time").notNull(), // HH:MM
   endTime: text("end_time").notNull(), // HH:MM
@@ -128,7 +128,7 @@ export const schedules = pgTable("schedules", {
 export const clockEntries = pgTable("clock_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   idUser: varchar("id_user").notNull().references(() => users.id), // FK to users
-  idDailyWorkday: varchar("id_daily_workday").references(() => dailyWorkday.id), // FK to daily_workday
+  idDailyWorkday: varchar("id_daily_workday").notNull().references(() => dailyWorkday.id), // FK to daily_workday (required)
   entryType: varchar("entry_type").notNull(), // 'clock_in', 'clock_out', 'break_start', 'break_end'
   timestamp: timestamp("timestamp").notNull().default(sql`now()`),
   source: varchar("source"), // 'web', 'mobile_device'
@@ -163,7 +163,7 @@ export const incidentsType = pgTable("incidents_type", {
 export const incidents = pgTable("incidents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   idUser: varchar("id_user").notNull().references(() => users.id), // FK to users
-  idDailyWorkday: varchar("id_daily_workday").references(() => dailyWorkday.id), // FK to daily_workday
+  idDailyWorkday: varchar("id_daily_workday").notNull().references(() => dailyWorkday.id), // FK to daily_workday (required)
   idIncidentsType: varchar("id_incidents_type").notNull().references(() => incidentsType.id), // FK to incidents_type
   description: text("description").notNull(),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
@@ -246,6 +246,7 @@ export const insertScheduleSchema = createInsertSchema(schedules).omit({
   id: true,
 }).extend({
   idUser: z.string().min(1, "Debe seleccionar un empleado"),
+  idDailyWorkday: z.string().min(1, "Debe seleccionar una jornada diaria"),
   scheduleType: z.enum(['split', 'total'], {
     errorMap: () => ({ message: "Debe seleccionar un tipo de horario válido" })
   }),
@@ -268,6 +269,8 @@ export const insertClockEntrySchema = createInsertSchema(clockEntries).omit({
   id: true,
   timestamp: true,
 }).extend({
+  idUser: z.string().min(1, "Debe seleccionar un empleado"),
+  idDailyWorkday: z.string().min(1, "Debe seleccionar una jornada diaria"),
   entryType: z.enum(['clock_in', 'clock_out', 'break_start', 'break_end']),
   source: z.enum(['web', 'mobile_device']).optional(),
 });
@@ -302,6 +305,7 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
   createdAt: true,
 }).extend({
   idUser: z.string().min(1, "Debe seleccionar un empleado"),
+  idDailyWorkday: z.string().min(1, "Debe seleccionar una jornada diaria"),
   idIncidentsType: z.string().min(1, "Debe seleccionar un tipo de incidencia"),
   description: z.string().min(1, "La descripción es obligatoria"),
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
