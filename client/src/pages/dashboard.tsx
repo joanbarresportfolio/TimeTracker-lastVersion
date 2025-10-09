@@ -27,6 +27,7 @@ interface DashboardStats {
   incidents: number;
   isEmployee?: boolean;
   isClockedIn?: boolean;
+  newEmployeesLastWeek?: number;
 }
 
 export default function Dashboard() {
