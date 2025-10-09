@@ -363,42 +363,33 @@ export async function createBulkDateSchedules(bulkData: BulkDateScheduleCreate):
 
   const schedulesToCreate = bulkData.schedules.map(schedule => {
     const workHours = calculateWorkHours(
-      schedule.expectedStartTime, 
-      schedule.expectedEndTime
+      schedule.startTime, 
+      schedule.endTime
     );
     
-    const [startHour] = schedule.expectedStartTime.split(':').map(Number);
-    let shiftType: 'morning' | 'afternoon' | 'night' = 'morning';
-    if (startHour >= 14 && startHour < 22) {
-      shiftType = 'afternoon';
-    } else if (startHour >= 22 || startHour < 6) {
-      shiftType = 'night';
-    }
-    
     return {
-      employeeId: schedule.employeeId,
+      idUser: schedule.employeeId,
       date: schedule.date,
-      expectedStartTime: schedule.expectedStartTime,
-      expectedEndTime: schedule.expectedEndTime,
+      startTime: schedule.startTime,
+      endTime: schedule.endTime,
+      scheduleType: schedule.scheduleType || 'total',
       workHours: workHours,
-      shiftType: shiftType,
-      status: schedule.status ?? 'scheduled'
     };
   });
 
-  const employeeIds = Array.from(new Set(schedulesToCreate.map(s => s.employeeId)));
+  const employeeIds = Array.from(new Set(schedulesToCreate.map(s => s.idUser)));
   
   const existingShifts = await db
     .select()
-    .from(scheduledShifts)
-    .where(inArray(scheduledShifts.employeeId, employeeIds));
+    .from(schedules)
+    .where(inArray(schedules.idUser, employeeIds));
 
   const uniqueSchedules = schedulesToCreate.filter(newSchedule => {
     return !existingShifts.some(existing => 
-      existing.employeeId === newSchedule.employeeId &&
+      existing.idUser === newSchedule.idUser &&
       existing.date === newSchedule.date &&
-      existing.expectedStartTime === newSchedule.expectedStartTime &&
-      existing.expectedEndTime === newSchedule.expectedEndTime
+      existing.startTime === newSchedule.startTime &&
+      existing.endTime === newSchedule.endTime
     );
   });
 
@@ -407,34 +398,33 @@ export async function createBulkDateSchedules(bulkData: BulkDateScheduleCreate):
   }
 
   const shiftsToInsert = uniqueSchedules.map(schedule => ({
-    employeeId: schedule.employeeId,
+    idUser: schedule.idUser,
     date: schedule.date,
-    expectedStartTime: schedule.expectedStartTime,
-    expectedEndTime: schedule.expectedEndTime,
-    shiftType: schedule.shiftType,
-    status: schedule.status,
+    startTime: schedule.startTime,
+    endTime: schedule.endTime,
+    scheduleType: schedule.scheduleType,
   }));
 
   const createdShifts = await db
-    .insert(scheduledShifts)
+    .insert(schedules)
     .values(shiftsToInsert)
     .returning();
 
   return createdShifts.map(shift => {
-    const [startHour, startMin] = shift.expectedStartTime.split(':').map(Number);
-    const [endHour, endMin] = shift.expectedEndTime.split(':').map(Number);
+    const [startHour, startMin] = shift.startTime.split(':').map(Number);
+    const [endHour, endMin] = shift.endTime.split(':').map(Number);
     const startMinutes = startHour * 60 + startMin;
     const endMinutes = endHour * 60 + endMin;
     const workMinutes = endMinutes - startMinutes;
     
     return {
       id: shift.id,
-      employeeId: shift.employeeId,
+      employeeId: shift.idUser,
       date: shift.date,
-      startTime: shift.expectedStartTime,
-      endTime: shift.expectedEndTime,
+      startTime: shift.startTime,
+      endTime: shift.endTime,
       workHours: workMinutes,
-      isActive: shift.status === 'scheduled' || shift.status === 'confirmed' || shift.status === 'completed',
+      isActive: true,
     };
   });
 }

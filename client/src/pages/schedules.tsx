@@ -143,7 +143,7 @@ export default function Schedules() {
   });
 
   const createBulkDateScheduleMutation = useMutation({
-    mutationFn: (data: { schedules: Array<{ employeeId: string; date: string; expectedStartTime: string; expectedEndTime: string }> }) => 
+    mutationFn: (data: { schedules: Array<{ employeeId: string; date: string; startTime: string; endTime: string }> }) => 
       apiRequest("/api/date-schedules/bulk", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
@@ -743,8 +743,8 @@ export default function Schedules() {
         schedules: selectedDates.map(selected => ({
           employeeId: selectedEmployee.id,
           date: selected.dateStr,
-          expectedStartTime: scheduleForm.startTime,
-          expectedEndTime: scheduleForm.endTime,
+          startTime: scheduleForm.startTime,
+          endTime: scheduleForm.endTime,
         }))
       });
       
@@ -813,8 +813,8 @@ export default function Schedules() {
       const schedulesToCopy = dateSchedules.map(schedule => ({
         employeeId: '', // Se llenará para cada empleado destino
         date: schedule.date,
-        expectedStartTime: schedule.startTime,
-        expectedEndTime: schedule.endTime,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
       }));
 
       let successCount = 0;

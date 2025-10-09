@@ -260,8 +260,8 @@ export const bulkScheduleCreateSchema = z.object({
   schedules: z.array(z.object({
     employeeId: z.string().min(1, "Debe seleccionar un empleado"),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato AAAA-MM-DD"),
-    expectedStartTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio debe estar en formato HH:MM"),
-    expectedEndTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin debe estar en formato HH:MM"),
+    startTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio debe estar en formato HH:MM"),
+    endTime: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin debe estar en formato HH:MM"),
     scheduleType: z.enum(['split', 'total']).default('total'),
   })).min(1, "Debe haber al menos un horario"),
 });
