@@ -745,8 +745,6 @@ export default function Schedules() {
           date: selected.dateStr,
           expectedStartTime: scheduleForm.startTime,
           expectedEndTime: scheduleForm.endTime,
-          shiftType: 'morning', // Valor por defecto
-          status: 'scheduled', // Valor por defecto
         }))
       });
       
@@ -817,8 +815,6 @@ export default function Schedules() {
         date: schedule.date,
         expectedStartTime: schedule.startTime,
         expectedEndTime: schedule.endTime,
-        shiftType: determineShiftType(schedule.startTime),
-        status: 'scheduled' as const
       }));
 
       let successCount = 0;
