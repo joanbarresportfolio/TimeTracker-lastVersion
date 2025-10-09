@@ -13,6 +13,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Clock, Search, LogIn, LogOut, Timer, Calendar, AlertCircle, ClipboardList } from "lucide-react";
 import { format } from "date-fns";
@@ -560,6 +570,9 @@ function AdminTimeTracking({
   toast: any;
 }) {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'update' | 'delete' | null>(null);
+  const [pendingData, setPendingData] = useState<WorkdayFormData | null>(null);
 
   const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
@@ -694,10 +707,44 @@ function AdminTimeTracking({
 
   const onWorkdaySubmit = (data: WorkdayFormData) => {
     if (workdayResponse?.workday) {
-      updateWorkdayMutation.mutate(data);
+      // Si hay fichajes, mostrar diálogo de confirmación
+      if (workdayResponse?.hasClockEntries) {
+        setPendingData(data);
+        setConfirmAction('update');
+        setShowConfirmDialog(true);
+      } else {
+        updateWorkdayMutation.mutate(data);
+      }
     } else {
       createWorkdayMutation.mutate(data);
     }
+  };
+
+  const handleDelete = () => {
+    // Si hay fichajes, mostrar diálogo de confirmación
+    if (workdayResponse?.hasClockEntries) {
+      setConfirmAction('delete');
+      setShowConfirmDialog(true);
+    } else {
+      deleteWorkdayMutation.mutate();
+    }
+  };
+
+  const handleConfirm = () => {
+    if (confirmAction === 'update' && pendingData) {
+      updateWorkdayMutation.mutate(pendingData);
+    } else if (confirmAction === 'delete') {
+      deleteWorkdayMutation.mutate();
+    }
+    setShowConfirmDialog(false);
+    setConfirmAction(null);
+    setPendingData(null);
+  };
+
+  const handleCancel = () => {
+    setShowConfirmDialog(false);
+    setConfirmAction(null);
+    setPendingData(null);
   };
 
   const clockInMutation = useMutation({
@@ -1067,12 +1114,9 @@ function AdminTimeTracking({
                     <Button
                       type="button"
                       variant="destructive"
-                      onClick={() => {
-                        if (confirm("¿Está seguro de eliminar esta jornada laboral?")) {
-                          deleteWorkdayMutation.mutate();
-                        }
-                      }}
+                      onClick={handleDelete}
                       disabled={deleteWorkdayMutation.isPending}
+                      data-testid="button-delete-workday"
                     >
                       Eliminar Jornada
                     </Button>
@@ -1315,6 +1359,31 @@ function AdminTimeTracking({
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={showConfirmDialog} onOpenChange={(open) => {
+        if (!open) {
+          handleCancel();
+        }
+      }}>
+        <AlertDialogContent data-testid="dialog-confirm-workday-action">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction === 'update' ? '¿Actualizar jornada con fichajes?' : '¿Eliminar jornada con fichajes?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta jornada tiene fichajes registrados. {confirmAction === 'update' ? 'Si actualizas' : 'Si eliminas'} esta jornada, los fichajes asociados serán eliminados automáticamente. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancel} data-testid="button-cancel-action">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} data-testid="button-confirm-action">
+              {confirmAction === 'update' ? 'Actualizar' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
