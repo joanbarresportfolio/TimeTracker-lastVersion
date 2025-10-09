@@ -186,12 +186,6 @@ export function registerDailyWorkdayRoutes(app: Express) {
         existingWorkday.idUser,
         existingWorkday.date,
       );
-      if (hasClockEntries) {
-        return res.status(400).json({
-          message:
-            "No se puede editar jornada con fichajes. Elimine los fichajes primero.",
-        });
-      }
 
       const startDateTime = new Date(
         `${existingWorkday.date}T${data.startTime}:00`,
@@ -243,18 +237,12 @@ export function registerDailyWorkdayRoutes(app: Express) {
           .json({ message: "Jornada laboral no encontrada" });
       }
 
-      const hasClockEntries = await storage.hasClockEntriesForDate(
+      // Eliminar la jornada y sus fichajes asociados automáticamente
+      await storage.deleteDailyWorkdayWithAutoClockEntries(
+        workdayId,
         existingWorkday.idUser,
-        existingWorkday.date,
+        existingWorkday.date
       );
-      if (hasClockEntries) {
-        return res.status(400).json({
-          message:
-            "No se puede eliminar jornada con fichajes. Elimine los fichajes primero.",
-        });
-      }
-
-      await storage.deleteDailyWorkday(workdayId);
       res.status(204).send();
     } catch (error) {
       handleApiError(res, error, "Error al eliminar jornada laboral");
