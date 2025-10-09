@@ -24,7 +24,10 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Express.js for RESTful API
 - **Database ORM**: Drizzle ORM for type-safe operations
 - **Validation**: Zod schemas shared between client and server
-- **Storage**: In-memory storage with an interface for database migration
+- **Modular Architecture**: Separation of concerns with distinct layers:
+  - **Storage Layer** (`server/storages/`) - Data access (CRUD operations)
+  - **Service Layer** (`server/services/`) - Business logic and calculations
+  - **Route Layer** (`server/routes/`) - HTTP request handlers
 - **API Design**: RESTful endpoints with proper error handling
 - **Authentication**: JWT for mobile, session-based for web
 
@@ -32,14 +35,22 @@ Preferred communication style: Simple, everyday language.
 - **Primary Database**: PostgreSQL with Neon serverless driver
 - **ORM**: Drizzle with a schema-first approach
 - **Schema Language**: All tables and columns use consistent English naming conventions
-- **Key Entities**: `users`, `departments`, `scheduled_shifts`, `clock_entries`, `daily_workday`, `incidents`
-- **Architecture Pattern**: Event-based time tracking (`clock_entries`) with automatic daily workday consolidation (`daily_workday`).
+- **Key Entities**: `users`, `departments`, `roles_enterprise`, `schedules`, `clock_entries`, `daily_workday`, `incidents`, `incidents_type`
+- **Architecture Pattern**: Event-based time tracking (`clock_entries`) with daily workday consolidation (`daily_workday`).
+- **Critical Constraints**:
+  - One workday per user per day (unique index on `id_user`, `date`)
+  - `schedules.idDailyWorkday` is optional (nullable) - schedules can exist independently
+  - `daily_workday.date` is required (NOT NULL, format: YYYY-MM-DD)
 
 ### Development Architecture
 - **Monorepo Structure**: Shared schemas and types between frontend and backend
 - **Type Safety**: End-to-end TypeScript with shared Zod schema definitions
 - **Hot Reload**: Vite HMR for frontend, tsx for backend
 - **Path Aliases**: Consistent import paths using `@` aliases
+- **Modular Code Organization**:
+  - `server/storages/` - 10 files (one per database table)
+  - `server/routes/` - 13 files (one per entity/feature)
+  - `server/services/` - 9 files (business logic services)
 
 ### Core Features
 - **Time Tracking**: Event-based clock-in/clock-out, break start/end.
