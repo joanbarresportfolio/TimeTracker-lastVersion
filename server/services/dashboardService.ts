@@ -327,7 +327,7 @@ export class DashboardService {
    * ===================================
    * 
    * Calcula el promedio de horas trabajadas por día en la semana.
-   * Nota: DailyWorkday ya no tiene campo date, calculamos por número de jornadas únicas.
+   * Usa el campo date de DailyWorkday para agrupar por día.
    * 
    * @param weekWorkdays - Jornadas de la semana
    * @returns Promedio de horas por día
@@ -340,8 +340,8 @@ export class DashboardService {
       0
     );
 
-    const uniqueWorkdays = new Set(weekWorkdays.map((wd) => wd.id));
-    const daysWithWork = uniqueWorkdays.size;
+    const uniqueDates = new Set(weekWorkdays.map((wd) => wd.date));
+    const daysWithWork = uniqueDates.size;
 
     if (daysWithWork === 0) return 0;
 

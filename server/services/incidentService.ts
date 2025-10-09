@@ -48,34 +48,22 @@ export class IncidentService {
    * ===============================
    * 
    * Encuentra la jornada diaria correspondiente a una incidencia.
-   * Nota: DailyWorkday ya no tiene campo date, debe obtenerse del Schedule relacionado.
+   * Ahora busca directamente por fecha y usuario en DailyWorkday.
    * 
    * @param incidentDate - Fecha de la incidencia
    * @param employeeId - ID del empleado
    * @param workdays - Jornadas existentes
-   * @param schedules - Horarios para obtener fechas
    * @returns ID de la jornada o null
    */
   associateWithWorkday(
     incidentDate: Date,
     employeeId: string,
-    workdays: DailyWorkday[],
-    schedules?: { idDailyWorkday: string; date: string; idUser: string }[]
+    workdays: DailyWorkday[]
   ): string | null {
     const dateStr = incidentDate.toISOString().split('T')[0];
     
-    if (!schedules) {
-      return workdays.find(wd => wd.idUser === employeeId)?.id || null;
-    }
-
-    const matchingSchedule = schedules.find(
-      s => s.idUser === employeeId && s.date === dateStr
-    );
-
-    if (!matchingSchedule) return null;
-
     const matchingWorkday = workdays.find(
-      wd => wd.id === matchingSchedule.idDailyWorkday && wd.idUser === employeeId
+      wd => wd.idUser === employeeId && wd.date === dateStr
     );
 
     return matchingWorkday?.id || null;

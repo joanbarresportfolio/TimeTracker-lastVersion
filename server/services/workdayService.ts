@@ -295,18 +295,42 @@ export class WorkdayService {
   }
 
   /**
+   * BUSCAR O INDICAR CREACIÓN DE WORKDAY
+   * =====================================
+   * 
+   * Verifica si existe un workday para un usuario en una fecha.
+   * Esta es una función de utilidad para determinar si se necesita crear uno.
+   * 
+   * @param idUser - ID del usuario
+   * @param date - Fecha en formato YYYY-MM-DD
+   * @param existingWorkdays - Workdays existentes
+   * @returns Workday encontrado o null si debe crearse uno nuevo
+   */
+  findWorkdayByUserAndDate(
+    idUser: string,
+    date: string,
+    existingWorkdays: DailyWorkday[]
+  ): DailyWorkday | null {
+    return existingWorkdays.find(
+      wd => wd.idUser === idUser && wd.date === date
+    ) || null;
+  }
+
+  /**
    * COMPARAR CON HORARIO PROGRAMADO
    * ================================
    * 
    * Compara la jornada real con el horario programado.
+   * Usa la fecha del workday para buscar el horario correspondiente.
    * 
    * @param workday - Jornada trabajada
-   * @param scheduledShift - Horario programado
+   * @param schedules - Horarios disponibles
+   * @param clockEntries - Fichajes del día
    * @returns Análisis de diferencias
    */
   compareWithSchedule(
     workday: DailyWorkday,
-    scheduledShift?: Schedule,
+    schedules: Schedule[],
     clockEntries?: ClockEntry[]
   ): {
     isOnTime: boolean;
@@ -314,6 +338,10 @@ export class WorkdayService {
     startedEarly: boolean;
     finishedLate: boolean;
   } {
+    const scheduledShift = schedules.find(
+      s => s.idUser === workday.idUser && s.date === workday.date
+    );
+
     if (!scheduledShift || !clockEntries || clockEntries.length === 0) {
       return {
         isOnTime: true,

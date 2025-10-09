@@ -49,6 +49,7 @@ export class ReportService {
    * =============================
    * 
    * Genera un análisis completo para un empleado en un período.
+   * Usa el campo date de DailyWorkday para comparar con schedules.
    * 
    * @param employee - Datos del empleado
    * @param workdays - Jornadas del período
@@ -82,13 +83,10 @@ export class ReportService {
       return sum;
     }, 0);
 
-    const workdayIds = new Set(workdays.map((wd) => wd.id));
+    const workdayDates = new Set(workdays.map((wd) => wd.date));
     const scheduledDates = new Set(schedules.map((s) => s.date));
     const absences = Array.from(scheduledDates).filter(
-      (date) => {
-        const scheduleForDate = schedules.find(s => s.date === date);
-        return scheduleForDate && !workdayIds.has(scheduleForDate.idDailyWorkday);
-      }
+      (date) => !workdayDates.has(date)
     );
 
     const difference = totalWorkedMinutes - totalPlannedMinutes;
