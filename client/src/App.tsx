@@ -25,9 +25,9 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      {user?.role === "admin" && <Route path="/employees" component={Employees} />}
+      {user?.roleSystem === "admin" && <Route path="/employees" component={Employees} />}
       <Route path="/time-tracking" component={TimeTracking} />
-      {user?.role === "admin" && <Route path="/schedules" component={Schedules} />}
+      {user?.roleSystem === "admin" && <Route path="/schedules" component={Schedules} />}
       <Route path="/incidents" component={Incidents} />
       <Route path="/reports" component={Reports} />
       <Route path="/settings" component={Settings} />
@@ -58,7 +58,7 @@ function AppContent() {
               <div className="flex items-center space-x-2 text-sm">
                 <User className="h-4 w-4" />
                 <span className="hidden sm:inline">{user?.firstName} {user?.lastName}</span>
-                {user?.role === "admin" && (
+                {user?.roleSystem === "admin" && (
                   <span className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
                     Admin
                   </span>
