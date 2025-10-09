@@ -37,7 +37,7 @@ export function registerUserRoutes(app: Express) {
     try {
       const employees = await storage.getEmployees();
       const safeEmployees = employees.map((emp) => {
-        const { password, ...safeEmployee } = emp;
+        const { passwordHash, ...safeEmployee } = emp;
         return safeEmployee;
       });
       res.json(safeEmployees);
@@ -67,7 +67,7 @@ export function registerUserRoutes(app: Express) {
       if (!employee) {
         return res.status(404).json({ message: "Empleado no encontrado" });
       }
-      const { password, ...safeEmployee } = employee;
+      const { passwordHash, ...safeEmployee } = employee;
       res.json(safeEmployee);
     } catch (error) {
       res.status(500).json({ message: "Error al obtener empleado" });
@@ -96,21 +96,21 @@ export function registerUserRoutes(app: Express) {
       console.log("Datos después de validación:", userData);
 
       const employeeData = {
-        employeeNumber: userData.employeeNumber,
+        numEmployee: userData.numEmployee,
+        dni: userData.dni,
         firstName: userData.firstName,
         lastName: userData.lastName,
         email: userData.email,
-        password: userData.passwordHash,
-        role: userData.role,
-        department: req.body.department || "",
-        position: req.body.position || "",
+        password: userData.password,
+        roleSystem: userData.roleSystem,
+        roleEnterpriseId: userData.roleEnterpriseId,
+        departmentId: userData.departmentId,
         hireDate: userData.hireDate,
-        conventionHours: req.body.conventionHours || 1752,
         isActive: userData.isActive ?? true,
       };
 
       const employee = await storage.createEmployeeWithPassword(employeeData);
-      const { password, ...safeEmployee } = employee;
+      const { passwordHash, ...safeEmployee } = employee;
       res.status(201).json(safeEmployee);
     } catch (error) {
       handleApiError(res, error, "Error al crear empleado");
@@ -153,7 +153,7 @@ export function registerUserRoutes(app: Express) {
       }
 
       console.log("✅ Empleado actualizado exitosamente:", employee.id);
-      const { password, ...safeEmployee } = employee;
+      const { passwordHash, ...safeEmployee } = employee;
       res.json(safeEmployee);
     } catch (error) {
       handleApiError(res, error, "Error al actualizar empleado");

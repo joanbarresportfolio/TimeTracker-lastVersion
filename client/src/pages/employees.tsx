@@ -44,16 +44,16 @@ type CreateEmployeePayload = {
   departmentId?: string;
   hireDate: string; // String para el backend
   isActive?: boolean;
-  passwordHash: string;
+  password: string;
   roleSystem: "admin" | "employee";
   roleEnterpriseId?: string;
 };
 
 type UpdateEmployeePayload = Omit<
   CreateEmployeePayload,
-  "passwordHash" | "roleSystem"
+  "password" | "roleSystem"
 > & {
-  passwordHash?: string;
+  password?: string;
   roleSystem?: "admin" | "employee";
   roleEnterpriseId?: string;
 };
@@ -250,7 +250,7 @@ export default function Employees() {
   // Hacemos la contraseña opcional para permitir edición sin cambiar la contraseña
   const employeeFormSchema = createUserSchema.extend({
     hireDate: z.date(), // El formulario usa Date objects
-    passwordHash: z
+    password: z
       .string()
       .min(4, "La contraseña debe tener al menos 4 caracteres")
       .or(z.string().length(0))
@@ -270,7 +270,7 @@ export default function Employees() {
       departmentId: "",
       hireDate: new Date(),
       isActive: true,
-      passwordHash: "",
+      password: "",
       roleSystem: "employee",
       roleEnterpriseId: "",
     },
@@ -278,7 +278,7 @@ export default function Employees() {
 
   const onSubmit = (data: EmployeeFormData) => {
     if (editingEmployee) {
-      // Para actualizar, incluimos todos los campos excepto passwordHash y roleSystem si están vacíos
+      // Para actualizar, incluimos todos los campos excepto password y roleSystem si están vacíos
       const updatePayload: UpdateEmployeePayload = {
         numEmployee: data.numEmployee,
         dni: data.dni || undefined,
@@ -298,8 +298,8 @@ export default function Employees() {
       };
 
       // Solo incluir contraseña si se ha proporcionado una nueva
-      if (data.passwordHash && data.passwordHash.trim()) {
-        updatePayload.passwordHash = data.passwordHash;
+      if (data.password && data.password.trim()) {
+        updatePayload.password = data.password;
       }
 
       // Incluir el rol si se ha especificado
@@ -325,7 +325,7 @@ export default function Employees() {
             : data.departmentId,
         hireDate: data.hireDate.toISOString(),
         isActive: data.isActive,
-        passwordHash: data.passwordHash || "", // Asegurarse de que sea string
+        password: data.password || "", // Asegurarse de que sea string
         roleSystem: data.roleSystem,
         roleEnterpriseId:
           data.roleEnterpriseId === "none" || !data.roleEnterpriseId
@@ -347,7 +347,7 @@ export default function Employees() {
       departmentId: employee.departmentId || "none", // Usar "none" si está vacío
       hireDate: new Date(employee.hireDate), // Convertir string a Date object
       isActive: employee.isActive,
-      passwordHash: "", // Vacío por defecto, opcional al editar
+      password: "", // Vacío por defecto, opcional al editar
       roleSystem: employee.roleSystem as "admin" | "employee",
       roleEnterpriseId: employee.roleEnterpriseId || "",
     });
@@ -626,7 +626,7 @@ export default function Employees() {
                         departmentId: "",
                         hireDate: new Date(),
                         isActive: true,
-                        passwordHash: "",
+                        password: "",
                         roleSystem: "employee",
                         roleEnterpriseId: "",
                       });
@@ -734,7 +734,7 @@ export default function Employees() {
                       />
                       <FormField
                         control={form.control}
-                        name="passwordHash"
+                        name="password"
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>
