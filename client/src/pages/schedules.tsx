@@ -209,7 +209,6 @@ export default function Schedules() {
         employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase());
-      
       const employeeDeptName = employee.departmentId ? departmentMap.get(employee.departmentId) : null;
       const matchesDepartment = selectedDepartment === "all" || 
         employeeDeptName === selectedDepartment;
@@ -552,10 +551,9 @@ export default function Schedules() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Fecha</TableHead>
-                          <TableHead>Entrada</TableHead>
-                          <TableHead>Salida</TableHead>
                           <TableHead>Horas Trabajadas</TableHead>
                           <TableHead>Pausas</TableHead>
+                          <TableHead>Horas Extra</TableHead>
                           <TableHead>Estado</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -573,16 +571,13 @@ export default function Schedules() {
                                 {format(new Date(workday.date), 'dd/MM/yyyy', { locale: es })}
                               </TableCell>
                               <TableCell>
-                                {workday. ? format(new Date(workday.startTime), 'HH:mm') : '-'}
-                              </TableCell>
-                              <TableCell>
-                                {workday.endTime ? format(new Date(workday.endTime), 'HH:mm') : '-'}
-                              </TableCell>
-                              <TableCell>
                                 {formatMinutesToHours(workday.workedMinutes)}
                               </TableCell>
                               <TableCell>
                                 {formatMinutesToHours(workday.breakMinutes)}
+                              </TableCell>
+                              <TableCell>
+                                {formatMinutesToHours(workday.overtimeMinutes)}
                               </TableCell>
                               <TableCell>
                                 <Badge variant={workday.status === 'closed' ? 'default' : 'secondary'}>
