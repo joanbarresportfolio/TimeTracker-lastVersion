@@ -38,7 +38,7 @@ export function registerIncidentRoutes(app: Express) {
       const { employeeId } = req.query;
       let incidents;
 
-      if (req.user!.role === "employee") {
+      if (req.user!.roleSystem === "employee") {
         incidents = await storage.getIncidentsByEmployee(req.user!.id);
       } else {
         if (employeeId) {
@@ -107,27 +107,24 @@ export function registerIncidentRoutes(app: Express) {
       const formData = incidentFormSchema.parse(req.body);
 
       // If employee, only allow creating incidents for themselves
-      if (req.user!.role === "employee") {
+      if (req.user!.roleSystem === "employee") {
         formData.idUser = req.user!.id;
       }
 
       // Find or create daily_workday for this user+date
-      let dailyWorkday = await storage.getDailyWorkdayByUserAndDate(
+      let dailyWorkday = await storage.getDailyWorkdayByEmployeeAndDate(
         formData.idUser,
         formData.date
       );
 
       if (!dailyWorkday) {
         // Create a new daily_workday entry for this date
-        dailyWorkday = await storage.createDailyWorkday({
-          idUser: formData.idUser,
+        dailyWorkday = await storage.createManualDailyWorkday({
+          employeeId: formData.idUser,
           date: formData.date,
-          status: 'open',
-          startTime: null,
-          endTime: null,
-          workedMinutes: 0,
+          startTime: "00:00",
+          endTime: "00:00",
           breakMinutes: 0,
-          overtimeMinutes: 0,
         });
       }
 

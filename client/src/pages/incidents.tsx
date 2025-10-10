@@ -12,8 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search, AlertTriangle, Check, X } from "lucide-react";
-import { insertIncidentSchema } from "@shared/schema";
-import type { Employee, Incident, InsertIncident, IncidentType } from "@shared/schema";
+import { incidentFormSchema } from "@shared/schema";
+import type { Employee, Incident, IncidentFormData, IncidentType } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +45,7 @@ export default function Incidents() {
   });
 
   const createIncidentMutation = useMutation({
-    mutationFn: async (data: InsertIncident) => {
+    mutationFn: async (data: IncidentFormData) => {
       const response = await apiRequest("/api/incidents", "POST", data);
       return response.json();
     },
@@ -68,7 +68,7 @@ export default function Incidents() {
   });
 
   const updateIncidentMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<InsertIncident> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<IncidentFormData> }) => {
       const response = await apiRequest(`/api/incidents/${id}`, "PUT", data);
       return response.json();
     },
@@ -153,18 +153,18 @@ export default function Incidents() {
     },
   });
 
-  const form = useForm<InsertIncident>({
-    resolver: zodResolver(insertIncidentSchema),
+  const form = useForm<IncidentFormData>({
+    resolver: zodResolver(incidentFormSchema),
     defaultValues: {
-      userId: "",
+      idUser: "",
       date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
-      incidentType: "",
+      idIncidentsType: "",
       description: "",
       status: "pending",
     },
   });
 
-  const onSubmit = (data: InsertIncident) => {
+  const onSubmit = (data: IncidentFormData) => {
     if (editingIncident) {
       updateIncidentMutation.mutate({ id: editingIncident.id, data });
     } else {
@@ -174,10 +174,12 @@ export default function Incidents() {
 
   const handleEdit = (incident: Incident) => {
     setEditingIncident(incident);
+    // Find the daily workday to get the date
+    const date = new Date().toISOString().split('T')[0]; // Default to today, will be fetched from workday
     form.reset({
-      userId: incident.userId,
-      date: incident.date,
-      incidentType: incident.incidentType,
+      idUser: incident.idUser,
+      date: date,
+      idIncidentsType: incident.idIncidentsType,
       description: incident.description,
       status: incident.status as "pending" | "approved" | "rejected",
     });
@@ -218,17 +220,19 @@ export default function Incidents() {
   };
 
   const filteredIncidents = incidents?.filter(incident => {
-    const employee = getEmployeeInfo(incident.userId);
+    const employee = getEmployeeInfo(incident.idUser);
     if (!employee) return false;
+    
+    const incidentTypeName = getIncidentTypeLabel(incident.idIncidentsType);
     
     const matchesSearch = 
       employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.numEmployee.toLowerCase().includes(searchTerm.toLowerCase()) ||
       incident.description.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = selectedStatus === "all" || incident.status === selectedStatus;
-    const matchesType = selectedType === "all" || incident.incidentType === selectedType;
+    const matchesType = selectedType === "all" || incident.idIncidentsType === selectedType;
     
     return matchesSearch && matchesStatus && matchesType;
   }) || [];
@@ -313,8 +317,8 @@ export default function Incidents() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los tipos</SelectItem>
-                  {incidentTypes?.filter(t => t.isActive).map(type => (
-                    <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
+                  {incidentTypes?.map(type => (
+                    <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -324,11 +328,11 @@ export default function Incidents() {
                 <Button 
                   onClick={() => {
                     setEditingIncident(null);
-                    const defaultType = incidentTypes?.find(t => t.isActive)?.name || "";
+                    const defaultType = incidentTypes?.[0]?.id || "";
                     form.reset({
-                      userId: "",
+                      idUser: "",
                       date: new Date().toISOString().split('T')[0],
-                      incidentType: defaultType,
+                      idIncidentsType: defaultType,
                       description: "",
                       status: "pending",
                     });
@@ -349,7 +353,7 @@ export default function Incidents() {
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="userId"
+                      name="idUser"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Empleado</FormLabel>
@@ -362,7 +366,7 @@ export default function Incidents() {
                             <SelectContent>
                               {employees?.map(employee => (
                                 <SelectItem key={employee.id} value={employee.id}>
-                                  {employee.firstName} {employee.lastName} - {employee.employeeNumber}
+                                  {employee.firstName} {employee.lastName} - {employee.numEmployee}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -390,7 +394,7 @@ export default function Incidents() {
                     />
                     <FormField
                       control={form.control}
-                      name="incidentType"
+                      name="idIncidentsType"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tipo de Incidencia</FormLabel>
@@ -401,8 +405,8 @@ export default function Incidents() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {incidentTypes?.filter(t => t.isActive).map(type => (
-                                <SelectItem key={type.id} value={type.name}>
+                              {incidentTypes?.map(type => (
+                                <SelectItem key={type.id} value={type.id}>
                                   {type.name}
                                 </SelectItem>
                               ))}
@@ -480,7 +484,7 @@ export default function Incidents() {
       {/* Lista de incidencias */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredIncidents.map((incident) => {
-          const employee = getEmployeeInfo(incident.userId);
+          const employee = getEmployeeInfo(incident.idUser);
           if (!employee) return null;
 
           const statusInfo = getStatusInfo(incident.status);
@@ -499,7 +503,7 @@ export default function Incidents() {
                       <h3 className="font-semibold text-foreground">
                         {employee.firstName} {employee.lastName}
                       </h3>
-                      <p className="text-sm text-muted-foreground">{employee.employeeNumber}</p>
+                      <p className="text-sm text-muted-foreground">{employee.numEmployee}</p>
                     </div>
                   </div>
                   <Badge className={statusInfo.color}>
@@ -510,13 +514,7 @@ export default function Incidents() {
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Tipo:</span>
-                    <span className="font-medium">{getIncidentTypeLabel(incident.incidentType)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Fecha de Incidencia:</span>
-                    <span className="font-medium">
-                      {new Date(incident.date + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
-                    </span>
+                    <span className="font-medium">{getIncidentTypeLabel(incident.idIncidentsType)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Registrada el:</span>
