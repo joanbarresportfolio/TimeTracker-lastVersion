@@ -573,7 +573,7 @@ export default function Schedules() {
                                 {format(new Date(workday.date), 'dd/MM/yyyy', { locale: es })}
                               </TableCell>
                               <TableCell>
-                                {workday.startTime ? format(new Date(workday.startTime), 'HH:mm') : '-'}
+                                {workday. ? format(new Date(workday.startTime), 'HH:mm') : '-'}
                               </TableCell>
                               <TableCell>
                                 {workday.endTime ? format(new Date(workday.endTime), 'HH:mm') : '-'}
