@@ -208,7 +208,7 @@ export default function Schedules() {
       const matchesSearch = 
         employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.employeeNumber.toLowerCase().includes(searchTerm.toLowerCase());
+        employee.numEmployee.toLowerCase().includes(searchTerm.toLowerCase());
       const employeeDeptName = employee.departmentId ? departmentMap.get(employee.departmentId) : null;
       const matchesDepartment = selectedDepartment === "all" || 
         employeeDeptName === selectedDepartment;
@@ -423,7 +423,7 @@ export default function Schedules() {
                               {summary.employee.firstName} {summary.employee.lastName}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {summary.employee.employeeNumber}
+                              {summary.employee.numEmployee}
                             </div>
                           </div>
                         </div>
@@ -949,10 +949,11 @@ export default function Schedules() {
                         if (selectionType === "with-schedule" && dateSchedules && selectedDates.length > 0) {
                           const firstSchedule = dateSchedules.find(s => s.date === selectedDates[0].dateStr);
                           if (firstSchedule) {
-                            setScheduleForm({
+                            setScheduleForm(prev => ({
+                              ...prev,
                               startTime: firstSchedule.startTime,
                               endTime: firstSchedule.endTime
-                            });
+                            }));
                           }
                         }
                         setShowScheduleDialog(true);
