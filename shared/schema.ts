@@ -318,6 +318,19 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
 });
 
 /**
+ * Form schema for incidents (simplified)
+ * This schema is used by the frontend form and gets converted to insertIncidentSchema in backend
+ */
+export const incidentFormSchema = z.object({
+  idUser: z.string().min(1, "Debe seleccionar un empleado"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato YYYY-MM-DD"),
+  idIncidentsType: z.string().min(1, "Debe seleccionar un tipo de incidencia"),
+  description: z.string().min(1, "La descripción es obligatoria"),
+  status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+  registeredBy: z.string().optional(),
+});
+
+/**
  * SCHEMAS FOR MANUAL DAILY WORKDAY
  */
 export const manualDailyWorkdaySchema = z.object({
@@ -361,6 +374,7 @@ export type InsertIncidentsType = z.infer<typeof insertIncidentsTypeSchema>;
 
 export type Incident = typeof incidents.$inferSelect;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
+export type IncidentFormData = z.infer<typeof incidentFormSchema>;
 
 // ============================================================================
 // ADDITIONAL TYPES

@@ -7,7 +7,7 @@
 
 import type { Express } from "express";
 import { storage } from "../storage";
-import { insertIncidentSchema } from "@shared/schema";
+import { insertIncidentSchema, incidentFormSchema } from "@shared/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { z } from "zod";
 
@@ -104,11 +104,42 @@ export function registerIncidentRoutes(app: Express) {
    */
   app.post("/api/incidents", requireAuth, async (req, res) => {
     try {
-      const incidentData = insertIncidentSchema.parse(req.body);
+      const formData = incidentFormSchema.parse(req.body);
 
+      // If employee, only allow creating incidents for themselves
       if (req.user!.role === "employee") {
-        incidentData.userId = req.user!.id;
+        formData.idUser = req.user!.id;
       }
+
+      // Find or create daily_workday for this user+date
+      let dailyWorkday = await storage.getDailyWorkdayByUserAndDate(
+        formData.idUser,
+        formData.date
+      );
+
+      if (!dailyWorkday) {
+        // Create a new daily_workday entry for this date
+        dailyWorkday = await storage.createDailyWorkday({
+          idUser: formData.idUser,
+          date: formData.date,
+          status: 'open',
+          startTime: null,
+          endTime: null,
+          workedMinutes: 0,
+          breakMinutes: 0,
+          overtimeMinutes: 0,
+        });
+      }
+
+      // Create the incident with the daily_workday reference
+      const incidentData = {
+        idUser: formData.idUser,
+        idDailyWorkday: dailyWorkday.id,
+        idIncidentsType: formData.idIncidentsType,
+        description: formData.description,
+        status: formData.status,
+        registeredBy: formData.registeredBy || req.user!.id,
+      };
 
       const incident = await storage.createIncident(incidentData);
       res.status(201).json(incident);
@@ -119,6 +150,7 @@ export function registerIncidentRoutes(app: Express) {
           errors: error.errors,
         });
       }
+      console.error("Error creating incident:", error);
       res.status(500).json({ message: "Error al crear incidencia" });
     }
   });
