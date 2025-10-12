@@ -127,9 +127,9 @@ export default function SchedulesScreen({ route }: SchedulesScreenProps) {
             newSchedulesByDate[schedule.date] = [];
           }
           newSchedulesByDate[schedule.date].push({
-            startTime: schedule.expectedStartTime,
-            endTime: schedule.expectedEndTime,
-            isActive: schedule.status === 'scheduled' || schedule.status === 'confirmed',
+            startTime: schedule.startTime,
+            endTime: schedule.endTime,
+            isActive: true, // Todos los horarios recuperados están activos
           });
         });
         
@@ -150,13 +150,13 @@ export default function SchedulesScreen({ route }: SchedulesScreenProps) {
             const dayOfWeek = currentDate.getDay();
             
             const daySchedules = legacySchedules.filter(s => 
-              s.date === dateStr && (s.status === 'scheduled' || s.status === 'confirmed')
+              s.date === dateStr
             );
             if (daySchedules.length > 0) {
               synthesizedByDate[dateStr] = daySchedules.map(s => ({
-                startTime: s.expectedStartTime,
-                endTime: s.expectedEndTime,
-                isActive: s.status === 'scheduled' || s.status === 'confirmed',
+                startTime: s.startTime,
+                endTime: s.endTime,
+                isActive: true,
               }));
             }
           }
