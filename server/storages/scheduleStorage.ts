@@ -301,48 +301,22 @@ export async function createDateSchedule(insertDateSchedule: InsertDateSchedule)
 export async function updateDateSchedule(id: string, dateScheduleData: Partial<InsertDateSchedule>): Promise<DateSchedule | undefined> {
   const updateData: any = {};
   
-  if (dateScheduleData.employeeId !== undefined) updateData.employeeId = dateScheduleData.employeeId;
+  if (dateScheduleData.idUser !== undefined) updateData.idUser = dateScheduleData.idUser;
   if (dateScheduleData.date !== undefined) updateData.date = dateScheduleData.date;
-  if (dateScheduleData.startTime !== undefined) updateData.expectedStartTime = dateScheduleData.startTime;
-  if (dateScheduleData.endTime !== undefined) updateData.expectedEndTime = dateScheduleData.endTime;
-  if (dateScheduleData.isActive !== undefined) {
-    updateData.status = dateScheduleData.isActive ? 'scheduled' : 'cancelled';
-  }
+  if (dateScheduleData.startTime !== undefined) updateData.startTime = dateScheduleData.startTime;
+  if (dateScheduleData.endTime !== undefined) updateData.endTime = dateScheduleData.endTime;
+  if (dateScheduleData.scheduleType !== undefined) updateData.scheduleType = dateScheduleData.scheduleType;
+  if (dateScheduleData.idDailyWorkday !== undefined) updateData.idDailyWorkday = dateScheduleData.idDailyWorkday;
   
-  if (dateScheduleData.startTime !== undefined) {
-    const [startHour] = dateScheduleData.startTime.split(':').map(Number);
-    if (startHour >= 14 && startHour < 22) {
-      updateData.shiftType = 'afternoon';
-    } else if (startHour >= 22 || startHour < 6) {
-      updateData.shiftType = 'night';
-    } else {
-      updateData.shiftType = 'morning';
-    }
-  }
-  
-  const [updatedShift] = await db
-    .update(scheduledShifts)
+  const [updatedSchedule] = await db
+    .update(schedules)
     .set(updateData)
-    .where(eq(scheduledShifts.id, id))
+    .where(eq(schedules.id, id))
     .returning();
   
-  if (!updatedShift) return undefined;
+  if (!updatedSchedule) return undefined;
   
-  const [startHour, startMin] = updatedShift.expectedStartTime.split(':').map(Number);
-  const [endHour, endMin] = updatedShift.expectedEndTime.split(':').map(Number);
-  const startMinutes = startHour * 60 + startMin;
-  const endMinutes = endHour * 60 + endMin;
-  const workMinutes = endMinutes - startMinutes;
-  
-  return {
-    id: updatedShift.id,
-    employeeId: updatedShift.employeeId,
-    date: updatedShift.date,
-    startTime: updatedShift.expectedStartTime,
-    endTime: updatedShift.expectedEndTime,
-    workHours: workMinutes,
-    isActive: updatedShift.status === 'scheduled' || updatedShift.status === 'confirmed' || updatedShift.status === 'completed',
-  };
+  return updatedSchedule;
 }
 
 /**
