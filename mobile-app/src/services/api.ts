@@ -13,6 +13,7 @@ import {
   LoginResponse,
   TimeEntry,
   InsertTimeEntry,
+  DailyWorkday,
   ScheduledShift,
   DateSchedule,
   Incident,
@@ -390,7 +391,7 @@ export async function endBreak(): Promise<void> {
 }
 
 /**
- * Obtiene registros de tiempo del empleado
+ * Obtiene registros de tiempo del empleado (legacy - para compatibilidad)
  */
 export async function getTimeEntries(
   startDate?: string,
@@ -407,6 +408,26 @@ export async function getTimeEntries(
   }
 
   return apiRequest<TimeEntry[]>(endpoint);
+}
+
+/**
+ * Obtiene jornadas diarias del empleado (nuevo sistema)
+ */
+export async function getDailyWorkdays(
+  startDate?: string,
+  endDate?: string,
+): Promise<DailyWorkday[]> {
+  let endpoint = "/daily-workdays";
+  const params = new URLSearchParams();
+
+  if (startDate) params.append("startDate", startDate);
+  if (endDate) params.append("endDate", endDate);
+
+  if (params.toString()) {
+    endpoint += `?${params.toString()}`;
+  }
+
+  return apiRequest<DailyWorkday[]>(endpoint);
 }
 
 /**
