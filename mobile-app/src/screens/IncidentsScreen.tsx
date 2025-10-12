@@ -23,8 +23,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { User, Incident, InsertIncident } from '../types/schema';
-import { getMyIncidents, createIncident } from '../services/api';
+import { User, Incident, IncidentType, IncidentFormData } from '../types/schema';
+import { getMyIncidents, createIncident, getIncidentTypes } from '../services/api';
 
 type IncidentsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Incidents'>;
 
@@ -35,18 +35,6 @@ interface IncidentsScreenProps {
     };
   };
 }
-
-/**
- * Tipos de incidencias con traducciones
- */
-const INCIDENT_TYPES = {
-  late: 'Llegada tardía',
-  absence: 'Ausencia',
-  sick_leave: 'Baja médica',
-  vacation: 'Vacaciones',
-  forgot_clock_in: 'Olvido de fichaje de entrada',
-  other: 'Otra',
-} as const;
 
 /**
  * Estados de incidencias con traducciones
@@ -66,10 +54,20 @@ const STATUS_COLORS = {
   rejected: '#ef4444',
 } as const;
 
+// Helper para obtener fecha de hoy en formato local YYYY-MM-DD
+const getTodayString = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function IncidentsScreen({ route }: IncidentsScreenProps) {
   const navigation = useNavigation<IncidentsNavigationProp>();
   const { user } = route.params;
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [incidentTypes, setIncidentTypes] = useState<IncidentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -77,18 +75,31 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
   
   // Estado del formulario de nueva incidencia
   const [newIncident, setNewIncident] = useState({
-    incidentType: 'late' as const,
+    idIncidentsType: '',
+    date: getTodayString(),
     description: '',
   });
 
   /**
-   * Carga las incidencias del empleado
+   * Carga las incidencias y tipos de incidencias del empleado
    */
   const loadIncidents = async () => {
     try {
       setLoading(true);
-      const userIncidents = await getMyIncidents();
+      const [userIncidents, types] = await Promise.all([
+        getMyIncidents(),
+        getIncidentTypes(),
+      ]);
       setIncidents(userIncidents);
+      setIncidentTypes(types);
+      
+      // Auto-seleccionar primer tipo si hay tipos disponibles
+      if (types.length > 0 && !newIncident.idIncidentsType) {
+        setNewIncident(prev => ({
+          ...prev,
+          idIncidentsType: types[0].id,
+        }));
+      }
     } catch (error) {
       console.error('Error loading incidents:', error);
       Alert.alert(
@@ -119,11 +130,17 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
       return;
     }
 
+    if (!newIncident.idIncidentsType) {
+      Alert.alert('Error', 'Debes seleccionar un tipo de incidencia.');
+      return;
+    }
+
     try {
       setCreating(true);
-      const incidentData: InsertIncident = {
-        userId: user.id,
-        incidentType: newIncident.incidentType,
+      const incidentData: IncidentFormData = {
+        idUser: user.id,
+        date: newIncident.date,
+        idIncidentsType: newIncident.idIncidentsType,
         description: newIncident.description.trim(),
         status: 'pending',
       };
@@ -132,7 +149,8 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
       
       // Resetear formulario
       setNewIncident({
-        incidentType: 'late',
+        idIncidentsType: incidentTypes.length > 0 ? incidentTypes[0].id : '',
+        date: getTodayString(),
         description: '',
       });
       
@@ -179,6 +197,14 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
   };
 
   /**
+   * Obtiene el nombre del tipo de incidencia por ID
+   */
+  const getIncidentTypeName = (typeId: string): string => {
+    const type = incidentTypes.find(t => t.id === typeId);
+    return type ? type.name : 'Tipo desconocido';
+  };
+
+  /**
    * Renderiza una tarjeta de incidencia
    */
   const renderIncidentCard = (incident: Incident) => (
@@ -186,7 +212,7 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
       <View style={styles.incidentHeader}>
         <View style={styles.headerLeft}>
           <Text style={styles.incidentType}>
-            {INCIDENT_TYPES[incident.incidentType]}
+            {getIncidentTypeName(incident.idIncidentsType)}
           </Text>
           <Text style={styles.incidentDate}>
             {formatDate(incident.createdAt)}
@@ -298,22 +324,32 @@ export default function IncidentsScreen({ route }: IncidentsScreenProps) {
 
           <ScrollView style={styles.modalContent}>
             <View style={styles.formGroup}>
+              <Text style={styles.formLabel}>Fecha de la incidencia</Text>
+              <TextInput
+                style={styles.dateInput}
+                value={newIncident.date}
+                onChangeText={(date) => setNewIncident({ ...newIncident, date })}
+                placeholder="YYYY-MM-DD"
+              />
+            </View>
+
+            <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Tipo de incidencia</Text>
               <View style={styles.typeButtons}>
-                {Object.entries(INCIDENT_TYPES).map(([type, label]) => (
+                {incidentTypes.map((type) => (
                   <TouchableOpacity
-                    key={type}
+                    key={type.id}
                     style={[
                       styles.typeButton,
-                      newIncident.incidentType === type && styles.typeButtonActive
+                      newIncident.idIncidentsType === type.id && styles.typeButtonActive
                     ]}
-                    onPress={() => setNewIncident({ ...newIncident, incidentType: type as any })}
+                    onPress={() => setNewIncident({ ...newIncident, idIncidentsType: type.id })}
                   >
                     <Text style={[
                       styles.typeButtonText,
-                      newIncident.incidentType === type && styles.typeButtonTextActive
+                      newIncident.idIncidentsType === type.id && styles.typeButtonTextActive
                     ]}>
-                      {label}
+                      {type.name}
                     </Text>
                   </TouchableOpacity>
                 ))}

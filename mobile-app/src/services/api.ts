@@ -16,7 +16,8 @@ import {
   ScheduledShift,
   DateSchedule,
   Incident,
-  InsertIncident,
+  IncidentType,
+  IncidentFormData,
   TimeStats,
 } from "../types/schema";
 
@@ -463,10 +464,17 @@ export async function getMyIncidents(): Promise<Incident[]> {
 }
 
 /**
+ * Obtiene tipos de incidencias disponibles
+ */
+export async function getIncidentTypes(): Promise<IncidentType[]> {
+  return apiRequest<IncidentType[]>("/incident-types");
+}
+
+/**
  * Crea una nueva incidencia
  */
 export async function createIncident(
-  incident: InsertIncident,
+  incident: IncidentFormData,
 ): Promise<Incident> {
   return apiRequest<Incident>("/incidents", {
     method: "POST",
