@@ -349,7 +349,7 @@ export async function updateDateSchedule(id: string, dateScheduleData: Partial<I
  * ELIMINAR HORARIO POR FECHA
  */
 export async function deleteDateSchedule(id: string): Promise<boolean> {
-  const result = await db.delete(scheduledShifts).where(eq(scheduledShifts.id, id));
+  const result = await db.delete(schedules).where(eq(schedules.id, id));
   return (result.rowCount ?? 0) > 0;
 }
 

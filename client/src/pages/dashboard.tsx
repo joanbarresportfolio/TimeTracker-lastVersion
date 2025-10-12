@@ -45,10 +45,7 @@ import type {
   InsertSchedule,
   Department,
 } from "@shared/schema";
-import {
-  insertIncidentSchema,
-  insertScheduleSchema,
-} from "@shared/schema";
+import { insertIncidentSchema, insertScheduleSchema } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -585,7 +582,9 @@ export default function Dashboard() {
                             </div>
                           </td>
                           <td className="py-3 px-4 text-muted-foreground">
-                            {employee.departmentId}
+                            {departments?.find(
+                              (d) => d.id === employee.departmentId,
+                            )?.name || "Sin asignar"}
                           </td>
                           <td className="py-3 px-4">
                             <Badge className={status.color}>

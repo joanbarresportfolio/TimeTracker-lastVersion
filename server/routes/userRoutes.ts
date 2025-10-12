@@ -1,7 +1,7 @@
 /**
  * RUTAS DE GESTIÓN DE USUARIOS/EMPLEADOS
  * =======================================
- * 
+ *
  * CRUD completo de empleados del sistema.
  */
 
@@ -18,16 +18,16 @@ export function registerUserRoutes(app: Express) {
   /**
    * GET /api/employees
    * =================
-   * 
+   *
    * Obtiene lista completa de empleados del sistema.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden ver lista completa
-   * 
+   *
    * SEGURIDAD:
    * - Elimina campo 'password' de todas las respuestas
    * - Solo administradores tienen acceso
-   * 
+   *
    * RESPONSES:
    * - 200: Lista de empleados (sin passwords)
    * - 401: No autorizado (no admin)
@@ -49,12 +49,12 @@ export function registerUserRoutes(app: Express) {
   /**
    * GET /api/employees/:id
    * =====================
-   * 
+   *
    * Obtiene datos de un empleado específico.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireEmployeeAccess: Empleado puede ver sus datos, admin ve cualquiera
-   * 
+   *
    * RESPONSES:
    * - 200: Datos del empleado (sin password)
    * - 401: No autorizado
@@ -67,8 +67,8 @@ export function registerUserRoutes(app: Express) {
       if (!employee) {
         return res.status(404).json({ message: "Empleado no encontrado" });
       }
-      const { passwordHash, ...safeEmployee } = employee;
-      res.json(safeEmployee);
+      //const { passwordHash, ...safeEmployee } = employee;
+      res.json(employee);
     } catch (error) {
       res.status(500).json({ message: "Error al obtener empleado" });
     }
@@ -77,12 +77,12 @@ export function registerUserRoutes(app: Express) {
   /**
    * POST /api/employees
    * ==================
-   * 
+   *
    * Crea un nuevo empleado en el sistema.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden crear empleados
-   * 
+   *
    * RESPONSES:
    * - 201: Empleado creado exitosamente
    * - 400: Datos inválidos (errores Zod)
@@ -120,12 +120,12 @@ export function registerUserRoutes(app: Express) {
   /**
    * PUT /api/employees/:id
    * =====================
-   * 
+   *
    * Actualiza datos de un empleado existente.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden actualizar empleados
-   * 
+   *
    * RESPONSES:
    * - 200: Empleado actualizado exitosamente
    * - 400: Datos inválidos
@@ -163,12 +163,12 @@ export function registerUserRoutes(app: Express) {
   /**
    * DELETE /api/employees/:id
    * ========================
-   * 
+   *
    * Elimina permanentemente un empleado del sistema.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden eliminar empleados
-   * 
+   *
    * RESPONSES:
    * - 204: Empleado eliminado exitosamente (sin contenido)
    * - 401: No autorizado
