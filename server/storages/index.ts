@@ -1,26 +1,26 @@
 /**
  * STORAGE INDEX
  * =============
- * 
+ *
  * Este archivo combina todos los módulos de almacenamiento en una clase DatabaseStorage
  * que implementa la interfaz IStorage. Cada método delega al módulo correspondiente.
  */
 
 import type { IStorage } from "../storage";
-import type { 
-  Employee, 
-  InsertEmployee, 
-  TimeEntry, 
-  InsertTimeEntry, 
+import type {
+  Employee,
+  InsertEmployee,
+  TimeEntry,
+  InsertTimeEntry,
   BreakEntry,
-  Schedule, 
-  InsertSchedule, 
-  Incident, 
-  InsertIncident, 
-  CreateEmployee, 
-  User, 
-  DateSchedule, 
-  InsertDateSchedule, 
+  Schedule,
+  InsertSchedule,
+  Incident,
+  InsertIncident,
+  CreateEmployee,
+  User,
+  DateSchedule,
+  InsertDateSchedule,
   BulkDateScheduleCreate,
   Department,
   RoleEnterprise,
@@ -28,7 +28,7 @@ import type {
   ClockEntry,
   DailyWorkday,
   IncidentsType,
-  InsertIncidentsType
+  InsertIncidentsType,
 } from "@shared/schema";
 
 // Importar todos los módulos de storage
@@ -44,25 +44,29 @@ import * as clockEntryStorage from "./clockEntryStorage";
 /**
  * CLASE DATABASESTORAGE
  * =====================
- * 
+ *
  * Implementación de IStorage que combina todos los módulos de almacenamiento.
  * Cada método delega a la función correspondiente en su módulo.
  */
 export class DatabaseStorage implements IStorage {
-  
   // ==========================================
   // MÉTODOS DE AUTENTICACIÓN Y USUARIOS
   // ==========================================
-  
+
   async getEmployeeByEmail(email: string): Promise<Employee | undefined> {
     return userStorage.getEmployeeByEmail(email);
   }
 
-  async authenticateEmployee(email: string, password: string): Promise<User | null> {
+  async authenticateEmployee(
+    email: string,
+    password: string,
+  ): Promise<User | null> {
     return userStorage.authenticateEmployee(email, password);
   }
 
-  async createEmployeeWithPassword(employee: CreateEmployee): Promise<Employee> {
+  async createEmployeeWithPassword(
+    employee: CreateEmployee,
+  ): Promise<Employee> {
     return userStorage.createEmployeeWithPassword(employee);
   }
 
@@ -74,7 +78,9 @@ export class DatabaseStorage implements IStorage {
     return userStorage.getEmployees();
   }
 
-  async getEmployeeByNumber(employeeNumber: string): Promise<Employee | undefined> {
+  async getEmployeeByNumber(
+    employeeNumber: string,
+  ): Promise<Employee | undefined> {
     return userStorage.getEmployeeByNumber(employeeNumber);
   }
 
@@ -82,7 +88,10 @@ export class DatabaseStorage implements IStorage {
     return userStorage.createEmployee(employee);
   }
 
-  async updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee | undefined> {
+  async updateEmployee(
+    id: string,
+    employee: Partial<InsertEmployee>,
+  ): Promise<Employee | undefined> {
     return userStorage.updateEmployee(id, employee);
   }
 
@@ -93,12 +102,15 @@ export class DatabaseStorage implements IStorage {
   // ==========================================
   // MÉTODOS DE DEPARTAMENTOS
   // ==========================================
-  
+
   async getDepartments(): Promise<Department[]> {
     return departmentStorage.getDepartments();
   }
 
-  async createDepartment(data: { name: string; description?: string }): Promise<Department> {
+  async createDepartment(data: {
+    name: string;
+    description?: string;
+  }): Promise<Department> {
     return departmentStorage.createDepartment(data);
   }
 
@@ -109,12 +121,15 @@ export class DatabaseStorage implements IStorage {
   // ==========================================
   // MÉTODOS DE ROLES
   // ==========================================
-  
+
   async getRoles(): Promise<RoleEnterprise[]> {
     return roleStorage.getRoles();
   }
 
-  async createRole(data: { name: string; description?: string }): Promise<RoleEnterprise> {
+  async createRole(data: {
+    name: string;
+    description?: string;
+  }): Promise<RoleEnterprise> {
     return roleStorage.createRole(data);
   }
 
@@ -125,7 +140,7 @@ export class DatabaseStorage implements IStorage {
   // ==========================================
   // MÉTODOS DE TIPOS DE INCIDENCIAS
   // ==========================================
-  
+
   async getIncidentTypes(): Promise<IncidentsType[]> {
     return incidentTypeStorage.getIncidentTypes();
   }
@@ -134,7 +149,10 @@ export class DatabaseStorage implements IStorage {
     return incidentTypeStorage.createIncidentType(data);
   }
 
-  async updateIncidentType(id: string, data: Partial<InsertIncidentsType>): Promise<IncidentsType> {
+  async updateIncidentType(
+    id: string,
+    data: Partial<InsertIncidentsType>,
+  ): Promise<IncidentsType> {
     return incidentTypeStorage.updateIncidentType(id, data);
   }
 
@@ -145,7 +163,7 @@ export class DatabaseStorage implements IStorage {
   // ==========================================
   // MÉTODOS DE REGISTROS DE TIEMPO (TimeEntry)
   // ==========================================
-  
+
   async getTimeEntry(id: string): Promise<TimeEntry | undefined> {
     return dailyWorkdayStorage.getTimeEntry(id);
   }
@@ -166,7 +184,10 @@ export class DatabaseStorage implements IStorage {
     return dailyWorkdayStorage.createTimeEntry(timeEntry);
   }
 
-  async updateTimeEntry(id: string, timeEntry: Partial<InsertTimeEntry>): Promise<TimeEntry | undefined> {
+  async updateTimeEntry(
+    id: string,
+    timeEntry: Partial<InsertTimeEntry>,
+  ): Promise<TimeEntry | undefined> {
     return dailyWorkdayStorage.updateTimeEntry(id, timeEntry);
   }
 
@@ -177,7 +198,7 @@ export class DatabaseStorage implements IStorage {
   // ==========================================
   // MÉTODOS DE INCIDENCIAS
   // ==========================================
-  
+
   async getIncident(id: string): Promise<Incident | undefined> {
     return incidentStorage.getIncident(id);
   }
@@ -194,7 +215,10 @@ export class DatabaseStorage implements IStorage {
     return incidentStorage.createIncident(incident);
   }
 
-  async updateIncident(id: string, incident: Partial<InsertIncident>): Promise<Incident | undefined> {
+  async updateIncident(
+    id: string,
+    incident: Partial<InsertIncident>,
+  ): Promise<Incident | undefined> {
     return incidentStorage.updateIncident(id, incident);
   }
 
@@ -205,28 +229,46 @@ export class DatabaseStorage implements IStorage {
   // ==========================================
   // MÉTODOS DE HORARIOS PROGRAMADOS (Scheduled Shifts)
   // ==========================================
-  
+
   async getScheduledShifts(): Promise<ScheduledShift[]> {
     return scheduleStorage.getScheduledShifts();
   }
 
-  async getScheduledShiftsByEmployee(employeeId: string): Promise<ScheduledShift[]> {
+  async getScheduledShiftsByEmployee(
+    employeeId: string,
+  ): Promise<ScheduledShift[]> {
     return scheduleStorage.getScheduledShiftsByEmployee(employeeId);
   }
 
-  async getScheduledShiftsByRange(startDate: string, endDate: string): Promise<ScheduledShift[]> {
+  async getScheduledShiftsByRange(
+    startDate: string,
+    endDate: string,
+  ): Promise<ScheduledShift[]> {
     return scheduleStorage.getScheduledShiftsByRange(startDate, endDate);
   }
 
-  async getScheduledShiftsByEmployeeAndRange(employeeId: string, startDate: string, endDate: string): Promise<ScheduledShift[]> {
-    return scheduleStorage.getScheduledShiftsByEmployeeAndRange(employeeId, startDate, endDate);
+  async getScheduledShiftsByEmployeeAndRange(
+    employeeId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<ScheduledShift[]> {
+    return scheduleStorage.getScheduledShiftsByEmployeeAndRange(
+      employeeId,
+      startDate,
+      endDate,
+    );
   }
 
-  async createScheduledShift(shift: Omit<ScheduledShift, 'id'>): Promise<ScheduledShift> {
+  async createScheduledShift(
+    shift: Omit<ScheduledShift, "id">,
+  ): Promise<ScheduledShift> {
     return scheduleStorage.createScheduledShift(shift);
   }
 
-  async updateScheduledShiftStatus(id: string, status: string): Promise<ScheduledShift | undefined> {
+  async updateScheduledShiftStatus(
+    id: string,
+    status: string,
+  ): Promise<ScheduledShift | undefined> {
     return scheduleStorage.updateScheduledShiftStatus(id, status);
   }
 
@@ -237,71 +279,123 @@ export class DatabaseStorage implements IStorage {
   // ==========================================
   // MÉTODOS DE DAILY WORKDAY
   // ==========================================
-  
+
   async getDailyWorkdayById(id: string): Promise<DailyWorkday | undefined> {
     return dailyWorkdayStorage.getDailyWorkdayById(id);
   }
 
-  async getDailyWorkdayByEmployeeAndDate(employeeId: string, date: string): Promise<DailyWorkday | undefined> {
-    return dailyWorkdayStorage.getDailyWorkdayByEmployeeAndDate(employeeId, date);
+  async getDailyWorkdayByEmployeeAndDate(
+    employeeId: string,
+    date: string,
+  ): Promise<DailyWorkday | undefined> {
+    return dailyWorkdayStorage.getDailyWorkdayByEmployeeAndDate(
+      employeeId,
+      date,
+    );
   }
 
-  async getDailyWorkdaysByEmployeeAndRange(employeeId: string, startDate: string, endDate: string): Promise<DailyWorkday[]> {
-    return dailyWorkdayStorage.getDailyWorkdaysByEmployeeAndRange(employeeId, startDate, endDate);
+  async getDailyWorkdaysByEmployeeAndRange(
+    employeeId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<DailyWorkday[]> {
+    return dailyWorkdayStorage.getDailyWorkdaysByEmployeeAndRange(
+      employeeId,
+      startDate,
+      endDate,
+    );
   }
 
-  async createManualDailyWorkday(data: { employeeId: string; date: string; startTime: string; endTime: string; breakMinutes: number }): Promise<DailyWorkday> {
+  async createManualDailyWorkday(data: {
+    employeeId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    breakMinutes: number;
+  }): Promise<DailyWorkday> {
     return dailyWorkdayStorage.createManualDailyWorkday(data);
   }
 
-  async updateManualDailyWorkday(id: string, data: { startTime?: string; endTime?: string; breakMinutes?: number }): Promise<DailyWorkday | undefined> {
+  async updateManualDailyWorkday(
+    id: string,
+    data: { startTime?: string; endTime?: string; breakMinutes?: number },
+  ): Promise<DailyWorkday | undefined> {
     return dailyWorkdayStorage.updateManualDailyWorkday(id, data);
   }
-
+  async getDailyWorkdaysLastWeek(): Promise<DailyWorkday[]> {
+    return dailyWorkdayStorage.getDailyWorkdaysLastWeek();
+  }
   async deleteDailyWorkday(id: string): Promise<boolean> {
     return dailyWorkdayStorage.deleteDailyWorkday(id);
   }
 
-  async hasClockEntriesForDate(employeeId: string, date: string): Promise<boolean> {
+  async hasClockEntriesForDate(
+    employeeId: string,
+    date: string,
+  ): Promise<boolean> {
     return dailyWorkdayStorage.hasClockEntriesForDate(employeeId, date);
   }
 
   async crearFichaje(
     employeeId: string,
-    entryType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end',
+    entryType: "clock_in" | "clock_out" | "break_start" | "break_end",
     shiftId: string | null,
-    source: 'web' | 'mobile_app' | 'physical_terminal',
-    notes: string | null
+    source: "web" | "mobile_app" | "physical_terminal",
+    notes: string | null,
   ): Promise<TimeEntry> {
-    return clockEntryStorage.crearFichaje(employeeId, entryType, shiftId, source, notes);
+    return clockEntryStorage.crearFichaje(
+      employeeId,
+      entryType,
+      shiftId,
+      source,
+      notes,
+    );
   }
 
   // ==========================================
   // MÉTODOS ADICIONALES DEL STORAGE ORIGINAL
   // ==========================================
-  
+
   // Métodos de DateSchedule
   async getDateSchedules(): Promise<DateSchedule[]> {
     return scheduleStorage.getDateSchedules();
   }
 
-  async getDateSchedulesByEmployee(employeeId: string): Promise<DateSchedule[]> {
+  async getDateSchedulesByEmployee(
+    employeeId: string,
+  ): Promise<DateSchedule[]> {
     return scheduleStorage.getDateSchedulesByEmployee(employeeId);
   }
 
-  async getDateSchedulesByEmployeeAndRange(employeeId: string, startDate?: string, endDate?: string): Promise<DateSchedule[]> {
-    return scheduleStorage.getDateSchedulesByEmployeeAndRange(employeeId, startDate, endDate);
+  async getDateSchedulesByEmployeeAndRange(
+    employeeId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<DateSchedule[]> {
+    return scheduleStorage.getDateSchedulesByEmployeeAndRange(
+      employeeId,
+      startDate,
+      endDate,
+    );
   }
 
-  async getDateSchedulesByRange(startDate?: string, endDate?: string): Promise<DateSchedule[]> {
+  async getDateSchedulesByRange(
+    startDate?: string,
+    endDate?: string,
+  ): Promise<DateSchedule[]> {
     return scheduleStorage.getDateSchedulesByRange(startDate, endDate);
   }
 
-  async createDateSchedule(insertDateSchedule: InsertDateSchedule): Promise<DateSchedule> {
+  async createDateSchedule(
+    insertDateSchedule: InsertDateSchedule,
+  ): Promise<DateSchedule> {
     return scheduleStorage.createDateSchedule(insertDateSchedule);
   }
 
-  async updateDateSchedule(id: string, dateScheduleData: Partial<InsertDateSchedule>): Promise<DateSchedule | undefined> {
+  async updateDateSchedule(
+    id: string,
+    dateScheduleData: Partial<InsertDateSchedule>,
+  ): Promise<DateSchedule | undefined> {
     return scheduleStorage.updateDateSchedule(id, dateScheduleData);
   }
 
@@ -309,7 +403,9 @@ export class DatabaseStorage implements IStorage {
     return scheduleStorage.deleteDateSchedule(id);
   }
 
-  async createBulkDateSchedules(bulkData: BulkDateScheduleCreate): Promise<DateSchedule[]> {
+  async createBulkDateSchedules(
+    bulkData: BulkDateScheduleCreate,
+  ): Promise<DateSchedule[]> {
     return scheduleStorage.createBulkDateSchedules(bulkData);
   }
 
@@ -318,11 +414,13 @@ export class DatabaseStorage implements IStorage {
     return clockEntryStorage.getClockEntry(id);
   }
 
-  async createClockEntry(data: Omit<ClockEntry, 'id'>): Promise<ClockEntry> {
+  async createClockEntry(data: Omit<ClockEntry, "id">): Promise<ClockEntry> {
     return clockEntryStorage.createClockEntry(data);
   }
 
-  async getActiveClockEntry(employeeId: string): Promise<ClockEntry | undefined> {
+  async getActiveClockEntry(
+    employeeId: string,
+  ): Promise<ClockEntry | undefined> {
     return clockEntryStorage.getActiveClockEntry(employeeId);
   }
 
@@ -335,7 +433,10 @@ export class DatabaseStorage implements IStorage {
     return dailyWorkdayStorage.obtenerFichajesDelDia(employeeId, fecha);
   }
 
-  async obtenerJornadaDiaria(employeeId: string, fecha: string): Promise<DailyWorkday | undefined> {
+  async obtenerJornadaDiaria(
+    employeeId: string,
+    fecha: string,
+  ): Promise<DailyWorkday | undefined> {
     return dailyWorkdayStorage.obtenerJornadaDiaria(employeeId, fecha);
   }
 
@@ -345,10 +446,15 @@ export class DatabaseStorage implements IStorage {
     startTime: Date,
     endTime: Date,
     breakMinutes: number,
-    shiftId: string | null = null
+    shiftId: string | null = null,
   ): Promise<DailyWorkday> {
     return dailyWorkdayStorage.createDailyWorkdayWithAutoClockEntries(
-      employeeId, date, startTime, endTime, breakMinutes, shiftId
+      employeeId,
+      date,
+      startTime,
+      endTime,
+      breakMinutes,
+      shiftId,
     );
   }
 
@@ -359,22 +465,36 @@ export class DatabaseStorage implements IStorage {
     startTime: Date,
     endTime: Date,
     breakMinutes: number,
-    shiftId: string | null = null
+    shiftId: string | null = null,
   ): Promise<DailyWorkday | undefined> {
     return dailyWorkdayStorage.updateDailyWorkdayWithAutoClockEntries(
-      id, employeeId, date, startTime, endTime, breakMinutes, shiftId
+      id,
+      employeeId,
+      date,
+      startTime,
+      endTime,
+      breakMinutes,
+      shiftId,
     );
   }
 
-  async deleteDailyWorkdayWithAutoClockEntries(id: string, employeeId: string, date: string): Promise<boolean> {
-    return dailyWorkdayStorage.deleteDailyWorkdayWithAutoClockEntries(id, employeeId, date);
+  async deleteDailyWorkdayWithAutoClockEntries(
+    id: string,
+    employeeId: string,
+    date: string,
+  ): Promise<boolean> {
+    return dailyWorkdayStorage.deleteDailyWorkdayWithAutoClockEntries(
+      id,
+      employeeId,
+      date,
+    );
   }
 }
 
 /**
  * INSTANCIA SINGLETON DE STORAGE
  * ==============================
- * 
+ *
  * Esta es la instancia única de DatabaseStorage que se exporta y usa en toda la aplicación.
  */
 export const storage = new DatabaseStorage();

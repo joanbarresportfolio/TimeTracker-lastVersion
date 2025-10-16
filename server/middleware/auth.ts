@@ -31,18 +31,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     const user = verifyToken(token);
-    
+
     if (user) {
       req.user = user;
       return next();
     }
   }
-  
+
   // Fallback to session-based authentication
   if (!req.session.user) {
     return res.status(401).json({ message: "No autorizado. Debe iniciar sesión." });
   }
-  
+
   req.user = req.session.user;
   next();
 }
@@ -59,7 +59,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     const user = verifyToken(token);
-    
+
     if (user) {
       if (user.roleSystem !== "admin") {
         return res.status(403).json({ message: "Acceso denegado. Se requieren permisos de administrador." });
@@ -68,16 +68,16 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
       return next();
     }
   }
-  
+
   // Fallback to session-based authentication
   if (!req.session.user) {
     return res.status(401).json({ message: "No autorizado. Debe iniciar sesión." });
   }
-  
+
   if (req.session.user.roleSystem !== "admin") {
     return res.status(403).json({ message: "Acceso denegado. Se requieren permisos de administrador." });
   }
-  
+
   req.user = req.session.user;
   next();
 }
@@ -85,36 +85,36 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 // Middleware to check if user can access employee data (admin or own data, supports both session and JWT)
 export function requireEmployeeAccess(req: Request, res: Response, next: NextFunction) {
   let user: User | undefined;
-  
+
   // First check for JWT token in Authorization header
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     user = verifyToken(token) || undefined;
   }
-  
+
   // Fallback to session-based authentication
   if (!user && req.session.user) {
     user = req.session.user;
   }
-  
+
   if (!user) {
     return res.status(401).json({ message: "No autorizado. Debe iniciar sesión." });
   }
-  
+
   const employeeId = req.params.employeeId || req.query.employeeId || req.body.employeeId;
-  
+
   // Admin can access all employee data
   if (user.roleSystem === "admin") {
     req.user = user;
     return next();
   }
-  
+
   // Employee can only access their own data
   if (employeeId && employeeId !== user.id) {
     return res.status(403).json({ message: "Acceso denegado. Solo puede acceder a sus propios datos." });
   }
-  
+
   req.user = user;
   next();
 }

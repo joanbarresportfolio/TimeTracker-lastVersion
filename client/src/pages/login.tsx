@@ -30,7 +30,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     try {
       const response = await apiRequest("/api/auth/login", "POST", data);
       const result = await response.json();
-      
+
       if (result.user) {
         onLogin(result.user);
         toast({
@@ -105,16 +105,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </Button>
             </form>
           </Form>
-          
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <div className="border-t pt-4">
-              <p className="font-medium mb-2">Credenciales de prueba:</p>
-              <div className="space-y-1">
-                <p><strong>Administrador:</strong> admin@admin.com / admin</p>
-                <p><strong>Empleado:</strong> ana.garcia@company.com / password123</p>
-              </div>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
