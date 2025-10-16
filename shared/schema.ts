@@ -347,20 +347,6 @@ export const updateManualDailyWorkdaySchema = z.object({
   breakMinutes: z.number().optional(),
 });
 
-/**
- * Schema para formulario de jornada laboral (time-tracking page)
- */
-export const workdayFormSchema = z.object({
-  userId: z.string().min(1, "Debe seleccionar un empleado"),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe estar en formato YYYY-MM-DD"),
-  workdayType: z.enum(["completa", "parcial", "partida", "split"]).default("completa"),
-  startTime: z.string().regex(/^\d{2}:\d{2}$/, "La hora debe estar en formato HH:MM"),
-  endTime: z.string().regex(/^\d{2}:\d{2}$/, "La hora debe estar en formato HH:MM"),
-  breakMinutes: z.number().min(0).default(0),
-  startBreak: z.string().regex(/^\d{2}:\d{2}$/, "La hora debe estar en formato HH:MM").optional(),
-  endBreak: z.string().regex(/^\d{2}:\d{2}$/, "La hora debe estar en formato HH:MM").optional(),
-});
-
 // ============================================================================
 // TYPESCRIPT TYPES
 // ============================================================================
@@ -389,10 +375,6 @@ export type InsertIncidentsType = z.infer<typeof insertIncidentsTypeSchema>;
 export type Incident = typeof incidents.$inferSelect;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 export type IncidentFormData = z.infer<typeof incidentFormSchema>;
-
-export type ManualDailyWorkday = z.infer<typeof manualDailyWorkdaySchema>;
-export type UpdateManualDailyWorkday = z.infer<typeof updateManualDailyWorkdaySchema>;
-export type WorkdayFormData = z.infer<typeof workdayFormSchema>;
 
 // ============================================================================
 // ADDITIONAL TYPES

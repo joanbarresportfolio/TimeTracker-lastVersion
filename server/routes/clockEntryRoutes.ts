@@ -1,7 +1,7 @@
 /**
  * RUTAS DE GESTIÓN DE FICHAJES (CLOCK ENTRIES)
  * =============================================
- *
+ * 
  * Gestión completa del sistema de fichajes: entradas, salidas, pausas, y consultas.
  */
 
@@ -17,20 +17,20 @@ export function registerClockEntryRoutes(app: Express) {
   /**
    * GET /api/time-entries
    * ====================
-   *
+   * 
    * Obtiene registros de tiempo con filtrado por roles y parámetros.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAuth: Requiere usuario autenticado (admin o employee)
-   *
+   * 
    * CONTROL DE ACCESO POR ROLES:
    * - Employee: Solo puede ver sus propios registros
    * - Admin: Puede ver todos los registros con filtros opcionales
-   *
+   * 
    * PARÁMETROS DE QUERY OPCIONALES:
    * - employeeId: Filtra por empleado específico (solo admin)
    * - date: Filtra por fecha específica (formato YYYY-MM-DD)
-   *
+   * 
    * RESPONSES:
    * - 200: Array de registros de tiempo
    * - 401: No autorizado
@@ -71,12 +71,12 @@ export function registerClockEntryRoutes(app: Express) {
   /**
    * POST /api/time-entries/clock-in
    * ==============================
-   *
+   * 
    * Permite a empleados fichar entrada (clock-in) con validación de horarios.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAuth: Empleados y admins pueden usar esta función
-   *
+   * 
    * RESPONSES:
    * - 201: Clock-in exitoso con registro creado
    * - 400: Ya fichado hoy / fuera de horario
@@ -129,12 +129,12 @@ export function registerClockEntryRoutes(app: Express) {
   /**
    * POST /api/time-entries/clock-out
    * ===============================
-   *
+   * 
    * Permite a empleados fichar salida (clock-out) completando registro del día.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAuth: Empleados y admins pueden usar esta función
-   *
+   * 
    * RESPONSES:
    * - 200: Clock-out exitoso con registro completado
    * - 400: No hay entrada previa / fuera de horario
@@ -185,13 +185,13 @@ export function registerClockEntryRoutes(app: Express) {
   /**
    * POST /api/fichajes
    * ==================
-   *
+   * 
    * Crea un nuevo fichaje (entrada, salida, pausa_inicio, pausa_fin)
    * y actualiza automáticamente la jornada diaria.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAuth: Requiere usuario autenticado
-   *
+   * 
    * RESPONSES:
    * - 201: Fichaje creado exitosamente
    * - 400: Tipo de registro inválido
@@ -252,15 +252,15 @@ export function registerClockEntryRoutes(app: Express) {
   /**
    * GET /api/fichajes/all
    * =====================
-   *
+   * 
    * Obtiene todos los fichajes de todos los empleados para una fecha.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAuth: Requiere usuario autenticado
-   *
+   * 
    * QUERY PARAMS:
    * - date: Fecha en formato YYYY-MM-DD (requerido)
-   *
+   * 
    * RESPONSES:
    * - 200: Lista de fichajes
    * - 400: Parámetro date faltante
@@ -293,15 +293,15 @@ export function registerClockEntryRoutes(app: Express) {
   /**
    * GET /api/fichajes/:employeeId
    * ==============================
-   *
+   * 
    * Obtiene fichajes de un empleado específico.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireEmployeeAccess: Empleado ve sus datos, admin ve cualquiera
-   *
+   * 
    * QUERY PARAMS:
    * - date: Fecha en formato YYYY-MM-DD (requerido)
-   *
+   * 
    * RESPONSES:
    * - 200: Lista de fichajes del empleado
    * - 400: Parámetro date faltante
@@ -337,15 +337,15 @@ export function registerClockEntryRoutes(app: Express) {
   /**
    * GET /api/jornadas/:employeeId
    * ==============================
-   *
+   * 
    * Obtiene jornadas consolidadas de un empleado.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireEmployeeAccess: Empleado ve sus datos, admin ve cualquiera
-   *
+   * 
    * QUERY PARAMS:
    * - date: Fecha en formato YYYY-MM-DD (requerido)
-   *
+   * 
    * RESPONSES:
    * - 200: Jornada diaria del empleado
    * - 400: Parámetro date faltante
@@ -381,12 +381,12 @@ export function registerClockEntryRoutes(app: Express) {
   /**
    * GET /api/jornadas/:employeeId/actual
    * =====================================
-   *
+   * 
    * Obtiene la jornada actual (hoy) de un empleado.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireEmployeeAccess: Empleado ve sus datos, admin ve cualquiera
-   *
+   * 
    * RESPONSES:
    * - 200: Jornada actual del empleado
    * - 401: No autorizado
@@ -414,12 +414,12 @@ export function registerClockEntryRoutes(app: Express) {
   /**
    * GET /api/fichajes/:employeeId/ultimo
    * =====================================
-   *
+   * 
    * Obtiene el último fichaje del empleado (para determinar próxima acción).
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireEmployeeAccess: Empleado ve sus datos, admin ve cualquiera
-   *
+   * 
    * RESPONSES:
    * - 200: Último fichaje del empleado
    * - 401: No autorizado

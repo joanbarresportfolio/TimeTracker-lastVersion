@@ -1,7 +1,7 @@
 /**
  * RUTAS DE GESTIÓN DE JORNADAS LABORALES DIARIAS
  * ===============================================
- *
+ * 
  * Gestión manual de jornadas laborales consolidadas por día.
  */
 
@@ -18,16 +18,16 @@ export function registerDailyWorkdayRoutes(app: Express) {
   /**
    * GET /api/daily-workday
    * =====================
-   *
+   * 
    * Obtiene una jornada laboral específica por empleado y fecha.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores
-   *
+   * 
    * QUERY PARAMS:
    * - employeeId: ID del empleado (requerido)
    * - date: Fecha en formato YYYY-MM-DD (requerido)
-   *
+   * 
    * RESPONSES:
    * - 200: Datos de la jornada laboral
    * - 400: Parámetros faltantes
@@ -66,17 +66,17 @@ export function registerDailyWorkdayRoutes(app: Express) {
   /**
    * GET /api/daily-workday/history
    * ==============================
-   *
+   * 
    * Obtiene el historial de jornadas laborales de un empleado por rango de fechas.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores
-   *
+   * 
    * QUERY PARAMS:
    * - employeeId: ID del empleado (requerido)
    * - startDate: Fecha inicial en formato YYYY-MM-DD (requerido)
    * - endDate: Fecha final en formato YYYY-MM-DD (requerido)
-   *
+   * 
    * RESPONSES:
    * - 200: Array de jornadas laborales
    * - 400: Parámetros faltantes
@@ -112,12 +112,12 @@ export function registerDailyWorkdayRoutes(app: Express) {
   /**
    * POST /api/daily-workday
    * ======================
-   *
+   * 
    * Crea manualmente una jornada laboral.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores
-   *
+   * 
    * REQUEST BODY:
    * {
    *   "employeeId": "emp-id",
@@ -126,7 +126,7 @@ export function registerDailyWorkdayRoutes(app: Express) {
    *   "endTime": "17:00",
    *   "breakMinutes": 30
    * }
-   *
+   * 
    * RESPONSES:
    * - 201: Jornada creada exitosamente
    * - 400: Datos inválidos
@@ -157,12 +157,12 @@ export function registerDailyWorkdayRoutes(app: Express) {
   /**
    * PUT /api/daily-workday/:id
    * =========================
-   *
+   * 
    * Actualiza una jornada laboral manual existente.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores
-   *
+   * 
    * RESPONSES:
    * - 200: Jornada actualizada exitosamente
    * - 400: Datos inválidos / Jornada tiene fichajes
@@ -194,16 +194,15 @@ export function registerDailyWorkdayRoutes(app: Express) {
         `${existingWorkday.date}T${data.endTime}:00`,
       );
 
-      const updatedWorkday =
-        await storage.updateDailyWorkdayWithAutoClockEntries(
-          workdayId,
-          existingWorkday.idUser,
-          existingWorkday.date,
-          startDateTime,
-          endDateTime,
-          data.breakMinutes || 0,
-          null,
-        );
+      const updatedWorkday = await storage.updateDailyWorkdayWithAutoClockEntries(
+        workdayId,
+        existingWorkday.idUser,
+        existingWorkday.date,
+        startDateTime,
+        endDateTime,
+        data.breakMinutes || 0,
+        null
+      );
 
       res.json(updatedWorkday);
     } catch (error) {
@@ -214,12 +213,12 @@ export function registerDailyWorkdayRoutes(app: Express) {
   /**
    * DELETE /api/daily-workday/:id
    * ============================
-   *
+   * 
    * Elimina una jornada laboral manual.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores
-   *
+   * 
    * RESPONSES:
    * - 204: Jornada eliminada exitosamente
    * - 400: Jornada tiene fichajes
@@ -242,7 +241,7 @@ export function registerDailyWorkdayRoutes(app: Express) {
       await storage.deleteDailyWorkdayWithAutoClockEntries(
         workdayId,
         existingWorkday.idUser,
-        existingWorkday.date,
+        existingWorkday.date
       );
       res.status(204).send();
     } catch (error) {

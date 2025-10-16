@@ -2,21 +2,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { loginSchema, type LoginRequest } from "@shared/schema";
@@ -43,7 +30,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     try {
       const response = await apiRequest("/api/auth/login", "POST", data);
       const result = await response.json();
-
+      
       if (result.user) {
         onLogin(result.user);
         toast({
@@ -73,10 +60,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(handleLogin)}
-              className="space-y-4"
-            >
+            <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="email"
@@ -121,6 +105,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </Button>
             </form>
           </Form>
+          
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            <div className="border-t pt-4">
+              <p className="font-medium mb-2">Credenciales de prueba:</p>
+              <div className="space-y-1">
+                <p><strong>Administrador:</strong> admin@admin.com / admin</p>
+                <p><strong>Empleado:</strong> ana.garcia@company.com / password123</p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

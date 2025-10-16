@@ -1,7 +1,7 @@
 /**
  * RUTAS DE GESTIÓN DE TIPOS DE INCIDENCIAS
  * =========================================
- *
+ * 
  * CRUD de tipos de incidencias configurables del sistema.
  */
 
@@ -14,12 +14,12 @@ export function registerIncidentTypeRoutes(app: Express) {
   /**
    * GET /api/incident-types
    * =======================
-   *
+   * 
    * Obtiene todos los tipos de incidencias configurados.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAuth: Requiere usuario autenticado
-   *
+   * 
    * RESPONSES:
    * - 200: Lista de tipos de incidencias
    * - 401: No autorizado
@@ -39,12 +39,12 @@ export function registerIncidentTypeRoutes(app: Express) {
   /**
    * POST /api/incident-types
    * ========================
-   *
+   * 
    * Crea un nuevo tipo de incidencia.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden crear tipos
-   *
+   * 
    * RESPONSES:
    * - 201: Tipo de incidencia creado
    * - 400: Datos inválidos
@@ -73,12 +73,12 @@ export function registerIncidentTypeRoutes(app: Express) {
   /**
    * PUT /api/incident-types/:id
    * ===========================
-   *
+   * 
    * Actualiza un tipo de incidencia.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden actualizar tipos
-   *
+   * 
    * RESPONSES:
    * - 200: Tipo de incidencia actualizado
    * - 400: Datos inválidos
@@ -87,9 +87,7 @@ export function registerIncidentTypeRoutes(app: Express) {
    */
   app.put("/api/incident-types/:id", requireAdmin, async (req, res) => {
     try {
-      const validation = insertIncidentsTypeSchema
-        .partial()
-        .safeParse(req.body);
+      const validation = insertIncidentsTypeSchema.partial().safeParse(req.body);
 
       if (!validation.success) {
         return res.status(400).json({
@@ -113,12 +111,12 @@ export function registerIncidentTypeRoutes(app: Express) {
   /**
    * DELETE /api/incident-types/:id
    * ==============================
-   *
+   * 
    * Elimina un tipo de incidencia.
-   *
+   * 
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden eliminar tipos
-   *
+   * 
    * RESPONSES:
    * - 204: Tipo de incidencia eliminado
    * - 401: No autorizado
