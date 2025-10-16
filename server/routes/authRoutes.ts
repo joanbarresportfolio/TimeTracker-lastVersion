@@ -1,7 +1,7 @@
 /**
  * RUTAS DE AUTENTICACIÓN
  * ======================
- * 
+ *
  * Manejo de autenticación de usuarios (login, logout, verificación de sesión).
  */
 
@@ -12,7 +12,6 @@ import { requireAuth, generateToken } from "../middleware/auth";
 import { z } from "zod";
 
 export function registerAuthRoutes(app: Express) {
-
   app.post("/api/auth/login", async (req, res) => {
     try {
       // PASO 1: Validar formato de datos de entrada

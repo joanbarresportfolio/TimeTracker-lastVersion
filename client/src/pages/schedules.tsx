@@ -4,18 +4,73 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Edit3, Eye, Users, Timer, Building, Clock, Calendar as CalendarIcon, Plus, Trash2, Save, X, ChevronLeft, ChevronRight, Copy } from "lucide-react";
-import { format, startOfYear, endOfYear, eachMonthOfInterval, eachDayOfInterval, startOfMonth, endOfMonth, isSameMonth, isSameDay, isToday, getDay, addMonths, subMonths } from 'date-fns';
-import { es } from 'date-fns/locale';
+import {
+  Search,
+  Edit3,
+  Eye,
+  Users,
+  Timer,
+  Building,
+  Clock,
+  Calendar as CalendarIcon,
+  Plus,
+  Trash2,
+  Save,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+} from "lucide-react";
+import {
+  format,
+  startOfYear,
+  endOfYear,
+  eachMonthOfInterval,
+  eachDayOfInterval,
+  startOfMonth,
+  endOfMonth,
+  isSameMonth,
+  isSameDay,
+  isToday,
+  getDay,
+  addMonths,
+  subMonths,
+} from "date-fns";
+import { es } from "date-fns/locale";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import type { Employee, TimeEntry, DateSchedule, DailyWorkday } from "@shared/schema";
+import type {
+  Employee,
+  TimeEntry,
+  DateSchedule,
+  DailyWorkday,
+} from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -44,62 +99,82 @@ interface CalendarDay {
 export default function Schedules() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"summary" | "calendar" | "schedule">("summary");
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [viewMode, setViewMode] = useState<"summary" | "calendar" | "schedule">(
+    "summary",
+  );
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null,
+  );
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const [selectedDates, setSelectedDates] = useState<SelectedDate[]>([]);
-  const [selectionType, setSelectionType] = useState<"with-schedule" | "without-schedule" | null>(null);
+  const [selectionType, setSelectionType] = useState<
+    "with-schedule" | "without-schedule" | null
+  >(null);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
-  const [scheduleForm, setScheduleForm] = useState({ 
-    startTime: "09:00", 
+  const [scheduleForm, setScheduleForm] = useState({
+    startTime: "09:00",
     endTime: "17:00",
     workdayType: "completa" as "completa" | "partida",
     breakStartTime: "12:00",
-    breakEndTime: "13:00"
+    breakEndTime: "13:00",
   });
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [historyEmployee, setHistoryEmployee] = useState<Employee | null>(null);
   const [historyMonth, setHistoryMonth] = useState(new Date());
   const [showCopyDialog, setShowCopyDialog] = useState(false);
-  const [selectedEmployeesToCopy, setSelectedEmployeesToCopy] = useState<string[]>([]);
-  
+  const [selectedEmployeesToCopy, setSelectedEmployeesToCopy] = useState<
+    string[]
+  >([]);
+
   const { toast } = useToast();
 
-  const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>({
-    queryKey: ["/api/employees"],
-  });
+  const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>(
+    {
+      queryKey: ["/api/employees"],
+    },
+  );
 
-  const { data: departmentsList } = useQuery<Array<{ id: string; name: string }>>({
+  const { data: departmentsList } = useQuery<
+    Array<{ id: string; name: string }>
+  >({
     queryKey: ["/api/departments"],
   });
 
-  const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<TimeEntry[]>({
+  const { data: timeEntries, isLoading: timeEntriesLoading } = useQuery<
+    TimeEntry[]
+  >({
     queryKey: ["/api/time-entries"],
   });
 
-  const { data: dateSchedules, isLoading: dateSchedulesLoading, refetch: refetchDateSchedules } = useQuery<DateSchedule[]>({
+  const {
+    data: dateSchedules,
+    isLoading: dateSchedulesLoading,
+    refetch: refetchDateSchedules,
+  } = useQuery<DateSchedule[]>({
     queryKey: ["/api/date-schedules", selectedEmployee?.id, calendarYear],
     queryFn: async () => {
       if (!selectedEmployee) return [];
       const startDate = `${calendarYear}-01-01`;
       const endDate = `${calendarYear}-12-31`;
       const url = `/api/date-schedules?employeeId=${selectedEmployee.id}&startDate=${startDate}&endDate=${endDate}`;
-      const response = await fetch(url, { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch date schedules');
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch date schedules");
       return response.json();
     },
     enabled: !!selectedEmployee && viewMode === "calendar",
   });
 
-  const { data: workdayHistory, isLoading: workdayHistoryLoading } = useQuery<DailyWorkday[]>({
+  const { data: workdayHistory, isLoading: workdayHistoryLoading } = useQuery<
+    DailyWorkday[]
+  >({
     queryKey: ["/api/daily-workday/history", historyEmployee?.id, historyMonth],
     queryFn: async () => {
       if (!historyEmployee) return [];
-      const startDate = format(startOfMonth(historyMonth), 'yyyy-MM-dd');
-      const endDate = format(endOfMonth(historyMonth), 'yyyy-MM-dd');
+      const startDate = format(startOfMonth(historyMonth), "yyyy-MM-dd");
+      const endDate = format(endOfMonth(historyMonth), "yyyy-MM-dd");
       const url = `/api/daily-workday/history?employeeId=${historyEmployee.id}&startDate=${startDate}&endDate=${endDate}`;
-      const response = await fetch(url, { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch workday history');
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch workday history");
       return response.json();
     },
     enabled: !!historyEmployee && showHistoryDialog,
@@ -107,8 +182,12 @@ export default function Schedules() {
 
   // ⚠️ HOOKS DE MUTACIÓN - DEBEN estar SIEMPRE antes de returns condicionales
   const createDateScheduleMutation = useMutation({
-    mutationFn: (data: { employeeId: string; date: string; expectedStartTime: string; expectedEndTime: string }) => 
-      apiRequest("/api/date-schedules", "POST", data),
+    mutationFn: (data: {
+      employeeId: string;
+      date: string;
+      expectedStartTime: string;
+      expectedEndTime: string;
+    }) => apiRequest("/api/date-schedules", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
       refetchDateSchedules();
@@ -117,16 +196,16 @@ export default function Schedules() {
       toast({ title: "Éxito", description: "Horario creado correctamente" });
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: error?.message || "Error al crear el horario",
-        variant: "destructive"
+        variant: "destructive",
       });
     },
   });
 
   const deleteDateScheduleMutation = useMutation({
-    mutationFn: (id: string) => 
+    mutationFn: (id: string) =>
       apiRequest(`/api/date-schedules/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
@@ -134,29 +213,37 @@ export default function Schedules() {
       toast({ title: "Éxito", description: "Horario eliminado correctamente" });
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: error?.message || "Error al eliminar el horario",
-        variant: "destructive"
+        variant: "destructive",
       });
     },
   });
 
   const createBulkDateScheduleMutation = useMutation({
-    mutationFn: (data: { schedules: Array<{ employeeId: string; date: string; startTime: string; endTime: string }> }) => 
-      apiRequest("/api/date-schedules/bulk", "POST", data),
+    mutationFn: (data: {
+      schedules: Array<{
+        employeeId: string;
+        date: string;
+        startTime: string;
+        endTime: string;
+      }>;
+    }) => apiRequest("/api/date-schedules/bulk", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules", selectedEmployee?.id, calendarYear] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/date-schedules", selectedEmployee?.id, calendarYear],
+      });
       refetchDateSchedules();
       setSelectedDates([]);
       setShowScheduleDialog(false);
       toast({ title: "Éxito", description: "Horarios creados correctamente" });
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: error?.message || "Error al crear los horarios",
-        variant: "destructive"
+        variant: "destructive",
       });
     },
   });
@@ -165,26 +252,31 @@ export default function Schedules() {
   const employeeSummaries = useMemo((): EmployeeSummary[] => {
     if (!employees || !timeEntries) return [];
 
-    return employees.map(employee => {
+    return employees.map((employee) => {
       // Filtrar entradas de tiempo para este empleado en el año actual
       const currentYear = new Date().getFullYear();
-      const employeeEntries = timeEntries.filter(entry => {
+      const employeeEntries = timeEntries.filter((entry) => {
         const entryDate = new Date(entry.date);
-        return entry.employeeId === employee.id && 
-               entryDate.getFullYear() === currentYear &&
-               entry.totalHours !== null;
+        return (
+          entry.employeeId === employee.id &&
+          entryDate.getFullYear() === currentYear &&
+          entry.totalHours !== null
+        );
       });
 
       // Calcular total de horas trabajadas este año (convertir de minutos a horas)
-      const totalMinutesWorked = employeeEntries.reduce((sum, entry) => 
-        sum + (entry.totalHours || 0), 0
+      const totalMinutesWorked = employeeEntries.reduce(
+        (sum, entry) => sum + (entry.totalHours || 0),
+        0,
       );
-      const hoursWorked = Math.round(totalMinutesWorked / 60 * 100) / 100;
+      const hoursWorked = Math.round((totalMinutesWorked / 60) * 100) / 100;
 
       // Calcular porcentaje trabajado respecto a horas de convenio
       const conventionHours = 1752; // Horas de convenio anual estándar
-      const percentageWorked = conventionHours > 0 ? 
-        Math.round((hoursWorked / conventionHours) * 100 * 100) / 100 : 0;
+      const percentageWorked =
+        conventionHours > 0
+          ? Math.round((hoursWorked / conventionHours) * 100 * 100) / 100
+          : 0;
 
       return {
         employee,
@@ -198,21 +290,23 @@ export default function Schedules() {
   // Crear mapa de ID de departamento a nombre
   const departmentMap = useMemo(() => {
     if (!departmentsList) return new Map<string, string>();
-    return new Map(departmentsList.map(dept => [dept.id, dept.name]));
+    return new Map(departmentsList.map((dept) => [dept.id, dept.name]));
   }, [departmentsList]);
 
   // Filtrar empleados según búsqueda y departamento
   const filteredSummaries = useMemo(() => {
-    return employeeSummaries.filter(summary => {
+    return employeeSummaries.filter((summary) => {
       const employee = summary.employee;
-      const matchesSearch = 
+      const matchesSearch =
         employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.numEmployee.toLowerCase().includes(searchTerm.toLowerCase());
-      const employeeDeptName = employee.departmentId ? departmentMap.get(employee.departmentId) : null;
-      const matchesDepartment = selectedDepartment === "all" || 
-        employeeDeptName === selectedDepartment;
-      
+      const employeeDeptName = employee.departmentId
+        ? departmentMap.get(employee.departmentId)
+        : null;
+      const matchesDepartment =
+        selectedDepartment === "all" || employeeDeptName === selectedDepartment;
+
       return matchesSearch && matchesDepartment && employee.isActive;
     });
   }, [employeeSummaries, searchTerm, selectedDepartment, departmentMap]);
@@ -221,8 +315,10 @@ export default function Schedules() {
   const departments = useMemo(() => {
     if (!employees || !departmentMap.size) return [];
     const deptNames = employees
-      .map(emp => emp.departmentId ? departmentMap.get(emp.departmentId) : null)
-      .filter(name => name !== null && name !== undefined) as string[];
+      .map((emp) =>
+        emp.departmentId ? departmentMap.get(emp.departmentId) : null,
+      )
+      .filter((name) => name !== null && name !== undefined) as string[];
     return Array.from(new Set(deptNames));
   }, [employees, departmentMap]);
 
@@ -233,11 +329,11 @@ export default function Schedules() {
     const endDate = endOfYear(new Date(year, 11, 31));
     const months = eachMonthOfInterval({ start: startDate, end: endDate });
 
-    return months.map(month => {
+    return months.map((month) => {
       const monthStart = startOfMonth(month);
       const monthEnd = endOfMonth(month);
       const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-      
+
       // Agregar días del mes anterior para completar la primera semana (Monday-first)
       const startDay = (getDay(monthStart) + 6) % 7; // Convert Sunday-first to Monday-first
       const prevDays = [];
@@ -246,34 +342,36 @@ export default function Schedules() {
         prevDate.setDate(prevDate.getDate() - i - 1);
         prevDays.push(prevDate);
       }
-      
+
       // Agregar días del mes siguiente para completar la última semana (Monday-first)
       const endDay = (getDay(monthEnd) + 6) % 7; // Convert Sunday-first to Monday-first
       const nextDays = [];
-      for (let i = 1; i <= (6 - endDay); i++) {
+      for (let i = 1; i <= 6 - endDay; i++) {
         const nextDate = new Date(monthEnd);
         nextDate.setDate(nextDate.getDate() + i);
         nextDays.push(nextDate);
       }
-      
+
       const allDays = [...prevDays, ...days, ...nextDays];
-      
+
       return {
         month,
         days: allDays.map((date): CalendarDay => {
-          const dateStr = format(date, 'yyyy-MM-dd');
-          const schedule = dateSchedules?.find(s => s.date === dateStr);
-          
+          const dateStr = format(date, "yyyy-MM-dd");
+          const schedule = dateSchedules?.find((s) => s.date === dateStr);
+
           return {
             date,
             dateStr,
             isCurrentMonth: isSameMonth(date, month),
             isToday: isToday(date),
-            isSelected: selectedDates.some(selected => selected.dateStr === dateStr),
+            isSelected: selectedDates.some(
+              (selected) => selected.dateStr === dateStr,
+            ),
             hasSchedule: !!schedule,
             schedule,
           };
-        })
+        }),
       };
     });
   }, [calendarYear, dateSchedules, selectedDates]);
@@ -285,7 +383,7 @@ export default function Schedules() {
   const getAvatarColor = (name: string) => {
     const colors = [
       "from-blue-500 to-purple-600",
-      "from-green-500 to-teal-600", 
+      "from-green-500 to-teal-600",
       "from-orange-500 to-red-600",
       "from-purple-500 to-pink-600",
       "from-yellow-500 to-orange-600",
@@ -317,26 +415,33 @@ export default function Schedules() {
 
   // Efecto para leer employeeId de sessionStorage y seleccionar empleado automáticamente
   useEffect(() => {
-    const savedEmployeeId = sessionStorage.getItem('selectedEmployeeId');
+    const savedEmployeeId = sessionStorage.getItem("selectedEmployeeId");
     if (savedEmployeeId && employees) {
-      const employee = employees.find(emp => emp.id === savedEmployeeId);
+      const employee = employees.find((emp) => emp.id === savedEmployeeId);
       if (employee) {
         setSelectedEmployee(employee);
         setViewMode("calendar");
         // Limpiar el sessionStorage después de usarlo
-        sessionStorage.removeItem('selectedEmployeeId');
+        sessionStorage.removeItem("selectedEmployeeId");
       }
     }
   }, [employees]);
 
-  const isLoading = employeesLoading || timeEntriesLoading || (viewMode === "calendar" && dateSchedulesLoading);
+  const isLoading =
+    employeesLoading ||
+    timeEntriesLoading ||
+    (viewMode === "calendar" && dateSchedulesLoading);
 
   if (isLoading) {
     return (
       <div className="p-4 lg:p-6 space-y-6">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Horarios y Turnos</h2>
-          <p className="text-muted-foreground">Gestiona los horarios de trabajo de los empleados</p>
+          <h2 className="text-2xl font-bold text-foreground">
+            Horarios y Turnos
+          </h2>
+          <p className="text-muted-foreground">
+            Gestiona los horarios de trabajo de los empleados
+          </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
@@ -356,9 +461,12 @@ export default function Schedules() {
     return (
       <div className="p-4 lg:p-6 space-y-6">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Horarios y Turnos</h2>
+          <h2 className="text-2xl font-bold text-foreground">
+            Horarios y Turnos
+          </h2>
           <p className="text-muted-foreground">
-            Gestiona los horarios de trabajo y supervisa el progreso anual de cada empleado
+            Gestiona los horarios de trabajo y supervisa el progreso anual de
+            cada empleado
           </p>
         </div>
 
@@ -380,13 +488,19 @@ export default function Schedules() {
                   data-testid="input-search-employees"
                 />
               </div>
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                <SelectTrigger className="w-48" data-testid="select-department-filter">
+              <Select
+                value={selectedDepartment}
+                onValueChange={setSelectedDepartment}
+              >
+                <SelectTrigger
+                  className="w-48"
+                  data-testid="select-department-filter"
+                >
                   <SelectValue placeholder="Filtrar por departamento" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los departamentos</SelectItem>
-                  {departments.map(department => (
+                  {departments.map((department) => (
                     <SelectItem key={department} value={department}>
                       {department}
                     </SelectItem>
@@ -410,17 +524,26 @@ export default function Schedules() {
                 </TableHeader>
                 <TableBody>
                   {filteredSummaries.map((summary) => (
-                    <TableRow key={summary.employee.id} data-testid={`employee-row-${summary.employee.id}`}>
+                    <TableRow
+                      key={summary.employee.id}
+                      data-testid={`employee-row-${summary.employee.id}`}
+                    >
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <Avatar className="w-10 h-10">
-                            <AvatarFallback className={`bg-gradient-to-r ${getAvatarColor(summary.employee.firstName)} text-white text-sm font-semibold`}>
-                              {getInitials(summary.employee.firstName, summary.employee.lastName)}
+                            <AvatarFallback
+                              className={`bg-gradient-to-r ${getAvatarColor(summary.employee.firstName)} text-white text-sm font-semibold`}
+                            >
+                              {getInitials(
+                                summary.employee.firstName,
+                                summary.employee.lastName,
+                              )}
                             </AvatarFallback>
                           </Avatar>
                           <div>
                             <div className="font-medium text-foreground">
-                              {summary.employee.firstName} {summary.employee.lastName}
+                              {summary.employee.firstName}{" "}
+                              {summary.employee.lastName}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {summary.employee.numEmployee}
@@ -429,21 +552,32 @@ export default function Schedules() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="flex items-center gap-1">
+                        <Badge
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
                           <Building className="w-3 h-3" />
-                          {summary.employee.departmentId ? (departmentMap.get(summary.employee.departmentId) || 'Sin departamento') : 'Sin departamento'}
+                          {summary.employee.departmentId
+                            ? departmentMap.get(
+                                summary.employee.departmentId,
+                              ) || "Sin departamento"
+                            : "Sin departamento"}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Timer className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">{summary.hoursWorked}h</span>
+                          <span className="font-medium">
+                            {summary.hoursWorked}h
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Clock className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">{summary.conventionHours}h</span>
+                          <span className="text-muted-foreground">
+                            {summary.conventionHours}h
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -454,24 +588,28 @@ export default function Schedules() {
                           <div className="w-full bg-muted rounded-full h-2">
                             <div
                               className={`h-2 rounded-full ${getProgressColor(summary.percentageWorked)} transition-all duration-300`}
-                              style={{ width: `${Math.min(summary.percentageWorked, 100)}%` }}
+                              style={{
+                                width: `${Math.min(summary.percentageWorked, 100)}%`,
+                              }}
                             />
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleModifySchedule(summary.employee)}
+                            onClick={() =>
+                              handleModifySchedule(summary.employee)
+                            }
                             data-testid={`button-modify-${summary.employee.id}`}
                           >
                             <Edit3 className="w-4 h-4 mr-1" />
                             Modificar
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => handleViewSchedule(summary.employee)}
                             data-testid={`button-view-${summary.employee.id}`}
@@ -486,10 +624,12 @@ export default function Schedules() {
                 </TableBody>
               </Table>
             </div>
-            
+
             {filteredSummaries.length === 0 && (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No se encontraron empleados con los filtros aplicados</p>
+                <p className="text-muted-foreground">
+                  No se encontraron empleados con los filtros aplicados
+                </p>
               </div>
             )}
           </CardContent>
@@ -501,7 +641,8 @@ export default function Schedules() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5" />
-                Historial de Turnos - {historyEmployee?.firstName} {historyEmployee?.lastName}
+                Historial de Turnos - {historyEmployee?.firstName}{" "}
+                {historyEmployee?.lastName}
               </DialogTitle>
               <DialogDescription>
                 Visualiza el historial de jornadas laborales del empleado
@@ -518,7 +659,7 @@ export default function Schedules() {
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <h3 className="font-semibold text-lg">
-                {format(historyMonth, 'MMMM yyyy', { locale: es })}
+                {format(historyMonth, "MMMM yyyy", { locale: es })}
               </h3>
               <Button
                 variant="outline"
@@ -532,18 +673,26 @@ export default function Schedules() {
 
             <Tabs defaultValue="table" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="table" data-testid="tab-table-view">Vista Tabla</TabsTrigger>
-                <TabsTrigger value="calendar" data-testid="tab-calendar-view">Vista Calendario</TabsTrigger>
+                <TabsTrigger value="table" data-testid="tab-table-view">
+                  Vista Tabla
+                </TabsTrigger>
+                <TabsTrigger value="calendar" data-testid="tab-calendar-view">
+                  Vista Calendario
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="table" className="space-y-4">
                 {workdayHistoryLoading ? (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground">Cargando historial...</p>
+                    <p className="text-muted-foreground">
+                      Cargando historial...
+                    </p>
                   </div>
                 ) : !workdayHistory || workdayHistory.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground">No hay jornadas registradas para este mes</p>
+                    <p className="text-muted-foreground">
+                      No hay jornadas registradas para este mes
+                    </p>
                   </div>
                 ) : (
                   <div className="border rounded-lg">
@@ -564,11 +713,16 @@ export default function Schedules() {
                             const mins = minutes % 60;
                             return `${hours}h ${mins}m`;
                           };
-                          
+
                           return (
-                            <TableRow key={workday.id} data-testid={`workday-row-${workday.id}`}>
+                            <TableRow
+                              key={workday.id}
+                              data-testid={`workday-row-${workday.id}`}
+                            >
                               <TableCell className="font-medium">
-                                {format(new Date(workday.date), 'dd/MM/yyyy', { locale: es })}
+                                {format(new Date(workday.date), "dd/MM/yyyy", {
+                                  locale: es,
+                                })}
                               </TableCell>
                               <TableCell>
                                 {formatMinutesToHours(workday.workedMinutes)}
@@ -580,8 +734,16 @@ export default function Schedules() {
                                 {formatMinutesToHours(workday.overtimeMinutes)}
                               </TableCell>
                               <TableCell>
-                                <Badge variant={workday.status === 'closed' ? 'default' : 'secondary'}>
-                                  {workday.status === 'closed' ? 'Cerrada' : 'Abierta'}
+                                <Badge
+                                  variant={
+                                    workday.status === "closed"
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                >
+                                  {workday.status === "closed"
+                                    ? "Cerrada"
+                                    : "Abierta"}
                                 </Badge>
                               </TableCell>
                             </TableRow>
@@ -596,7 +758,9 @@ export default function Schedules() {
               <TabsContent value="calendar" className="space-y-4">
                 {workdayHistoryLoading ? (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground">Cargando calendario...</p>
+                    <p className="text-muted-foreground">
+                      Cargando calendario...
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -607,36 +771,51 @@ export default function Schedules() {
                       locale={es}
                       modifiers={{
                         worked: (date) => {
-                          const dateStr = format(date, 'yyyy-dd');
-                          return workdayHistory?.some(wd => wd.date === dateStr) || false;
+                          const dateStr = format(date, "yyyy-dd");
+                          return (
+                            workdayHistory?.some((wd) => wd.date === dateStr) ||
+                            false
+                          );
                         },
                       }}
                       modifiersStyles={{
                         worked: {
-                          fontWeight: 'bold',
-                          backgroundColor: 'hsl(var(--primary) / 0.1)',
-                          border: '2px solid hsl(var(--primary))',
+                          fontWeight: "bold",
+                          backgroundColor: "hsl(var(--primary) / 0.1)",
+                          border: "2px solid hsl(var(--primary))",
                         },
                       }}
                       className="rounded-md border"
                     />
                     <div className="grid gap-2">
                       <p className="text-sm text-muted-foreground">
-                        Los días marcados representan jornadas laborales registradas.
+                        Los días marcados representan jornadas laborales
+                        registradas.
                       </p>
                       {workdayHistory && workdayHistory.length > 0 && (
                         <div className="space-y-2">
-                          <p className="font-semibold text-sm">Resumen del mes:</p>
+                          <p className="font-semibold text-sm">
+                            Resumen del mes:
+                          </p>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="p-3 border rounded-lg">
-                              <p className="text-xs text-muted-foreground">Total días trabajados</p>
-                              <p className="text-2xl font-bold">{workdayHistory.length}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Total días trabajados
+                              </p>
+                              <p className="text-2xl font-bold">
+                                {workdayHistory.length}
+                              </p>
                             </div>
                             <div className="p-3 border rounded-lg">
-                              <p className="text-xs text-muted-foreground">Total horas</p>
+                              <p className="text-xs text-muted-foreground">
+                                Total horas
+                              </p>
                               <p className="text-2xl font-bold">
                                 {(() => {
-                                  const totalMinutes = workdayHistory.reduce((sum, wd) => sum + wd.workedMinutes, 0);
+                                  const totalMinutes = workdayHistory.reduce(
+                                    (sum, wd) => sum + wd.workedMinutes,
+                                    0,
+                                  );
                                   const hours = Math.floor(totalMinutes / 60);
                                   const mins = totalMinutes % 60;
                                   return `${hours}h ${mins}m`;
@@ -657,18 +836,20 @@ export default function Schedules() {
     );
   }
 
-
-
   const handleDateClick = (day: CalendarDay) => {
     if (!day.isCurrentMonth) return;
-    
-    const isSelected = selectedDates.some(selected => selected.dateStr === day.dateStr);
-    
+
+    const isSelected = selectedDates.some(
+      (selected) => selected.dateStr === day.dateStr,
+    );
+
     if (isSelected) {
       // Deseleccionar fecha
-      const newSelectedDates = selectedDates.filter(selected => selected.dateStr !== day.dateStr);
+      const newSelectedDates = selectedDates.filter(
+        (selected) => selected.dateStr !== day.dateStr,
+      );
       setSelectedDates(newSelectedDates);
-      
+
       // Si no quedan fechas seleccionadas, resetear el tipo de selección
       if (newSelectedDates.length === 0) {
         setSelectionType(null);
@@ -676,7 +857,7 @@ export default function Schedules() {
     } else {
       // Intentar seleccionar fecha
       const dayHasSchedule = day.hasSchedule;
-      
+
       // Si no hay ninguna fecha seleccionada, establecer el tipo según el día clickeado
       if (selectedDates.length === 0) {
         setSelectionType(dayHasSchedule ? "with-schedule" : "without-schedule");
@@ -685,18 +866,25 @@ export default function Schedules() {
         // Si ya hay fechas seleccionadas, verificar que el tipo coincida
         if (selectionType === "with-schedule" && dayHasSchedule) {
           // Permitir selección - mismo tipo (con horario)
-          setSelectedDates(prev => [...prev, { date: day.date, dateStr: day.dateStr }]);
+          setSelectedDates((prev) => [
+            ...prev,
+            { date: day.date, dateStr: day.dateStr },
+          ]);
         } else if (selectionType === "without-schedule" && !dayHasSchedule) {
           // Permitir selección - mismo tipo (sin horario)
-          setSelectedDates(prev => [...prev, { date: day.date, dateStr: day.dateStr }]);
+          setSelectedDates((prev) => [
+            ...prev,
+            { date: day.date, dateStr: day.dateStr },
+          ]);
         } else {
           // Bloquear selección - tipos diferentes
           toast({
             title: "Selección no permitida",
-            description: selectionType === "with-schedule" 
-              ? "No puedes seleccionar días sin horario cuando ya has seleccionado días con horario"
-              : "No puedes seleccionar días con horario cuando ya has seleccionado días sin horario",
-            variant: "destructive"
+            description:
+              selectionType === "with-schedule"
+                ? "No puedes seleccionar días sin horario cuando ya has seleccionado días con horario"
+                : "No puedes seleccionar días con horario cuando ya has seleccionado días sin horario",
+            variant: "destructive",
           });
         }
       }
@@ -705,56 +893,63 @@ export default function Schedules() {
 
   const handleAssignSchedule = async () => {
     if (!selectedEmployee || selectedDates.length === 0) return;
-    
+
     // Validate start time is before end time
-    const startTimeMinutes = parseInt(scheduleForm.startTime.split(':')[0]) * 60 + parseInt(scheduleForm.startTime.split(':')[1]);
-    const endTimeMinutes = parseInt(scheduleForm.endTime.split(':')[0]) * 60 + parseInt(scheduleForm.endTime.split(':')[1]);
-    
+    const startTimeMinutes =
+      parseInt(scheduleForm.startTime.split(":")[0]) * 60 +
+      parseInt(scheduleForm.startTime.split(":")[1]);
+    const endTimeMinutes =
+      parseInt(scheduleForm.endTime.split(":")[0]) * 60 +
+      parseInt(scheduleForm.endTime.split(":")[1]);
+
     if (startTimeMinutes >= endTimeMinutes) {
       toast({
         title: "Error de Validación",
         description: "La hora de inicio debe ser anterior a la hora de fin",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
-    
+
     try {
       // Si estamos modificando horarios existentes, primero borrarlos
       if (selectionType === "with-schedule" && dateSchedules) {
         const schedulesToDelete = selectedDates
-          .map(selected => dateSchedules.find(s => s.date === selected.dateStr))
-          .filter(s => s !== undefined)
-          .map(s => s!.id);
-        
+          .map((selected) =>
+            dateSchedules.find((s) => s.date === selected.dateStr),
+          )
+          .filter((s) => s !== undefined)
+          .map((s) => s!.id);
+
         // Borrar los horarios antiguos silenciosamente
         for (const scheduleId of schedulesToDelete) {
           await apiRequest(`/api/date-schedules/${scheduleId}`, "DELETE");
         }
       }
-      
+
       // Crear los nuevos horarios usando el endpoint bulk (funciona para uno o múltiples días)
       await createBulkDateScheduleMutation.mutateAsync({
-        schedules: selectedDates.map(selected => ({
+        schedules: selectedDates.map((selected) => ({
           employeeId: selectedEmployee.id,
           date: selected.dateStr,
           startTime: scheduleForm.startTime,
           endTime: scheduleForm.endTime,
-        }))
+        })),
       });
-      
+
       // Mostrar mensaje de éxito apropiado
       if (selectionType === "with-schedule") {
         toast({
           title: "Horario modificado",
-          description: "El horario ha sido modificado exitosamente"
+          description: "El horario ha sido modificado exitosamente",
         });
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Hubo un error al procesar la operación. Por favor, intenta de nuevo.",
-        variant: "destructive"
+        description:
+          "Hubo un error al procesar la operación. Por favor, intenta de nuevo.",
+        variant: "destructive",
       });
     }
   };
@@ -765,19 +960,21 @@ export default function Schedules() {
 
   const handleDeleteSelectedSchedules = async () => {
     if (!dateSchedules || selectedDates.length === 0) return;
-    
+
     try {
       // Encontrar los IDs de los horarios de los días seleccionados
       const schedulesToDelete = selectedDates
-        .map(selected => dateSchedules.find(s => s.date === selected.dateStr))
-        .filter(s => s !== undefined)
-        .map(s => s!.id);
-      
+        .map((selected) =>
+          dateSchedules.find((s) => s.date === selected.dateStr),
+        )
+        .filter((s) => s !== undefined)
+        .map((s) => s!.id);
+
       // Borrar cada horario
       for (const scheduleId of schedulesToDelete) {
         await deleteDateScheduleMutation.mutateAsync(scheduleId);
       }
-      
+
       // Limpiar selección
       setSelectedDates([]);
       setSelectionType(null);
@@ -793,20 +990,27 @@ export default function Schedules() {
   };
 
   const handleCopySchedules = async () => {
-    if (!selectedEmployee || !dateSchedules || selectedEmployeesToCopy.length === 0) return;
+    if (
+      !selectedEmployee ||
+      !dateSchedules ||
+      selectedEmployeesToCopy.length === 0
+    )
+      return;
 
     try {
       // Determinar shiftType basado en la hora de inicio
-      const determineShiftType = (startTime: string): 'morning' | 'afternoon' | 'night' => {
-        const hour = parseInt(startTime.split(':')[0]);
-        if (hour < 12) return 'morning';
-        if (hour < 18) return 'afternoon';
-        return 'night';
+      const determineShiftType = (
+        startTime: string,
+      ): "morning" | "afternoon" | "night" => {
+        const hour = parseInt(startTime.split(":")[0]);
+        if (hour < 12) return "morning";
+        if (hour < 18) return "afternoon";
+        return "night";
       };
 
       // Crear array de horarios para copiar
-      const schedulesToCopy = dateSchedules.map(schedule => ({
-        employeeId: '', // Se llenará para cada empleado destino
+      const schedulesToCopy = dateSchedules.map((schedule) => ({
+        employeeId: "", // Se llenará para cada empleado destino
         date: schedule.date,
         startTime: schedule.startTime,
         endTime: schedule.endTime,
@@ -817,61 +1021,68 @@ export default function Schedules() {
 
       // Copiar horarios para cada empleado seleccionado
       for (const targetEmployeeId of selectedEmployeesToCopy) {
-        const bulkSchedules = schedulesToCopy.map(s => ({
+        const bulkSchedules = schedulesToCopy.map((s) => ({
           ...s,
-          employeeId: targetEmployeeId
+          employeeId: targetEmployeeId,
         }));
 
         try {
-          await apiRequest('/api/date-schedules/bulk', 'POST', {
-            schedules: bulkSchedules
+          await apiRequest("/api/date-schedules/bulk", "POST", {
+            schedules: bulkSchedules,
           });
           successCount++;
         } catch (error) {
-          console.error(`Error copiando horarios para empleado ${targetEmployeeId}:`, error);
+          console.error(
+            `Error copiando horarios para empleado ${targetEmployeeId}:`,
+            error,
+          );
           errorCount++;
         }
       }
 
       // Invalidar cache de horarios para todos los empleados afectados
-      selectedEmployeesToCopy.forEach(employeeId => {
-        queryClient.invalidateQueries({ queryKey: ["/api/date-schedules", employeeId, calendarYear] });
+      selectedEmployeesToCopy.forEach((employeeId) => {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/date-schedules", employeeId, calendarYear],
+        });
       });
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
 
       if (successCount > 0) {
         toast({
           title: "Horarios copiados",
-          description: `Se copiaron ${dateSchedules.length} horarios a ${successCount} empleado(s)${errorCount > 0 ? `. ${errorCount} empleado(s) tuvieron errores (posiblemente ya tenían horarios en esas fechas)` : ''}`,
+          description: `Se copiaron ${dateSchedules.length} horarios a ${successCount} empleado(s)${errorCount > 0 ? `. ${errorCount} empleado(s) tuvieron errores (posiblemente ya tenían horarios en esas fechas)` : ""}`,
         });
       } else {
         toast({
           title: "Error",
-          description: "No se pudieron copiar los horarios. Los empleados seleccionados podrían ya tener horarios en esas fechas.",
-          variant: "destructive"
+          description:
+            "No se pudieron copiar los horarios. Los empleados seleccionados podrían ya tener horarios en esas fechas.",
+          variant: "destructive",
         });
       }
 
       setShowCopyDialog(false);
       setSelectedEmployeesToCopy([]);
-      
+
       // Refrescar horarios del empleado actual
       await refetchDateSchedules();
     } catch (error) {
-      console.error('Error copiando horarios:', error);
+      console.error("Error copiando horarios:", error);
       toast({
         title: "Error",
-        description: "Hubo un error al copiar los horarios. Por favor, intenta de nuevo.",
-        variant: "destructive"
+        description:
+          "Hubo un error al copiar los horarios. Por favor, intenta de nuevo.",
+        variant: "destructive",
       });
     }
   };
 
   const toggleEmployeeSelection = (employeeId: string) => {
-    setSelectedEmployeesToCopy(prev =>
+    setSelectedEmployeesToCopy((prev) =>
       prev.includes(employeeId)
-        ? prev.filter(id => id !== employeeId)
-        : [...prev, employeeId]
+        ? prev.filter((id) => id !== employeeId)
+        : [...prev, employeeId],
     );
   };
 
@@ -881,14 +1092,17 @@ export default function Schedules() {
       <div className="p-4 lg:p-6 space-y-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Modificar Horario</h2>
+            <h2 className="text-2xl font-bold text-foreground">
+              Modificar Horario
+            </h2>
             <p className="text-muted-foreground">
-              Empleado: {selectedEmployee?.firstName} {selectedEmployee?.lastName}
+              Empleado: {selectedEmployee?.firstName}{" "}
+              {selectedEmployee?.lastName}
             </p>
           </div>
           <div className="flex gap-2">
             {dateSchedules && dateSchedules.length > 0 && (
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => setShowCopyDialog(true)}
                 data-testid="button-copy-schedules"
@@ -897,7 +1111,7 @@ export default function Schedules() {
                 Copiar Horarios
               </Button>
             )}
-            <Button 
+            <Button
               variant="outline"
               onClick={() => setViewMode("summary")}
               data-testid="button-back-to-summary"
@@ -916,56 +1130,70 @@ export default function Schedules() {
             </CardTitle>
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
-                  onClick={() => setCalendarYear(prev => prev - 1)}
+                  onClick={() => setCalendarYear((prev) => prev - 1)}
                   data-testid="button-prev-year"
                 >
                   {calendarYear - 1}
                 </Button>
                 <span className="font-medium px-4">{calendarYear}</span>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
-                  onClick={() => setCalendarYear(prev => prev + 1)}
+                  onClick={() => setCalendarYear((prev) => prev + 1)}
                   data-testid="button-next-year"
                 >
                   {calendarYear + 1}
                 </Button>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {selectedDates.length > 0 && (
                   <>
-                    <Badge variant="secondary" className="flex items-center gap-1">
+                    <Badge
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
                       <CalendarIcon className="w-3 h-3" />
-                      {selectedDates.length} fecha{selectedDates.length > 1 ? 's' : ''} seleccionada{selectedDates.length > 1 ? 's' : ''}
+                      {selectedDates.length} fecha
+                      {selectedDates.length > 1 ? "s" : ""} seleccionada
+                      {selectedDates.length > 1 ? "s" : ""}
                     </Badge>
-                    <Button 
+                    <Button
                       size="sm"
                       onClick={() => {
                         // Si estamos seleccionando días con horario, pre-rellenar el formulario con el horario existente
-                        if (selectionType === "with-schedule" && dateSchedules && selectedDates.length > 0) {
-                          const firstSchedule = dateSchedules.find(s => s.date === selectedDates[0].dateStr);
+                        if (
+                          selectionType === "with-schedule" &&
+                          dateSchedules &&
+                          selectedDates.length > 0
+                        ) {
+                          const firstSchedule = dateSchedules.find(
+                            (s) => s.date === selectedDates[0].dateStr,
+                          );
                           if (firstSchedule) {
-                            setScheduleForm(prev => ({
+                            setScheduleForm((prev) => ({
                               ...prev,
                               startTime: firstSchedule.startTime,
-                              endTime: firstSchedule.endTime
+                              endTime: firstSchedule.endTime,
                             }));
                           }
                         }
                         setShowScheduleDialog(true);
                       }}
-                      disabled={createDateScheduleMutation.isPending || createBulkDateScheduleMutation.isPending}
+                      disabled={
+                        createDateScheduleMutation.isPending ||
+                        createBulkDateScheduleMutation.isPending
+                      }
                       data-testid="button-assign-schedule"
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Asignar Horario
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={clearSelection}
                       data-testid="button-clear-selection"
@@ -984,45 +1212,53 @@ export default function Schedules() {
               {calendarData.map(({ month, days }) => (
                 <div key={month.getTime()} className="space-y-2">
                   <h3 className="font-semibold text-center text-foreground">
-                    {format(month, 'MMMM', { locale: es })}
+                    {format(month, "MMMM", { locale: es })}
                   </h3>
-                  
+
                   {/* Días de la semana */}
                   <div className="grid grid-cols-7 gap-1 text-xs font-medium text-muted-foreground text-center mb-2">
-                    {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(day => (
-                      <div key={day} className="p-1">{day}</div>
+                    {["L", "M", "X", "J", "V", "S", "D"].map((day) => (
+                      <div key={day} className="p-1">
+                        {day}
+                      </div>
                     ))}
                   </div>
-                  
+
                   {/* Días del mes */}
                   <div className="grid grid-cols-7 gap-1">
                     {days.map((day, index) => {
                       const dayClasses = [
                         "w-8 h-8 text-xs flex items-center justify-center rounded-md cursor-pointer transition-all duration-200",
-                        day.isCurrentMonth 
+                        day.isCurrentMonth
                           ? "text-foreground hover-elevate"
                           : "text-muted-foreground/50",
-                        day.isToday && "bg-primary text-primary-foreground font-semibold",
-                        day.isSelected && "bg-blue-500 dark:bg-blue-600 text-white font-semibold",
-                        day.hasSchedule && !day.isSelected && "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 font-medium",
-                        !day.isCurrentMonth && "cursor-not-allowed"
-                      ].filter(Boolean).join(" ");
-                      
+                        day.isToday &&
+                          "bg-primary text-primary-foreground font-semibold",
+                        day.isSelected &&
+                          "bg-blue-500 dark:bg-blue-600 text-white font-semibold",
+                        day.hasSchedule &&
+                          !day.isSelected &&
+                          "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 font-medium",
+                        !day.isCurrentMonth && "cursor-not-allowed",
+                      ]
+                        .filter(Boolean)
+                        .join(" ");
+
                       return (
                         <div
                           key={index}
                           className={dayClasses}
                           onClick={() => handleDateClick(day)}
                           title={
-                            day.hasSchedule 
+                            day.hasSchedule
                               ? `Horario: ${day.schedule?.startTime} - ${day.schedule?.endTime}`
-                              : day.isCurrentMonth 
-                                ? format(day.date, 'dd/MM/yyyy')
+                              : day.isCurrentMonth
+                                ? format(day.date, "dd/MM/yyyy")
                                 : undefined
                           }
                           data-testid={`calendar-day-${day.dateStr}`}
                         >
-                          {format(day.date, 'd')}
+                          {format(day.date, "d")}
                         </div>
                       );
                     })}
@@ -1030,7 +1266,7 @@ export default function Schedules() {
                 </div>
               ))}
             </div>
-            
+
             {/* Leyenda */}
             <div className="mt-6 pt-4 border-t flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-2">
@@ -1046,16 +1282,25 @@ export default function Schedules() {
                 <span>Con horario</span>
               </div>
             </div>
-            
+
             {/* Lista de horarios existentes */}
             {dateSchedules && dateSchedules.length > 0 && (
               <div className="mt-6 pt-4 border-t">
-                <h4 className="font-medium mb-3 text-foreground">Horarios Existentes</h4>
+                <h4 className="font-medium mb-3 text-foreground">
+                  Horarios Existentes
+                </h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {dateSchedules.map(schedule => (
-                    <div key={schedule.id} className="flex items-center justify-between p-2 bg-muted rounded-lg">
+                  {dateSchedules.map((schedule) => (
+                    <div
+                      key={schedule.id}
+                      className="flex items-center justify-between p-2 bg-muted rounded-lg"
+                    >
                       <div className="flex items-center gap-3">
-                        <span className="font-medium">{format(new Date(schedule.date), 'dd/MM/yyyy', { locale: es })}</span>
+                        <span className="font-medium">
+                          {format(new Date(schedule.date), "dd/MM/yyyy", {
+                            locale: es,
+                          })}
+                        </span>
                         <Badge variant="outline" className="text-xs">
                           {schedule.startTime} - {schedule.endTime}
                         </Badge>
@@ -1076,49 +1321,66 @@ export default function Schedules() {
             )}
           </CardContent>
         </Card>
-        
+
         {/* Dialog para copiar horarios a otros empleados */}
         <Dialog open={showCopyDialog} onOpenChange={setShowCopyDialog}>
-          <DialogContent data-testid="dialog-copy-schedules" className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent
+            data-testid="dialog-copy-schedules"
+            className="max-w-2xl max-h-[80vh] overflow-y-auto"
+          >
             <DialogHeader>
               <DialogTitle>Copiar Horarios a Otros Empleados</DialogTitle>
               <DialogDescription>
-                Selecciona los empleados a los que quieres copiar los {dateSchedules?.length || 0} horarios de {selectedEmployee?.firstName} {selectedEmployee?.lastName} del año {calendarYear}
+                Selecciona los empleados a los que quieres copiar los{" "}
+                {dateSchedules?.length || 0} horarios de{" "}
+                {selectedEmployee?.firstName} {selectedEmployee?.lastName} del
+                año {calendarYear}
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="space-y-3 max-h-96 overflow-y-auto border rounded-lg p-4">
                 {employees
-                  ?.filter(emp => emp.id !== selectedEmployee?.id)
-                  .map(employee => (
-                    <div key={employee.id} className="flex items-center space-x-3 hover-elevate p-2 rounded">
+                  ?.filter((emp) => emp.id !== selectedEmployee?.id)
+                  .map((employee) => (
+                    <div
+                      key={employee.id}
+                      className="flex items-center space-x-3 hover-elevate p-2 rounded"
+                    >
                       <Checkbox
                         id={`emp-${employee.id}`}
                         checked={selectedEmployeesToCopy.includes(employee.id)}
-                        onCheckedChange={() => toggleEmployeeSelection(employee.id)}
+                        onCheckedChange={() =>
+                          toggleEmployeeSelection(employee.id)
+                        }
                         data-testid={`checkbox-employee-${employee.id}`}
                       />
-                      <label 
-                        htmlFor={`emp-${employee.id}`} 
+                      <label
+                        htmlFor={`emp-${employee.id}`}
                         className="flex items-center gap-3 flex-1 cursor-pointer"
                       >
                         <Avatar>
                           <AvatarFallback>
-                            {employee.firstName[0]}{employee.lastName[0]}
+                            {employee.firstName[0]}
+                            {employee.lastName[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{employee.firstName} {employee.lastName}</p>
+                          <p className="font-medium">
+                            {employee.firstName} {employee.lastName}
+                          </p>
                           <p className="text-sm text-muted-foreground">
-                            {employee.departmentId ? (departmentMap.get(employee.departmentId) || 'Sin departamento') : 'Sin departamento'}
+                            {employee.departmentId
+                              ? departmentMap.get(employee.departmentId) ||
+                                "Sin departamento"
+                              : "Sin departamento"}
                           </p>
                         </div>
                       </label>
                     </div>
                   ))}
               </div>
-              
+
               {selectedEmployeesToCopy.length > 0 && (
                 <div className="p-3 bg-muted rounded-lg">
                   <p className="text-sm font-medium">
@@ -1127,10 +1389,10 @@ export default function Schedules() {
                 </div>
               )}
             </div>
-            
+
             <DialogFooter className="gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setShowCopyDialog(false);
                   setSelectedEmployeesToCopy([]);
@@ -1139,7 +1401,7 @@ export default function Schedules() {
               >
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 onClick={handleCopySchedules}
                 disabled={selectedEmployeesToCopy.length === 0}
                 data-testid="button-confirm-copy"
@@ -1156,22 +1418,25 @@ export default function Schedules() {
           <DialogContent data-testid="dialog-assign-schedule">
             <DialogHeader>
               <DialogTitle>
-                {selectionType === "with-schedule" ? "Modificar Horario" : "Asignar Horario"}
+                {selectionType === "with-schedule"
+                  ? "Modificar Horario"
+                  : "Asignar Horario"}
               </DialogTitle>
               <DialogDescription>
-                {selectionType === "with-schedule" 
-                  ? `Modificar o borrar horario de ${selectedDates.length} fecha${selectedDates.length > 1 ? 's' : ''} seleccionada${selectedDates.length > 1 ? 's' : ''}`
-                  : `Asignar horario a ${selectedDates.length} fecha${selectedDates.length > 1 ? 's' : ''} seleccionada${selectedDates.length > 1 ? 's' : ''}`
-                }
+                {selectionType === "with-schedule"
+                  ? `Modificar o borrar horario de ${selectedDates.length} fecha${selectedDates.length > 1 ? "s" : ""} seleccionada${selectedDates.length > 1 ? "s" : ""}`
+                  : `Asignar horario a ${selectedDates.length} fecha${selectedDates.length > 1 ? "s" : ""} seleccionada${selectedDates.length > 1 ? "s" : ""}`}
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Tipo de Jornada</Label>
-                <Select 
-                  value={scheduleForm.workdayType} 
-                  onValueChange={(value: "completa" | "partida") => setScheduleForm(prev => ({ ...prev, workdayType: value }))}
+                <Select
+                  value={scheduleForm.workdayType}
+                  onValueChange={(value: "completa" | "partida") =>
+                    setScheduleForm((prev) => ({ ...prev, workdayType: value }))
+                  }
                 >
                   <SelectTrigger data-testid="select-workday-type">
                     <SelectValue />
@@ -1182,7 +1447,7 @@ export default function Schedules() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="startTime">Hora de Inicio</Label>
@@ -1190,7 +1455,12 @@ export default function Schedules() {
                     id="startTime"
                     type="time"
                     value={scheduleForm.startTime}
-                    onChange={(e) => setScheduleForm(prev => ({ ...prev, startTime: e.target.value }))}
+                    onChange={(e) =>
+                      setScheduleForm((prev) => ({
+                        ...prev,
+                        startTime: e.target.value,
+                      }))
+                    }
                     data-testid="input-start-time"
                   />
                 </div>
@@ -1200,12 +1470,17 @@ export default function Schedules() {
                     id="endTime"
                     type="time"
                     value={scheduleForm.endTime}
-                    onChange={(e) => setScheduleForm(prev => ({ ...prev, endTime: e.target.value }))}
+                    onChange={(e) =>
+                      setScheduleForm((prev) => ({
+                        ...prev,
+                        endTime: e.target.value,
+                      }))
+                    }
                     data-testid="input-end-time"
                   />
                 </div>
               </div>
-              
+
               {scheduleForm.workdayType === "partida" && (
                 <div className="grid grid-cols-2 gap-4 p-3 bg-muted rounded-lg">
                   <div className="space-y-2">
@@ -1214,7 +1489,12 @@ export default function Schedules() {
                       id="breakStartTime"
                       type="time"
                       value={scheduleForm.breakStartTime}
-                      onChange={(e) => setScheduleForm(prev => ({ ...prev, breakStartTime: e.target.value }))}
+                      onChange={(e) =>
+                        setScheduleForm((prev) => ({
+                          ...prev,
+                          breakStartTime: e.target.value,
+                        }))
+                      }
                       data-testid="input-break-start-time"
                     />
                   </div>
@@ -1224,35 +1504,46 @@ export default function Schedules() {
                       id="breakEndTime"
                       type="time"
                       value={scheduleForm.breakEndTime}
-                      onChange={(e) => setScheduleForm(prev => ({ ...prev, breakEndTime: e.target.value }))}
+                      onChange={(e) =>
+                        setScheduleForm((prev) => ({
+                          ...prev,
+                          breakEndTime: e.target.value,
+                        }))
+                      }
                       data-testid="input-break-end-time"
                     />
                   </div>
                 </div>
               )}
-              
+
               <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium mb-2">Fechas seleccionadas:</p>
+                <p className="text-sm font-medium mb-2">
+                  Fechas seleccionadas:
+                </p>
                 <div className="flex flex-wrap gap-1">
-                  {selectedDates.map(selected => (
-                    <Badge key={selected.dateStr} variant="secondary" className="text-xs">
-                      {format(selected.date, 'dd/MM/yyyy', { locale: es })}
+                  {selectedDates.map((selected) => (
+                    <Badge
+                      key={selected.dateStr}
+                      variant="secondary"
+                      className="text-xs"
+                    >
+                      {format(selected.date, "dd/MM/yyyy", { locale: es })}
                     </Badge>
                   ))}
                 </div>
               </div>
             </div>
-            
+
             <DialogFooter className="gap-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowScheduleDialog(false)}
                 data-testid="button-cancel-schedule"
               >
                 Cancelar
               </Button>
               {selectionType === "with-schedule" && (
-                <Button 
+                <Button
                   variant="destructive"
                   onClick={handleDeleteSelectedSchedules}
                   disabled={deleteDateScheduleMutation.isPending}
@@ -1262,16 +1553,22 @@ export default function Schedules() {
                   Borrar
                 </Button>
               )}
-              <Button 
+              <Button
                 onClick={handleAssignSchedule}
-                disabled={createDateScheduleMutation.isPending || createBulkDateScheduleMutation.isPending}
+                disabled={
+                  createDateScheduleMutation.isPending ||
+                  createBulkDateScheduleMutation.isPending
+                }
                 data-testid="button-save-schedule"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {selectionType === "with-schedule" 
-                  ? (selectedDates.length > 1 ? 'Modificar Todas' : 'Modificar')
-                  : (selectedDates.length > 1 ? 'Asignar a Todas' : 'Asignar')
-                }
+                {selectionType === "with-schedule"
+                  ? selectedDates.length > 1
+                    ? "Modificar Todas"
+                    : "Modificar"
+                  : selectedDates.length > 1
+                    ? "Asignar a Todas"
+                    : "Asignar"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1288,10 +1585,11 @@ export default function Schedules() {
           <div>
             <h2 className="text-2xl font-bold text-foreground">Ver Horario</h2>
             <p className="text-muted-foreground">
-              Empleado: {selectedEmployee?.firstName} {selectedEmployee?.lastName}
+              Empleado: {selectedEmployee?.firstName}{" "}
+              {selectedEmployee?.lastName}
             </p>
           </div>
-          <Button 
+          <Button
             variant="outline"
             onClick={() => setViewMode("summary")}
             data-testid="button-back-to-summary-schedule"
@@ -1310,10 +1608,12 @@ export default function Schedules() {
           <CardContent>
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">
-                La vista de historial de horarios estará disponible próximamente.
+                La vista de historial de horarios estará disponible
+                próximamente.
               </p>
               <p className="text-sm text-muted-foreground">
-                Mostrará horas trabajadas para días pasados y horas programadas para días futuros.
+                Mostrará horas trabajadas para días pasados y horas programadas
+                para días futuros.
               </p>
             </div>
           </CardContent>

@@ -1,7 +1,7 @@
 /**
  * RUTAS DE ESTADÍSTICAS DEL DASHBOARD
  * ====================================
- * 
+ *
  * Dashboard con métricas personalizadas según rol del usuario.
  */
 
@@ -13,19 +13,19 @@ export function registerDashboardRoutes(app: Express) {
   /**
    * GET /api/dashboard/stats
    * =======================
-   * 
+   *
    * Obtiene estadísticas personalizadas según el rol del usuario.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAuth: Tanto empleados como admins pueden acceder
-   * 
+   *
    * DIFERENCIACIÓN POR ROL:
-   * 
+   *
    * EMPLEADO (isEmployee: true):
    * - isClockedIn: Si está fichado hoy (entrada sin salida)
    * - hoursWorked: Horas trabajadas esta semana (solo propias)
    * - incidents: Número de incidencias pendientes (solo propias)
-   * 
+   *
    * ADMINISTRADOR (isEmployee: false):
    * - totalEmployees: Total empleados activos
    * - presentToday: Empleados fichados ahora (entrada sin salida)
@@ -33,7 +33,7 @@ export function registerDashboardRoutes(app: Express) {
    * - incidents: Total incidencias pendientes del sistema
    * - newEmployeesLastWeek: Empleados contratados última semana
    * - newIncidentsLastWeek: Incidencias nuevas última semana
-   * 
+   *
    * RESPONSES:
    * - 200: Objeto con estadísticas personalizadas por rol
    * - 401: No autorizado

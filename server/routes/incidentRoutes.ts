@@ -1,7 +1,7 @@
 /**
  * RUTAS DE GESTIÓN DE INCIDENCIAS
  * ================================
- * 
+ *
  * CRUD de incidencias laborales (tardanzas, ausencias, etc).
  */
 
@@ -15,19 +15,19 @@ export function registerIncidentRoutes(app: Express) {
   /**
    * GET /api/incidents
    * =================
-   * 
+   *
    * Obtiene incidencias con control de acceso por roles.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAuth: Requiere usuario autenticado (admin o employee)
-   * 
+   *
    * CONTROL DE ACCESO POR ROLES:
    * - Employee: Solo puede ver sus propias incidencias
    * - Admin: Puede ver todas las incidencias con filtro opcional
-   * 
+   *
    * PARÁMETROS DE QUERY OPCIONALES:
    * - employeeId: Filtra incidencias de empleado específico (solo admin)
-   * 
+   *
    * RESPONSES:
    * - 200: Array de incidencias
    * - 401: No autorizado
@@ -59,12 +59,12 @@ export function registerIncidentRoutes(app: Express) {
   /**
    * GET /api/incidents/:id
    * =====================
-   * 
+   *
    * Obtiene una incidencia específica por ID.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAuth: Requiere usuario autenticado
-   * 
+   *
    * RESPONSES:
    * - 200: Datos de la incidencia
    * - 401: No autorizado
@@ -86,16 +86,16 @@ export function registerIncidentRoutes(app: Express) {
   /**
    * POST /api/incidents
    * ==================
-   * 
+   *
    * Crea una nueva incidencia con control de acceso por roles.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAuth: Ambos roles pueden crear incidencias
-   * 
+   *
    * DIFERENCIAS POR ROL:
    * - Employee: Solo puede crear incidencias sobre sí mismo
    * - Admin: Puede crear incidencias sobre cualquier empleado
-   * 
+   *
    * RESPONSES:
    * - 201: Incidencia creada exitosamente
    * - 400: Datos inválidos
@@ -114,7 +114,7 @@ export function registerIncidentRoutes(app: Express) {
       // Find or create daily_workday for this user+date
       let dailyWorkday = await storage.getDailyWorkdayByEmployeeAndDate(
         formData.idUser,
-        formData.date
+        formData.date,
       );
 
       if (!dailyWorkday) {
@@ -155,12 +155,12 @@ export function registerIncidentRoutes(app: Express) {
   /**
    * PUT /api/incidents/:id
    * =====================
-   * 
+   *
    * Actualiza una incidencia existente (solo administradores).
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden modificar incidencias
-   * 
+   *
    * RESPONSES:
    * - 200: Incidencia actualizada exitosamente
    * - 400: Datos inválidos
@@ -195,12 +195,12 @@ export function registerIncidentRoutes(app: Express) {
   /**
    * DELETE /api/incidents/:id
    * ========================
-   * 
+   *
    * Elimina permanentemente una incidencia del sistema.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden eliminar incidencias
-   * 
+   *
    * RESPONSES:
    * - 204: Incidencia eliminada exitosamente (sin contenido)
    * - 401: No autorizado
