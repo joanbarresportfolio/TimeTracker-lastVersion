@@ -26,12 +26,12 @@ export function registerDailyWorkdayRoutes(app: Express) {
   // Obtener jornadas del usuario autenticado (para app móvil) - NO requiere admin
   app.get("/api/daily-workdays", async (req, res) => {
     try {
-      if (!req.session?.userId) {
+      if (!req.session?.user?.id) {
         return res.status(401).json({ message: "No autenticado" });
       }
 
       const { startDate, endDate } = req.query;
-      const userId = req.session.userId;
+      const userId = req.session.user.id;
 
       if (startDate && endDate) {
         // Obtener por rango de fechas
