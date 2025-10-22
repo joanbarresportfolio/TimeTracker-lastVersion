@@ -1,10 +1,16 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import cors from "cors";
+import cron from "node-cron"; // 🧭 NUEVO
 import { registerRoutes } from "./routes/index";
 import { setupVite, serveStatic, log } from "./vite";
-import { seedDatabase } from "./seed";
-import { type User } from "@shared/schema";
+import { clockEntries, ClockEntry, type User } from "@shared/schema";
+import "dotenv/config";
+import { storage } from "./storage";
+import { db } from "./db";
+
+import { sql } from "drizzle-orm";
+import { format } from "date-fns";
 
 // Extend Express session interface
 declare module "express-session" {
@@ -14,60 +20,32 @@ declare module "express-session" {
 }
 
 const app = express();
-
-// Detectar si estamos en producción
 const isProduction = process.env.NODE_ENV === "production";
 
-// Configurar trust proxy para que Express confíe en el proxy reverso de Replit
-// Esto es necesario para que las cookies seguras funcionen correctamente en producción
 if (isProduction) {
   app.set("trust proxy", 1);
 }
 
-// Configurar CORS para permitir requests desde app móvil web (Expo)
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // En desarrollo, permitir todos los orígenes
-      if (!isProduction) {
-        callback(null, true);
-        return;
-      }
-
-      // En producción, permitir:
-      // - Requests sin origin (apps móviles nativas)
-      // - Dominios de Replit (.replit.app, .repl.co, .replit.dev)
-      if (
-        !origin ||
-        origin.includes(".replit.app") ||
-        origin.includes(".repl.co") ||
-        origin.includes(".replit.dev")
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true, // Permitir cookies y headers de autenticación
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    origin: "http://localhost:5000",
+    credentials: true,
   }),
 );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Configure sessions
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "employee-tracking-secret-key",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: isProduction, // true en producción (HTTPS), false en desarrollo
-      httpOnly: true, // Prevenir acceso desde JavaScript del lado del cliente
-      sameSite: isProduction ? "none" : "lax", // "none" en producción para cross-origin
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      secure: isProduction,
+      httpOnly: true,
+      sameSite: isProduction ? "none" : "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 24h
     },
   }),
 );
@@ -90,11 +68,7 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
+      if (logLine.length > 80) logLine = logLine.slice(0, 79) + "…";
       log(logLine);
     }
   });
@@ -103,40 +77,94 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Seed the database with initial data
-  await seedDatabase();
-
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
     res.status(status).json({ message });
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
+  server.listen({ port, host: "0.0.0.0" }, () => {
+    log(`✅ Servidor en ejecución en puerto ${port}`);
+  });
+
+  // 🕛 CRON JOB — cierra fichajes y pausas abiertas cada noche
+
+  cron.schedule(
+    "59 23 * * *",
+    async () => {
+      const today = new Date();
+      const todayStr = format(today, "yyyy-MM-dd");
+
+      try {
+        // 1️⃣ Obtener todos los clock entries de hoy
+        const entries: ClockEntry[] =
+          await storage.getClockEntriesByDate(todayStr);
+
+        // 2️⃣ Detectar clock-ins abiertos (sin clock-out posterior)
+        const openClockIns = entries.filter(
+          (e) =>
+            e.entryType === "clock_in" &&
+            !entries.some(
+              (other) =>
+                other.idUser === e.idUser &&
+                other.idDailyWorkday === e.idDailyWorkday &&
+                other.entryType === "clock_out" &&
+                other.timestamp > e.timestamp,
+            ),
+        );
+
+        // 3️⃣ Detectar pausas abiertas (break_start sin break_end posterior)
+        const openBreaks = entries.filter(
+          (e) =>
+            e.entryType === "break_start" &&
+            !entries.some(
+              (other) =>
+                other.idUser === e.idUser &&
+                other.idDailyWorkday === e.idDailyWorkday &&
+                other.entryType === "break_end" &&
+                other.timestamp > e.timestamp,
+            ),
+        );
+
+        // 4️⃣ Cerrar clock-ins abiertos con createClockEntry
+        for (const entry of openClockIns) {
+          await storage.createClockEntry(
+            entry.idUser,
+            "clock_out",
+            todayStr,
+            "web", // o "mobile_device", dependiendo de cómo quieras marcarlo
+          );
+        }
+
+        // 5️⃣ Cerrar pausas abiertas con createClockEntry
+        for (const entry of openBreaks) {
+          await storage.createClockEntry(
+            entry.idUser,
+            "break_end",
+            todayStr,
+            "web",
+          );
+        }
+
+        log(
+          `✅ Cierre automático completado: ${openClockIns.length} clock-outs y ${openBreaks.length} break-ends generados.`,
+        );
+      } catch (err) {
+        console.error("❌ Error en cron nocturno:", err);
+      }
     },
-    () => {
-      log(`serving on port ${port}`);
+    {
+      timezone: "Europe/Madrid",
     },
   );
 })();

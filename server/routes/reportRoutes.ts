@@ -1,7 +1,7 @@
 /**
  * RUTAS DE REPORTES Y ANÁLISIS
  * =============================
- * 
+ *
  * Generación de reportes y análisis de datos laborales.
  */
 
@@ -15,19 +15,19 @@ export function registerReportRoutes(app: Express) {
   /**
    * GET /api/reports/period-analysis
    * ==================================
-   * 
+   *
    * Genera un informe detallado por período (día, semana, mes, trimestre, año).
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAuth: Requiere usuario autenticado
-   * 
+   *
    * QUERY PARAMS:
    * - startDate: Fecha de inicio (YYYY-MM-DD) (requerido)
    * - endDate: Fecha de fin (YYYY-MM-DD) (requerido)
    * - periodType: Tipo de período (day, week, month, quarter, year) (opcional)
    * - employeeId: (opcional) ID del empleado
    * - departmentId: (opcional) ID del departamento
-   * 
+   *
    * RESPONSES:
    * - 200: Datos de análisis del período
    * - 400: Parámetros faltantes
@@ -70,9 +70,7 @@ export function registerReportRoutes(app: Express) {
         const workdays = await db
           .select()
           .from(dailyWorkday)
-          .where(
-            eq(dailyWorkday.idUser, employee.id)
-          );
+          .where(eq(dailyWorkday.idUser, employee.id));
 
         const scheduledShiftsData = await db
           .select()
@@ -102,9 +100,7 @@ export function registerReportRoutes(app: Express) {
         );
         const totalPlannedMinutes = scheduledShiftsData.reduce((sum, shift) => {
           if (shift.startTime && shift.endTime) {
-            const [startH, startM] = shift.startTime
-              .split(":")
-              .map(Number);
+            const [startH, startM] = shift.startTime.split(":").map(Number);
             const [endH, endM] = shift.endTime.split(":").map(Number);
             return sum + (endH * 60 + endM - (startH * 60 + startM));
           }

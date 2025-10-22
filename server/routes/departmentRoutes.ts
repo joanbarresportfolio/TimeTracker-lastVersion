@@ -1,7 +1,7 @@
 /**
  * RUTAS DE GESTIÓN DE DEPARTAMENTOS
  * ==================================
- * 
+ *
  * CRUD de departamentos de la empresa.
  */
 
@@ -13,12 +13,12 @@ export function registerDepartmentRoutes(app: Express) {
   /**
    * GET /api/departments
    * ====================
-   * 
+   *
    * Obtiene lista completa de departamentos del sistema.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAuth: Requiere usuario autenticado
-   * 
+   *
    * RESPONSES:
    * - 200: Lista de departamentos
    * - 401: No autorizado
@@ -36,18 +36,18 @@ export function registerDepartmentRoutes(app: Express) {
   /**
    * POST /api/departments
    * =====================
-   * 
+   *
    * Crea un nuevo departamento.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden crear departamentos
-   * 
+   *
    * BODY ESPERADO:
    * {
    *   "name": "Nombre del departamento",
    *   "description": "Descripción opcional"
    * }
-   * 
+   *
    * RESPONSES:
    * - 201: Departamento creado
    * - 400: Datos inválidos
@@ -74,12 +74,12 @@ export function registerDepartmentRoutes(app: Express) {
   /**
    * DELETE /api/departments/:id
    * ===========================
-   * 
+   *
    * Elimina un departamento y desasigna a todos los empleados.
-   * 
+   *
    * MIDDLEWARE APLICADO:
    * - requireAdmin: Solo administradores pueden eliminar departamentos
-   * 
+   *
    * RESPONSES:
    * - 204: Departamento eliminado exitosamente
    * - 401: No autorizado

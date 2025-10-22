@@ -4,15 +4,35 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Users, Clock, Bell, Shield, Database, Plus, Trash2, Sliders } from "lucide-react";
+import {
+  Settings,
+  Users,
+  Clock,
+  Bell,
+  Shield,
+  Database,
+  Plus,
+  Trash2,
+  Sliders,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertIncidentsTypeSchema, type InsertIncidentsType, type IncidentsType } from "@shared/schema";
+import {
+  insertIncidentsTypeSchema,
+  type InsertIncidentsType,
+  type IncidentsType,
+} from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Dialog,
@@ -40,25 +60,25 @@ export default function SettingsPage() {
     timezone: "America/Mexico_City",
     dateFormat: "DD/MM/YYYY",
     currency: "MXN",
-    
+
     // Work hours settings
     defaultStartTime: "09:00",
     defaultEndTime: "17:00",
     breakDuration: 60, // minutes
     overtimeThreshold: 480, // minutes (8 hours)
-    
+
     // Notifications
     emailNotifications: true,
     clockInReminders: true,
     clockOutReminders: true,
     lateArrivalNotifications: true,
-    
+
     // Security
     sessionTimeout: 480, // minutes
     passwordMinLength: 8,
     requireTwoFactor: false,
     allowRemoteClocking: true,
-    
+
     // Advanced
     automaticBackup: true,
     backupFrequency: "daily",
@@ -67,9 +87,12 @@ export default function SettingsPage() {
 
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingIncidentType, setEditingIncidentType] = useState<IncidentsType | null>(null);
+  const [editingIncidentType, setEditingIncidentType] =
+    useState<IncidentsType | null>(null);
 
-  const { data: incidentTypes, isLoading: loadingTypes } = useQuery<IncidentsType[]>({
+  const { data: incidentTypes, isLoading: loadingTypes } = useQuery<
+    IncidentsType[]
+  >({
     queryKey: ["/api/incident-types"],
   });
 
@@ -103,8 +126,13 @@ export default function SettingsPage() {
   });
 
   const updateTypeMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<InsertIncidentsType> }) =>
-      apiRequest(`/api/incident-types/${id}`, "PUT", data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<InsertIncidentsType>;
+    }) => apiRequest(`/api/incident-types/${id}`, "PUT", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
       toast({
@@ -152,9 +180,9 @@ export default function SettingsPage() {
   };
 
   const handleSettingChange = (key: string, value: any) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
@@ -167,11 +195,16 @@ export default function SettingsPage() {
   };
 
   const resetSettings = () => {
-    if (confirm("¿Estás seguro de que quieres restablecer todas las configuraciones?")) {
+    if (
+      confirm(
+        "¿Estás seguro de que quieres restablecer todas las configuraciones?",
+      )
+    ) {
       // Reset to default values
       toast({
         title: "Configuración restablecida",
-        description: "Todas las configuraciones han sido restablecidas a sus valores por defecto.",
+        description:
+          "Todas las configuraciones han sido restablecidas a sus valores por defecto.",
       });
     }
   };
@@ -180,20 +213,31 @@ export default function SettingsPage() {
     <div className="p-4 lg:p-6 space-y-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-foreground">Configuración</h2>
-        <p className="text-muted-foreground">Gestiona la configuración del sistema</p>
+        <p className="text-muted-foreground">
+          Gestiona la configuración del sistema
+        </p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6" data-testid="settings-tabs">
+        <TabsList
+          className="grid w-full grid-cols-6"
+          data-testid="settings-tabs"
+        >
           <TabsTrigger value="general" className="flex items-center space-x-2">
             <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">General</span>
           </TabsTrigger>
-          <TabsTrigger value="work-hours" className="flex items-center space-x-2">
+          <TabsTrigger
+            value="work-hours"
+            className="flex items-center space-x-2"
+          >
             <Clock className="w-4 h-4" />
             <span className="hidden sm:inline">Horarios</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center space-x-2">
+          <TabsTrigger
+            value="notifications"
+            className="flex items-center space-x-2"
+          >
             <Bell className="w-4 h-4" />
             <span className="hidden sm:inline">Notificaciones</span>
           </TabsTrigger>
@@ -201,7 +245,10 @@ export default function SettingsPage() {
             <Shield className="w-4 h-4" />
             <span className="hidden sm:inline">Seguridad</span>
           </TabsTrigger>
-          <TabsTrigger value="incident-types" className="flex items-center space-x-2">
+          <TabsTrigger
+            value="incident-types"
+            className="flex items-center space-x-2"
+          >
             <Sliders className="w-4 h-4" />
             <span className="hidden sm:inline">Incidencias</span>
           </TabsTrigger>
@@ -223,27 +270,45 @@ export default function SettingsPage() {
                   <Input
                     id="companyName"
                     value={settings.companyName}
-                    onChange={(e) => handleSettingChange("companyName", e.target.value)}
+                    onChange={(e) =>
+                      handleSettingChange("companyName", e.target.value)
+                    }
                     data-testid="input-company-name"
                   />
                 </div>
                 <div>
                   <Label htmlFor="timezone">Zona Horaria</Label>
-                  <Select value={settings.timezone} onValueChange={(value) => handleSettingChange("timezone", value)}>
+                  <Select
+                    value={settings.timezone}
+                    onValueChange={(value) =>
+                      handleSettingChange("timezone", value)
+                    }
+                  >
                     <SelectTrigger data-testid="select-timezone">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="America/Mexico_City">Ciudad de México (GMT-6)</SelectItem>
-                      <SelectItem value="America/New_York">Nueva York (GMT-5)</SelectItem>
-                      <SelectItem value="Europe/Madrid">Madrid (GMT+1)</SelectItem>
+                      <SelectItem value="America/Mexico_City">
+                        Ciudad de México (GMT-6)
+                      </SelectItem>
+                      <SelectItem value="America/New_York">
+                        Nueva York (GMT-5)
+                      </SelectItem>
+                      <SelectItem value="Europe/Madrid">
+                        Madrid (GMT+1)
+                      </SelectItem>
                       <SelectItem value="Asia/Tokyo">Tokio (GMT+9)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label htmlFor="dateFormat">Formato de Fecha</Label>
-                  <Select value={settings.dateFormat} onValueChange={(value) => handleSettingChange("dateFormat", value)}>
+                  <Select
+                    value={settings.dateFormat}
+                    onValueChange={(value) =>
+                      handleSettingChange("dateFormat", value)
+                    }
+                  >
                     <SelectTrigger data-testid="select-date-format">
                       <SelectValue />
                     </SelectTrigger>
@@ -256,7 +321,12 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <Label htmlFor="currency">Moneda</Label>
-                  <Select value={settings.currency} onValueChange={(value) => handleSettingChange("currency", value)}>
+                  <Select
+                    value={settings.currency}
+                    onValueChange={(value) =>
+                      handleSettingChange("currency", value)
+                    }
+                  >
                     <SelectTrigger data-testid="select-currency">
                       <SelectValue />
                     </SelectTrigger>
@@ -280,42 +350,64 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="defaultStartTime">Hora de Inicio por Defecto</Label>
+                  <Label htmlFor="defaultStartTime">
+                    Hora de Inicio por Defecto
+                  </Label>
                   <Input
                     id="defaultStartTime"
                     type="time"
                     value={settings.defaultStartTime}
-                    onChange={(e) => handleSettingChange("defaultStartTime", e.target.value)}
+                    onChange={(e) =>
+                      handleSettingChange("defaultStartTime", e.target.value)
+                    }
                     data-testid="input-default-start-time"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="defaultEndTime">Hora de Fin por Defecto</Label>
+                  <Label htmlFor="defaultEndTime">
+                    Hora de Fin por Defecto
+                  </Label>
                   <Input
                     id="defaultEndTime"
                     type="time"
                     value={settings.defaultEndTime}
-                    onChange={(e) => handleSettingChange("defaultEndTime", e.target.value)}
+                    onChange={(e) =>
+                      handleSettingChange("defaultEndTime", e.target.value)
+                    }
                     data-testid="input-default-end-time"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="breakDuration">Duración del Descanso (minutos)</Label>
+                  <Label htmlFor="breakDuration">
+                    Duración del Descanso (minutos)
+                  </Label>
                   <Input
                     id="breakDuration"
                     type="number"
                     value={settings.breakDuration}
-                    onChange={(e) => handleSettingChange("breakDuration", parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleSettingChange(
+                        "breakDuration",
+                        parseInt(e.target.value),
+                      )
+                    }
                     data-testid="input-break-duration"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="overtimeThreshold">Umbral de Horas Extra (minutos)</Label>
+                  <Label htmlFor="overtimeThreshold">
+                    Umbral de Horas Extra (minutos)
+                  </Label>
                   <Input
                     id="overtimeThreshold"
                     type="number"
                     value={settings.overtimeThreshold}
-                    onChange={(e) => handleSettingChange("overtimeThreshold", parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleSettingChange(
+                        "overtimeThreshold",
+                        parseInt(e.target.value),
+                      )
+                    }
                     data-testid="input-overtime-threshold"
                   />
                 </div>
@@ -339,7 +431,9 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={settings.emailNotifications}
-                  onCheckedChange={(checked) => handleSettingChange("emailNotifications", checked)}
+                  onCheckedChange={(checked) =>
+                    handleSettingChange("emailNotifications", checked)
+                  }
                   data-testid="switch-email-notifications"
                 />
               </div>
@@ -353,7 +447,9 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={settings.clockInReminders}
-                  onCheckedChange={(checked) => handleSettingChange("clockInReminders", checked)}
+                  onCheckedChange={(checked) =>
+                    handleSettingChange("clockInReminders", checked)
+                  }
                   data-testid="switch-clock-in-reminders"
                 />
               </div>
@@ -367,7 +463,9 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={settings.clockOutReminders}
-                  onCheckedChange={(checked) => handleSettingChange("clockOutReminders", checked)}
+                  onCheckedChange={(checked) =>
+                    handleSettingChange("clockOutReminders", checked)
+                  }
                   data-testid="switch-clock-out-reminders"
                 />
               </div>
@@ -381,7 +479,9 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={settings.lateArrivalNotifications}
-                  onCheckedChange={(checked) => handleSettingChange("lateArrivalNotifications", checked)}
+                  onCheckedChange={(checked) =>
+                    handleSettingChange("lateArrivalNotifications", checked)
+                  }
                   data-testid="switch-late-arrival-notifications"
                 />
               </div>
@@ -397,22 +497,36 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="sessionTimeout">Tiempo de Sesión (minutos)</Label>
+                  <Label htmlFor="sessionTimeout">
+                    Tiempo de Sesión (minutos)
+                  </Label>
                   <Input
                     id="sessionTimeout"
                     type="number"
                     value={settings.sessionTimeout}
-                    onChange={(e) => handleSettingChange("sessionTimeout", parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleSettingChange(
+                        "sessionTimeout",
+                        parseInt(e.target.value),
+                      )
+                    }
                     data-testid="input-session-timeout"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="passwordMinLength">Longitud Mínima de Contraseña</Label>
+                  <Label htmlFor="passwordMinLength">
+                    Longitud Mínima de Contraseña
+                  </Label>
                   <Input
                     id="passwordMinLength"
                     type="number"
                     value={settings.passwordMinLength}
-                    onChange={(e) => handleSettingChange("passwordMinLength", parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleSettingChange(
+                        "passwordMinLength",
+                        parseInt(e.target.value),
+                      )
+                    }
                     data-testid="input-password-min-length"
                   />
                 </div>
@@ -427,7 +541,9 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={settings.requireTwoFactor}
-                  onCheckedChange={(checked) => handleSettingChange("requireTwoFactor", checked)}
+                  onCheckedChange={(checked) =>
+                    handleSettingChange("requireTwoFactor", checked)
+                  }
                   data-testid="switch-two-factor"
                 />
               </div>
@@ -441,7 +557,9 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={settings.allowRemoteClocking}
-                  onCheckedChange={(checked) => handleSettingChange("allowRemoteClocking", checked)}
+                  onCheckedChange={(checked) =>
+                    handleSettingChange("allowRemoteClocking", checked)
+                  }
                   data-testid="switch-remote-clocking"
                 />
               </div>
@@ -453,13 +571,16 @@ export default function SettingsPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
               <CardTitle>Tipos de Incidencias</CardTitle>
-              <Dialog open={dialogOpen} onOpenChange={(open) => {
-                setDialogOpen(open);
-                if (!open) {
-                  setEditingIncidentType(null);
-                  form.reset();
-                }
-              }}>
+              <Dialog
+                open={dialogOpen}
+                onOpenChange={(open) => {
+                  setDialogOpen(open);
+                  if (!open) {
+                    setEditingIncidentType(null);
+                    form.reset();
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button size="sm" data-testid="button-add-incident-type">
                     <Plus className="w-4 h-4 mr-2" />
@@ -469,17 +590,21 @@ export default function SettingsPage() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>
-                      {editingIncidentType ? "Editar Tipo de Incidencia" : "Nuevo Tipo de Incidencia"}
+                      {editingIncidentType
+                        ? "Editar Tipo de Incidencia"
+                        : "Nuevo Tipo de Incidencia"}
                     </DialogTitle>
                     <DialogDescription>
-                      {editingIncidentType 
-                        ? "Actualiza la información del tipo de incidencia" 
-                        : "Crea un nuevo tipo de incidencia para el sistema"
-                      }
+                      {editingIncidentType
+                        ? "Actualiza la información del tipo de incidencia"
+                        : "Crea un nuevo tipo de incidencia para el sistema"}
                     </DialogDescription>
                   </DialogHeader>
                   <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmitIncidentType)} className="space-y-4">
+                    <form
+                      onSubmit={form.handleSubmit(onSubmitIncidentType)}
+                      className="space-y-4"
+                    >
                       <FormField
                         control={form.control}
                         name="name"
@@ -487,7 +612,10 @@ export default function SettingsPage() {
                           <FormItem>
                             <FormLabel>Nombre</FormLabel>
                             <FormControl>
-                              <Input {...field} data-testid="input-incident-type-name" />
+                              <Input
+                                {...field}
+                                data-testid="input-incident-type-name"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -501,7 +629,10 @@ export default function SettingsPage() {
                           <FormItem>
                             <FormLabel>Descripción (opcional)</FormLabel>
                             <FormControl>
-                              <Input {...field} data-testid="input-incident-type-description" />
+                              <Input
+                                {...field}
+                                data-testid="input-incident-type-description"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -523,7 +654,10 @@ export default function SettingsPage() {
                         </Button>
                         <Button
                           type="submit"
-                          disabled={createTypeMutation.isPending || updateTypeMutation.isPending}
+                          disabled={
+                            createTypeMutation.isPending ||
+                            updateTypeMutation.isPending
+                          }
                           data-testid="button-submit-incident-type"
                         >
                           {editingIncidentType ? "Actualizar" : "Crear"} Tipo
@@ -538,7 +672,9 @@ export default function SettingsPage() {
               {loadingTypes ? (
                 <p className="text-sm text-muted-foreground">Cargando...</p>
               ) : !incidentTypes || incidentTypes.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No hay tipos de incidencias configurados</p>
+                <p className="text-sm text-muted-foreground">
+                  No hay tipos de incidencias configurados
+                </p>
               ) : (
                 <div className="space-y-2">
                   {incidentTypes.map((type) => (
@@ -548,7 +684,10 @@ export default function SettingsPage() {
                       data-testid={`incident-type-${type.id}`}
                     >
                       <div className="flex-1">
-                        <p className="font-medium" data-testid={`text-type-name-${type.id}`}>
+                        <p
+                          className="font-medium"
+                          data-testid={`text-type-name-${type.id}`}
+                        >
                           {type.name}
                         </p>
                         {type.description && (
@@ -606,15 +745,24 @@ export default function SettingsPage() {
                 </div>
                 <Switch
                   checked={settings.automaticBackup}
-                  onCheckedChange={(checked) => handleSettingChange("automaticBackup", checked)}
+                  onCheckedChange={(checked) =>
+                    handleSettingChange("automaticBackup", checked)
+                  }
                   data-testid="switch-automatic-backup"
                 />
               </div>
               <Separator />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="backupFrequency">Frecuencia de Respaldo</Label>
-                  <Select value={settings.backupFrequency} onValueChange={(value) => handleSettingChange("backupFrequency", value)}>
+                  <Label htmlFor="backupFrequency">
+                    Frecuencia de Respaldo
+                  </Label>
+                  <Select
+                    value={settings.backupFrequency}
+                    onValueChange={(value) =>
+                      handleSettingChange("backupFrequency", value)
+                    }
+                  >
                     <SelectTrigger data-testid="select-backup-frequency">
                       <SelectValue />
                     </SelectTrigger>
@@ -626,12 +774,19 @@ export default function SettingsPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="retentionPeriod">Período de Retención (días)</Label>
+                  <Label htmlFor="retentionPeriod">
+                    Período de Retención (días)
+                  </Label>
                   <Input
                     id="retentionPeriod"
                     type="number"
                     value={settings.retentionPeriod}
-                    onChange={(e) => handleSettingChange("retentionPeriod", parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleSettingChange(
+                        "retentionPeriod",
+                        parseInt(e.target.value),
+                      )
+                    }
                     data-testid="input-retention-period"
                   />
                 </div>
@@ -665,7 +820,11 @@ export default function SettingsPage() {
 
       {/* Action buttons */}
       <div className="flex justify-end space-x-4 pt-6 border-t border-border">
-        <Button variant="outline" onClick={resetSettings} data-testid="button-reset-settings">
+        <Button
+          variant="outline"
+          onClick={resetSettings}
+          data-testid="button-reset-settings"
+        >
           Restablecer
         </Button>
         <Button onClick={saveSettings} data-testid="button-save-settings">

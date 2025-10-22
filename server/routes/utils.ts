@@ -1,7 +1,7 @@
 /**
  * UTILIDADES COMPARTIDAS PARA RUTAS
  * ==================================
- * 
+ *
  * Funciones auxiliares utilizadas en múltiples archivos de rutas.
  */
 
@@ -10,11 +10,15 @@ import { z } from "zod";
 /**
  * HELPER PARA MANEJO CONSISTENTE DE ERRORES
  * ==========================================
- * 
+ *
  * Maneja errores de manera consistente en todas las rutas.
  * Determina el código de estado HTTP apropiado y formatea el mensaje.
  */
-export function handleApiError(res: any, error: unknown, defaultMessage: string) {
+export function handleApiError(
+  res: any,
+  error: unknown,
+  defaultMessage: string,
+) {
   console.error(`${defaultMessage}:`, error);
 
   // Manejar errores de validación Zod
@@ -64,10 +68,10 @@ export function handleApiError(res: any, error: unknown, defaultMessage: string)
 /**
  * FUNCIÓN AUXILIAR DE VALIDACIÓN DE HORARIOS DE FICHAJE
  * ====================================================
- * 
+ *
  * Permite el fichaje sin restricciones de horario.
  * Los empleados pueden fichar a cualquier hora del día.
- * 
+ *
  * @param employeeId - ID del empleado que intenta fichar
  * @param currentTime - Timestamp actual del intento de fichaje
  * @param action - Tipo de acción: "clock-in" (entrada) o "clock-out" (salida)

@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import type { Employee, Department } from "@shared/schema";
+import type { User, Department } from "@shared/schema";
 
 interface ReportData {
   employeeId: string;
@@ -50,16 +50,22 @@ interface ReportData {
 }
 
 export default function Reports() {
-  const today = new Date().toISOString().split('T')[0];
-  const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-  
+  const today = new Date().toISOString().split("T")[0];
+  const firstDayOfMonth = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1,
+  )
+    .toISOString()
+    .split("T")[0];
+
   const [periodType, setPeriodType] = useState<string>("month");
   const [startDate, setStartDate] = useState(firstDayOfMonth);
   const [endDate, setEndDate] = useState(today);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
 
-  const { data: employees } = useQuery<Employee[]>({
+  const { data: employees } = useQuery<User[]>({
     queryKey: ["/api/employees"],
   });
 
@@ -68,7 +74,14 @@ export default function Reports() {
   });
 
   const { data: reportData, isLoading } = useQuery<ReportData[]>({
-    queryKey: ["/api/reports/period-analysis", startDate, endDate, periodType, selectedEmployee, selectedDepartment],
+    queryKey: [
+      "/api/reports/period-analysis",
+      startDate,
+      endDate,
+      periodType,
+      selectedEmployee,
+      selectedDepartment,
+    ],
     enabled: !!startDate && !!endDate,
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -76,7 +89,7 @@ export default function Reports() {
         endDate,
         periodType,
       });
-      
+
       if (selectedEmployee !== "all") {
         params.append("employeeId", selectedEmployee);
       }
@@ -85,18 +98,18 @@ export default function Reports() {
       }
 
       const response = await fetch(`/api/reports/period-analysis?${params}`, {
-        credentials: 'include'
+        credentials: "include",
       });
-      
+
       if (!response.ok) throw new Error("Error al obtener datos del informe");
       return response.json();
-    }
+    },
   });
 
   const handlePeriodChange = (value: string) => {
     setPeriodType(value);
     const now = new Date();
-    
+
     switch (value) {
       case "day":
         setStartDate(today);
@@ -105,23 +118,23 @@ export default function Reports() {
       case "week":
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - now.getDay());
-        setStartDate(weekStart.toISOString().split('T')[0]);
+        setStartDate(weekStart.toISOString().split("T")[0]);
         setEndDate(today);
         break;
       case "month":
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        setStartDate(monthStart.toISOString().split('T')[0]);
+        setStartDate(monthStart.toISOString().split("T")[0]);
         setEndDate(today);
         break;
       case "quarter":
         const quarter = Math.floor(now.getMonth() / 3);
         const quarterStart = new Date(now.getFullYear(), quarter * 3, 1);
-        setStartDate(quarterStart.toISOString().split('T')[0]);
+        setStartDate(quarterStart.toISOString().split("T")[0]);
         setEndDate(today);
         break;
       case "year":
         const yearStart = new Date(now.getFullYear(), 0, 1);
-        setStartDate(yearStart.toISOString().split('T')[0]);
+        setStartDate(yearStart.toISOString().split("T")[0]);
         setEndDate(today);
         break;
     }
@@ -130,35 +143,51 @@ export default function Reports() {
   const exportToPDF = () => {
     if (!reportData) return;
 
-    const doc = new jsPDF('landscape');
-    
+    const doc = new jsPDF("landscape");
+
     doc.setFontSize(18);
     doc.text("Informe de Jornadas Laborales", 14, 20);
-    
+
     doc.setFontSize(11);
     doc.text(`Período: ${startDate} a ${endDate}`, 14, 28);
-    doc.text(`Tipo: ${periodType === 'day' ? 'Día' : periodType === 'week' ? 'Semana' : periodType === 'month' ? 'Mes' : periodType === 'quarter' ? 'Trimestre' : 'Año'}`, 14, 34);
-    doc.text(`Generado: ${new Date().toLocaleString('es-ES')}`, 14, 40);
+    doc.text(
+      `Tipo: ${periodType === "day" ? "Día" : periodType === "week" ? "Semana" : periodType === "month" ? "Mes" : periodType === "quarter" ? "Trimestre" : "Año"}`,
+      14,
+      34,
+    );
+    doc.text(`Generado: ${new Date().toLocaleString("es-ES")}`, 14, 40);
 
-    const tableData = reportData.map(item => {
-      const diffIsPositive = (item.hoursDifference * 60 + item.minutesDifference) >= 0;
+    const tableData = reportData.map((item) => {
+      const diffIsPositive =
+        item.hoursDifference * 60 + item.minutesDifference >= 0;
       return [
         item.employeeNumber,
         item.employeeName,
         `${item.hoursWorked}h ${item.minutesWorked}m`,
         item.daysWorked.toString(),
         `${item.hoursPlanned}h ${item.minutesPlanned}m`,
-        `${diffIsPositive ? '+' : ''}${item.hoursDifference}h ${item.minutesDifference}m`,
+        `${diffIsPositive ? "+" : ""}${item.hoursDifference}h ${item.minutesDifference}m`,
         item.incidents.length.toString(),
-        item.absences.toString()
+        item.absences.toString(),
       ];
     });
 
     autoTable(doc, {
       startY: 50,
-      head: [['Nº', 'Empleado', 'Horas Trab.', 'Días Trab.', 'Horas Plan.', 'Diferencia', 'Incidencias', 'Ausencias']],
+      head: [
+        [
+          "Nº",
+          "Empleado",
+          "Horas Trab.",
+          "Días Trab.",
+          "Horas Plan.",
+          "Diferencia",
+          "Incidencias",
+          "Ausencias",
+        ],
+      ],
       body: tableData,
-      theme: 'grid',
+      theme: "grid",
       styles: { fontSize: 8 },
       headStyles: { fillColor: [66, 139, 202] },
     });
@@ -170,44 +199,71 @@ export default function Reports() {
     if (!reportData) return;
 
     const worksheetData = [
-      ['Informe de Jornadas Laborales'],
+      ["Informe de Jornadas Laborales"],
       [`Período: ${startDate} a ${endDate}`],
-      [`Tipo: ${periodType === 'day' ? 'Día' : periodType === 'week' ? 'Semana' : periodType === 'month' ? 'Mes' : periodType === 'quarter' ? 'Trimestre' : 'Año'}`],
+      [
+        `Tipo: ${periodType === "day" ? "Día" : periodType === "week" ? "Semana" : periodType === "month" ? "Mes" : periodType === "quarter" ? "Trimestre" : "Año"}`,
+      ],
       [],
-      ['Número', 'Empleado', 'Horas Trabajadas', 'Días Trabajados', 'Horas Planificadas', 'Diferencia Horas', 'Incidencias', 'Ausencias']
+      [
+        "Número",
+        "Empleado",
+        "Horas Trabajadas",
+        "Días Trabajados",
+        "Horas Planificadas",
+        "Diferencia Horas",
+        "Incidencias",
+        "Ausencias",
+      ],
     ];
 
-    reportData.forEach(item => {
+    reportData.forEach((item) => {
       worksheetData.push([
         item.employeeNumber,
         item.employeeName,
         `${item.hoursWorked}h ${item.minutesWorked}m`,
-        item.daysWorked,
+        item.daysWorked.toString(),
         `${item.hoursPlanned}h ${item.minutesPlanned}m`,
-        `${item.hoursDifference >= 0 ? '+' : ''}${item.hoursDifference}h ${item.minutesDifference}m`,
-        item.incidents.length,
-        item.absences
+        `${item.hoursDifference >= 0 ? "+" : ""}${item.hoursDifference}h ${item.minutesDifference}m`,
+        item.incidents.length.toString(),
+        item.absences.toString(),
       ]);
     });
 
     const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Informe');
-    
-    XLSX.writeFile(workbook, `informe-${periodType}-${startDate}-${endDate}.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Informe");
+
+    XLSX.writeFile(
+      workbook,
+      `informe-${periodType}-${startDate}-${endDate}.xlsx`,
+    );
   };
 
-  const totalHoursWorked = reportData?.reduce((sum, item) => sum + item.hoursWorked * 60 + item.minutesWorked, 0) || 0;
-  const totalHoursPlanned = reportData?.reduce((sum, item) => sum + item.hoursPlanned * 60 + item.minutesPlanned, 0) || 0;
-  const totalIncidents = reportData?.reduce((sum, item) => sum + item.incidents.length, 0) || 0;
-  const totalAbsences = reportData?.reduce((sum, item) => sum + item.absences, 0) || 0;
+  const totalHoursWorked =
+    reportData?.reduce(
+      (sum, item) => sum + item.hoursWorked * 60 + item.minutesWorked,
+      0,
+    ) || 0;
+  const totalHoursPlanned =
+    reportData?.reduce(
+      (sum, item) => sum + item.hoursPlanned * 60 + item.minutesPlanned,
+      0,
+    ) || 0;
+  const totalIncidents =
+    reportData?.reduce((sum, item) => sum + item.incidents.length, 0) || 0;
+  const totalAbsences =
+    reportData?.reduce((sum, item) => sum + item.absences, 0) || 0;
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground">Informes por Período</h2>
+        <h2 className="text-2xl font-bold text-foreground">
+          Informes por Período
+        </h2>
         <p className="text-muted-foreground">
-          Análisis detallado de jornadas laborales por día, semana, mes, trimestre o año
+          Análisis detallado de jornadas laborales por día, semana, mes,
+          trimestre o año
         </p>
       </div>
 
@@ -219,7 +275,9 @@ export default function Reports() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">Tipo de Período</label>
+              <label className="text-sm font-medium mb-2 block">
+                Tipo de Período
+              </label>
               <Select
                 value={periodType}
                 onValueChange={handlePeriodChange}
@@ -239,7 +297,9 @@ export default function Reports() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Fecha Inicio</label>
+              <label className="text-sm font-medium mb-2 block">
+                Fecha Inicio
+              </label>
               <Input
                 type="date"
                 value={startDate}
@@ -249,7 +309,9 @@ export default function Reports() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Fecha Fin</label>
+              <label className="text-sm font-medium mb-2 block">
+                Fecha Fin
+              </label>
               <Input
                 type="date"
                 value={endDate}
@@ -280,7 +342,9 @@ export default function Reports() {
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Departamento</label>
+              <label className="text-sm font-medium mb-2 block">
+                Departamento
+              </label>
               <Select
                 value={selectedDepartment}
                 onValueChange={setSelectedDepartment}
@@ -330,8 +394,13 @@ export default function Reports() {
             <div className="flex items-center space-x-2">
               <Clock className="w-5 h-5 text-blue-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Horas Trabajadas</p>
-                <p className="text-2xl font-bold" data-testid="total-hours-worked">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Horas Trabajadas
+                </p>
+                <p
+                  className="text-2xl font-bold"
+                  data-testid="total-hours-worked"
+                >
                   {Math.floor(totalHoursWorked / 60)}h {totalHoursWorked % 60}m
                 </p>
               </div>
@@ -344,9 +413,15 @@ export default function Reports() {
             <div className="flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-green-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Horas Planificadas</p>
-                <p className="text-2xl font-bold" data-testid="total-hours-planned">
-                  {Math.floor(totalHoursPlanned / 60)}h {totalHoursPlanned % 60}m
+                <p className="text-sm font-medium text-muted-foreground">
+                  Horas Planificadas
+                </p>
+                <p
+                  className="text-2xl font-bold"
+                  data-testid="total-hours-planned"
+                >
+                  {Math.floor(totalHoursPlanned / 60)}h {totalHoursPlanned % 60}
+                  m
                 </p>
               </div>
             </div>
@@ -358,7 +433,9 @@ export default function Reports() {
             <div className="flex items-center space-x-2">
               <AlertTriangle className="w-5 h-5 text-orange-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Incidencias</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Incidencias
+                </p>
                 <p className="text-2xl font-bold" data-testid="total-incidents">
                   {totalIncidents}
                 </p>
@@ -372,7 +449,9 @@ export default function Reports() {
             <div className="flex items-center space-x-2">
               <Users className="w-5 h-5 text-red-500" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Ausencias</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Ausencias
+                </p>
                 <p className="text-2xl font-bold" data-testid="total-absences">
                   {totalAbsences}
                 </p>
@@ -396,56 +475,98 @@ export default function Reports() {
           ) : !reportData || reportData.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No hay datos para mostrar en este período</p>
+              <p className="text-muted-foreground">
+                No hay datos para mostrar en este período
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nº</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Empleado</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Período</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Horas Trabajadas</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Días Trabajados</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Horas Planificadas</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Diferencia</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Incidencias</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ausencias</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Nº
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Empleado
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Período
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Horas Trabajadas
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Días Trabajados
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Horas Planificadas
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Diferencia
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Incidencias
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Ausencias
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {reportData.map((item, index) => {
-                    const diffIsPositive = (item.hoursDifference * 60 + item.minutesDifference) >= 0;
-                    
+                    const diffIsPositive =
+                      item.hoursDifference * 60 + item.minutesDifference >= 0;
+
                     return (
-                      <tr 
-                        key={item.employeeId} 
+                      <tr
+                        key={item.employeeId}
                         className="border-b border-border hover-elevate"
                         data-testid={`report-row-${index}`}
                       >
-                        <td className="py-3 px-4 text-foreground">{item.employeeNumber}</td>
-                        <td className="py-3 px-4 text-foreground">{item.employeeName}</td>
+                        <td className="py-3 px-4 text-foreground">
+                          {item.employeeNumber}
+                        </td>
+                        <td className="py-3 px-4 text-foreground">
+                          {item.employeeName}
+                        </td>
                         <td className="py-3 px-4">
                           <Badge variant="outline">
-                            {periodType === 'day' ? 'Día' : periodType === 'week' ? 'Semana' : periodType === 'month' ? 'Mes' : periodType === 'quarter' ? 'Trimestre' : 'Año'}
+                            {periodType === "day"
+                              ? "Día"
+                              : periodType === "week"
+                                ? "Semana"
+                                : periodType === "month"
+                                  ? "Mes"
+                                  : periodType === "quarter"
+                                    ? "Trimestre"
+                                    : "Año"}
                           </Badge>
                         </td>
                         <td className="py-3 px-4 text-foreground">
                           {item.hoursWorked}h {item.minutesWorked}m
                         </td>
-                        <td className="py-3 px-4 text-foreground">{item.daysWorked}</td>
+                        <td className="py-3 px-4 text-foreground">
+                          {item.daysWorked}
+                        </td>
                         <td className="py-3 px-4 text-foreground">
                           {item.hoursPlanned}h {item.minutesPlanned}m
                         </td>
                         <td className="py-3 px-4">
-                          <span className={diffIsPositive ? 'text-green-600' : 'text-red-600'}>
-                            {diffIsPositive ? '+' : ''}{item.hoursDifference}h {item.minutesDifference}m
+                          <span
+                            className={
+                              diffIsPositive ? "text-green-600" : "text-red-600"
+                            }
+                          >
+                            {diffIsPositive ? "+" : ""}
+                            {item.hoursDifference}h {item.minutesDifference}m
                           </span>
                         </td>
                         <td className="py-3 px-4">
                           {item.incidents.length > 0 ? (
-                            <Badge variant="destructive">{item.incidents.length}</Badge>
+                            <Badge variant="destructive">
+                              {item.incidents.length}
+                            </Badge>
                           ) : (
                             <span className="text-muted-foreground">0</span>
                           )}

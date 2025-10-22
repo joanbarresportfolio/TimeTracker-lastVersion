@@ -1,10 +1,4 @@
-import { 
-  type Employee, 
-  type InsertEmployee, 
-  type CreateEmployee, 
-  type User, 
-  users,
-} from "@shared/schema";
+import { type InsertUser, UpdateUser, type User, users } from "@shared/schema";
 import { db } from "../db";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
@@ -12,7 +6,7 @@ import bcrypt from "bcryptjs";
 /**
  * USER STORAGE MODULE
  * ===================
- * 
+ *
  * Módulo de almacenamiento para operaciones relacionadas con usuarios y empleados.
  * Incluye métodos de autenticación, CRUD de empleados y gestión de contraseñas.
  */
@@ -20,28 +14,32 @@ import bcrypt from "bcryptjs";
 /**
  * BUSCAR EMPLEADO POR EMAIL
  */
-export async function getEmployeeByEmail(email: string): Promise<Employee | undefined> {
+/*
+export async function getUserByEmail(email: string): Promise<User | undefined> {
   const [user] = await db
     .select()
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
-  
+
   return user;
 }
-
+*/
 /**
  * AUTENTICAR EMPLEADO
  */
-export async function authenticateEmployee(email: string, password: string): Promise<User | null> {
+export async function authenticateUser(
+  email: string,
+  password: string,
+): Promise<User | null> {
   const result = await db
     .select()
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
-  
+
   if (result.length === 0) return null;
-  
+
   const user = result[0];
   const isValidPassword = await bcrypt.compare(password, user.passwordHash);
   if (!isValidPassword) return null;
@@ -52,86 +50,65 @@ export async function authenticateEmployee(email: string, password: string): Pro
 /**
  * CREAR EMPLEADO CON CONTRASEÑA ENCRIPTADA
  */
-export async function createEmployeeWithPassword(employeeData: CreateEmployee): Promise<Employee> {
-  const hashedPassword = await bcrypt.hash(employeeData.password, 10);
-  
+export async function createUser(UserData: InsertUser): Promise<User> {
+  const hashedPassword = await bcrypt.hash(UserData.password, 10);
+
   const [user] = await db
     .insert(users)
     .values({
-      numEmployee: employeeData.numEmployee,
-      dni: employeeData.dni,
-      firstName: employeeData.firstName,
-      lastName: employeeData.lastName,
-      email: employeeData.email,
+      numEmployee: UserData.numEmployee,
+      dni: UserData.dni,
+      firstName: UserData.firstName,
+      lastName: UserData.lastName,
+      email: UserData.email,
       passwordHash: hashedPassword,
-      hireDate: employeeData.hireDate,
-      isActive: employeeData.isActive,
-      roleSystem: employeeData.roleSystem,
-      roleEnterpriseId: employeeData.roleEnterpriseId,
-      departmentId: employeeData.departmentId,
+      hireDate: UserData.hireDate,
+      isActive: UserData.isActive,
+      roleSystem: UserData.roleSystem,
+      roleEnterpriseId: UserData.roleEnterpriseId,
+      departmentId: UserData.departmentId,
     })
     .returning();
-    
+
   return user;
 }
 
-/**
- * OBTENER EMPLEADO POR ID
- */
-export async function getEmployee(id: string): Promise<Employee | undefined> {
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, id))
-    .limit(1);
-  
+export async function getUserById(id: string): Promise<User | undefined> {
+  const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+
   return user;
 }
 
-/**
- * OBTENER TODOS LOS EMPLEADOS
- */
-export async function getEmployees(): Promise<Employee[]> {
+export async function getUsers(): Promise<User[]> {
   return await db.select().from(users);
 }
 
-/**
- * BUSCAR EMPLEADO POR NÚMERO DE EMPLEADO
- */
-export async function getEmployeeByNumber(employeeNumber: string): Promise<Employee | undefined> {
+export async function getUserByNumber(
+  UserNumber: string,
+): Promise<User | undefined> {
   const [user] = await db
     .select()
     .from(users)
-    .where(eq(users.numEmployee, employeeNumber))
+    .where(eq(users.numEmployee, UserNumber))
     .limit(1);
-  
+
   return user;
 }
 
-/**
- * CREAR EMPLEADO (delega a createEmployeeWithPassword)
- */
-export async function createEmployee(employee: CreateEmployee): Promise<Employee> {
-  return createEmployeeWithPassword(employee);
-}
-
-/**
- * ACTUALIZAR EMPLEADO
- */
-export async function updateEmployee(id: string, employeeData: Partial<InsertEmployee>): Promise<Employee | undefined> {
+export async function updateUser(
+  id: string,
+  userData: UpdateUser,
+): Promise<User | undefined> {
   const [updatedUser] = await db
     .update(users)
-    .set(employeeData)
+    .set(userData)
     .where(eq(users.id, id))
     .returning();
-  
+
   return updatedUser;
 }
 
-/**
- * ELIMINAR EMPLEADO
- */
-export async function deleteEmployee(id: string): Promise<boolean> {
+export async function deleteUser(id: string): Promise<boolean> {
   const result = await db.delete(users).where(eq(users.id, id));
   return (result.rowCount ?? 0) > 0;
 }

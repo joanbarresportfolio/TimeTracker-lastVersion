@@ -4,24 +4,69 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Edit, Trash2, Search, AlertTriangle, Check, X } from "lucide-react";
-import { incidentFormSchema } from "@shared/schema";
-import type { Employee, Incident, IncidentFormData, IncidentType } from "@shared/schema";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  AlertTriangle,
+  Check,
+  X,
+} from "lucide-react";
+import {
+  type User,
+  type Incident,
+  type InsertIncident,
+  type IncidentsType,
+  insertIncidentSchema,
+  IncidentType,
+} from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const statusTypes = [
-  { value: "pending", label: "Pendiente", color: "bg-yellow-500/10 text-yellow-700" },
-  { value: "approved", label: "Aprobado", color: "bg-green-500/10 text-green-700" },
-  { value: "rejected", label: "Rechazado", color: "bg-red-500/10 text-red-700" },
+  {
+    value: "pending",
+    label: "Pendiente",
+    color: "bg-yellow-500/10 text-yellow-700",
+  },
+  {
+    value: "approved",
+    label: "Aprobado",
+    color: "bg-green-500/10 text-green-700",
+  },
+  {
+    value: "rejected",
+    label: "Rechazado",
+    color: "bg-red-500/10 text-red-700",
+  },
 ];
 
 export default function Incidents() {
@@ -32,20 +77,26 @@ export default function Incidents() {
   const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
   const { toast } = useToast();
 
-  const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>({
-    queryKey: ["/api/employees"],
-  });
+  const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>(
+    {
+      queryKey: ["/api/users"],
+    },
+  );
 
-  const { data: incidents, isLoading: incidentsLoading } = useQuery<Incident[]>({
-    queryKey: ["/api/incidents"],
-  });
+  const { data: incidents, isLoading: incidentsLoading } = useQuery<Incident[]>(
+    {
+      queryKey: ["/api/incidents"],
+    },
+  );
 
-  const { data: incidentTypes, isLoading: typesLoading } = useQuery<IncidentType[]>({
+  const { data: incidentTypes, isLoading: typesLoading } = useQuery<
+    IncidentType[]
+  >({
     queryKey: ["/api/incident-types"],
   });
 
   const createIncidentMutation = useMutation({
-    mutationFn: async (data: IncidentFormData) => {
+    mutationFn: async (data: InsertIncident) => {
       const response = await apiRequest("/api/incidents", "POST", data);
       return response.json();
     },
@@ -68,7 +119,13 @@ export default function Incidents() {
   });
 
   const updateIncidentMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<IncidentFormData> }) => {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<InsertIncident>;
+    }) => {
       const response = await apiRequest(`/api/incidents/${id}`, "PUT", data);
       return response.json();
     },
@@ -113,7 +170,9 @@ export default function Incidents() {
 
   const approveIncidentMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest(`/api/incidents/${id}`, "PUT", { status: "approved" });
+      const response = await apiRequest(`/api/incidents/${id}`, "PUT", {
+        status: "approved",
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -134,7 +193,9 @@ export default function Incidents() {
 
   const rejectIncidentMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest(`/api/incidents/${id}`, "PUT", { status: "rejected" });
+      const response = await apiRequest(`/api/incidents/${id}`, "PUT", {
+        status: "rejected",
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -153,18 +214,18 @@ export default function Incidents() {
     },
   });
 
-  const form = useForm<IncidentFormData>({
-    resolver: zodResolver(incidentFormSchema),
+  const form = useForm<InsertIncident>({
+    resolver: zodResolver(insertIncidentSchema),
     defaultValues: {
       idUser: "",
-      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+      date: new Date().toISOString().split("T")[0], // YYYY-MM-DD format
       idIncidentsType: "",
       description: "",
       status: "pending",
     },
   });
 
-  const onSubmit = (data: IncidentFormData) => {
+  const onSubmit = (data: InsertIncident) => {
     if (editingIncident) {
       updateIncidentMutation.mutate({ id: editingIncident.id, data });
     } else {
@@ -175,7 +236,7 @@ export default function Incidents() {
   const handleEdit = (incident: Incident) => {
     setEditingIncident(incident);
     // Find the daily workday to get the date
-    const date = new Date().toISOString().split('T')[0]; // Default to today, will be fetched from workday
+    const date = new Date().toISOString().split("T")[0]; // Default to today, will be fetched from workday
     form.reset({
       idUser: incident.idUser,
       date: date,
@@ -193,15 +254,15 @@ export default function Incidents() {
   };
 
   const getEmployeeInfo = (employeeId: string) => {
-    return employees?.find(emp => emp.id === employeeId);
+    return employees?.find((emp) => emp.id === employeeId);
   };
 
-  const getIncidentTypeLabel = (type: string) => {
-    return incidentTypes?.find(t => t.name === type)?.name || type;
+  const getIncidentTypeLabel = (id: string) => {
+    return incidentTypes?.find((t) => t.id === id)?.name || id;
   };
 
   const getStatusInfo = (status: string) => {
-    return statusTypes.find(s => s.value === status) || statusTypes[0];
+    return statusTypes.find((s) => s.value === status) || statusTypes[0];
   };
 
   const getInitials = (firstName: string, lastName: string) => {
@@ -211,7 +272,7 @@ export default function Incidents() {
   const getAvatarColor = (name: string) => {
     const colors = [
       "from-blue-500 to-purple-600",
-      "from-green-500 to-teal-600", 
+      "from-green-500 to-teal-600",
       "from-orange-500 to-red-600",
       "from-purple-500 to-pink-600",
       "from-yellow-500 to-orange-600",
@@ -219,23 +280,26 @@ export default function Incidents() {
     return colors[name.length % colors.length];
   };
 
-  const filteredIncidents = incidents?.filter(incident => {
-    const employee = getEmployeeInfo(incident.idUser);
-    if (!employee) return false;
-    
-    const incidentTypeName = getIncidentTypeLabel(incident.idIncidentsType);
-    
-    const matchesSearch = 
-      employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.numEmployee.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      incident.description.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = selectedStatus === "all" || incident.status === selectedStatus;
-    const matchesType = selectedType === "all" || incident.idIncidentsType === selectedType;
-    
-    return matchesSearch && matchesStatus && matchesType;
-  }) || [];
+  const filteredIncidents =
+    incidents?.filter((incident) => {
+      const employee = getEmployeeInfo(incident.idUser);
+      if (!employee) return false;
+
+      const incidentTypeName = getIncidentTypeLabel(incident.idIncidentsType);
+
+      const matchesSearch =
+        employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.numEmployee.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        incident.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesStatus =
+        selectedStatus === "all" || incident.status === selectedStatus;
+      const matchesType =
+        selectedType === "all" || incident.idIncidentsType === selectedType;
+
+      return matchesSearch && matchesStatus && matchesType;
+    }) || [];
 
   const isLoading = employeesLoading || incidentsLoading;
 
@@ -244,7 +308,9 @@ export default function Incidents() {
       <div className="p-4 lg:p-6 space-y-6">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-foreground">Incidencias</h2>
-          <p className="text-muted-foreground">Gestiona las incidencias y ausencias de los empleados</p>
+          <p className="text-muted-foreground">
+            Gestiona las incidencias y ausencias de los empleados
+          </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
@@ -263,20 +329,25 @@ export default function Incidents() {
     <div className="p-4 lg:p-6 space-y-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-foreground">Incidencias</h2>
-        <p className="text-muted-foreground">Gestiona las incidencias y ausencias de los empleados</p>
+        <p className="text-muted-foreground">
+          Gestiona las incidencias y ausencias de los empleados
+        </p>
       </div>
 
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {statusTypes.map(status => (
+        {statusTypes.map((status) => (
           <Card key={status.value}>
             <CardContent className="p-6">
               <div className="flex items-center space-x-2">
                 <AlertTriangle className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{status.label}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {status.label}
+                  </p>
                   <p className="text-2xl font-bold">
-                    {incidents?.filter(inc => inc.status === status.value).length || 0}
+                    {incidents?.filter((inc) => inc.status === status.value)
+                      .length || 0}
                   </p>
                 </div>
               </div>
@@ -301,37 +372,47 @@ export default function Incidents() {
                 />
               </div>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-48" data-testid="select-status-filter">
+                <SelectTrigger
+                  className="w-48"
+                  data-testid="select-status-filter"
+                >
                   <SelectValue placeholder="Filtrar por estado" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los estados</SelectItem>
-                  {statusTypes.map(status => (
-                    <SelectItem key={status.value} value={status.value}>{status.label}</SelectItem>
+                  {statusTypes.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={selectedType} onValueChange={setSelectedType}>
-                <SelectTrigger className="w-48" data-testid="select-type-filter">
+                <SelectTrigger
+                  className="w-48"
+                  data-testid="select-type-filter"
+                >
                   <SelectValue placeholder="Filtrar por tipo" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos los tipos</SelectItem>
-                  {incidentTypes?.map(type => (
-                    <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                  {incidentTypes?.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button 
+                <Button
                   onClick={() => {
                     setEditingIncident(null);
                     const defaultType = incidentTypes?.[0]?.id || "";
                     form.reset({
                       idUser: "",
-                      date: new Date().toISOString().split('T')[0],
+                      date: new Date().toISOString().split("T")[0],
                       idIncidentsType: defaultType,
                       description: "",
                       status: "pending",
@@ -350,23 +431,33 @@ export default function Incidents() {
                   </DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={form.control}
                       name="idUser"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Empleado</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger data-testid="select-employee">
                                 <SelectValue placeholder="Selecciona un empleado" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {employees?.map(employee => (
-                                <SelectItem key={employee.id} value={employee.id}>
-                                  {employee.firstName} {employee.lastName} - {employee.numEmployee}
+                              {employees?.map((employee) => (
+                                <SelectItem
+                                  key={employee.id}
+                                  value={employee.id}
+                                >
+                                  {employee.firstName} {employee.lastName} -{" "}
+                                  {employee.numEmployee}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -382,9 +473,9 @@ export default function Incidents() {
                         <FormItem>
                           <FormLabel>Fecha de la Incidencia</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="date" 
-                              {...field} 
+                            <Input
+                              type="date"
+                              {...field}
                               data-testid="input-incident-date"
                             />
                           </FormControl>
@@ -398,14 +489,17 @@ export default function Incidents() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tipo de Incidencia</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger data-testid="select-incident-type">
                                 <SelectValue placeholder="Selecciona un tipo" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {incidentTypes?.map(type => (
+                              {incidentTypes?.map((type) => (
                                 <SelectItem key={type.id} value={type.id}>
                                   {type.name}
                                 </SelectItem>
@@ -423,8 +517,8 @@ export default function Incidents() {
                         <FormItem>
                           <FormLabel>Descripción</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              {...field} 
+                            <Textarea
+                              {...field}
                               data-testid="textarea-description"
                             />
                           </FormControl>
@@ -438,15 +532,21 @@ export default function Incidents() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Estado</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger data-testid="select-incident-status">
                                 <SelectValue placeholder="Selecciona un estado" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {statusTypes.map(status => (
-                                <SelectItem key={status.value} value={status.value}>
+                              {statusTypes.map((status) => (
+                                <SelectItem
+                                  key={status.value}
+                                  value={status.value}
+                                >
                                   {status.label}
                                 </SelectItem>
                               ))}
@@ -457,17 +557,20 @@ export default function Incidents() {
                       )}
                     />
                     <div className="flex justify-end gap-2 pt-4">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         onClick={() => setIsDialogOpen(false)}
                         data-testid="button-cancel"
                       >
                         Cancelar
                       </Button>
-                      <Button 
-                        type="submit" 
-                        disabled={createIncidentMutation.isPending || updateIncidentMutation.isPending}
+                      <Button
+                        type="submit"
+                        disabled={
+                          createIncidentMutation.isPending ||
+                          updateIncidentMutation.isPending
+                        }
                         data-testid="button-save-incident"
                       >
                         {editingIncident ? "Actualizar" : "Crear"}
@@ -490,12 +593,18 @@ export default function Incidents() {
           const statusInfo = getStatusInfo(incident.status);
 
           return (
-            <Card key={incident.id} className="hover:shadow-md transition-shadow" data-testid={`incident-card-${incident.id}`}>
+            <Card
+              key={incident.id}
+              className="hover:shadow-md transition-shadow"
+              data-testid={`incident-card-${incident.id}`}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-12 h-12">
-                      <AvatarFallback className={`bg-gradient-to-r ${getAvatarColor(employee.firstName)} text-white font-semibold`}>
+                      <AvatarFallback
+                        className={`bg-gradient-to-r ${getAvatarColor(employee.firstName)} text-white font-semibold`}
+                      >
                         {getInitials(employee.firstName, employee.lastName)}
                       </AvatarFallback>
                     </Avatar>
@@ -503,66 +612,76 @@ export default function Incidents() {
                       <h3 className="font-semibold text-foreground">
                         {employee.firstName} {employee.lastName}
                       </h3>
-                      <p className="text-sm text-muted-foreground">{employee.numEmployee}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {employee.numEmployee}
+                      </p>
                     </div>
                   </div>
-                  <Badge className={statusInfo.color}>
-                    {statusInfo.label}
-                  </Badge>
+                  <Badge className={statusInfo.color}>{statusInfo.label}</Badge>
                 </div>
 
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Tipo:</span>
-                    <span className="font-medium">{getIncidentTypeLabel(incident.idIncidentsType)}</span>
+                    <span className="font-medium">
+                      {getIncidentTypeLabel(incident.idIncidentsType)}
+                    </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Registrada el:</span>
+                    <span className="text-muted-foreground">
+                      Registrada el:
+                    </span>
                     <span className="font-medium text-muted-foreground">
-                      {new Date(incident.createdAt).toLocaleDateString('es-ES')}
+                      {new Date(incident.createdAt).toLocaleDateString("es-ES")}
                     </span>
                   </div>
                   <div className="text-sm">
                     <span className="text-muted-foreground">Descripción:</span>
-                    <p className="mt-1 text-foreground">{incident.description}</p>
+                    <p className="mt-1 text-foreground">
+                      {incident.description}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex justify-between items-center">
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="icon"
                       onClick={() => handleEdit(incident)}
                       data-testid={`button-edit-incident-${incident.id}`}
                     >
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
+                    <Button
+                      variant="outline"
+                      size="icon"
                       onClick={() => handleDelete(incident.id)}
                       data-testid={`button-delete-incident-${incident.id}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                  
+
                   {incident.status === "pending" && (
                     <div className="flex space-x-2">
-                      <Button 
+                      <Button
                         size="sm"
-                        onClick={() => approveIncidentMutation.mutate(incident.id)}
+                        onClick={() =>
+                          approveIncidentMutation.mutate(incident.id)
+                        }
                         disabled={approveIncidentMutation.isPending}
                         data-testid={`button-approve-incident-${incident.id}`}
                       >
                         <Check className="w-4 h-4 mr-1" />
                         Aprobar
                       </Button>
-                      <Button 
+                      <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => rejectIncidentMutation.mutate(incident.id)}
+                        onClick={() =>
+                          rejectIncidentMutation.mutate(incident.id)
+                        }
                         disabled={rejectIncidentMutation.isPending}
                         data-testid={`button-reject-incident-${incident.id}`}
                       >
@@ -584,12 +703,16 @@ export default function Incidents() {
             <div className="text-muted-foreground">
               {incidents?.length === 0 ? (
                 <>
-                  <h3 className="text-lg font-semibold mb-2">No hay incidencias registradas</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No hay incidencias registradas
+                  </h3>
                   <p>Las incidencias aparecerán aquí cuando se reporten</p>
                 </>
               ) : (
                 <>
-                  <h3 className="text-lg font-semibold mb-2">No se encontraron incidencias</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No se encontraron incidencias
+                  </h3>
                   <p>Intenta modificar los filtros de búsqueda</p>
                 </>
               )}

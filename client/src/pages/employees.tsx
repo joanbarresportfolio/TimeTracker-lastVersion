@@ -30,33 +30,18 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
-import { createUserSchema } from "@shared/schema";
-import type { Employee, CreateUser, Department, Role } from "@shared/schema";
+import {
+  User,
+  Department,
+  RoleEnterprise,
+  InsertUser,
+  insertUserSchema,
+  UpdateUser,
+  updateUserSchema,
+} from "@shared/schema";
 import { z } from "zod";
 
 // Tipos específicos para las llamadas a la API (con fechas como strings)
-type CreateEmployeePayload = {
-  numEmployee: string;
-  dni?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  departmentId?: string;
-  hireDate: string; // String para el backend
-  isActive?: boolean;
-  password: string;
-  roleSystem: "admin" | "employee";
-  roleEnterpriseId?: string;
-};
-
-type UpdateEmployeePayload = Omit<
-  CreateEmployeePayload,
-  "password" | "roleSystem"
-> & {
-  password?: string;
-  roleSystem?: "admin" | "employee";
-  roleEnterpriseId?: string;
-};
 
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -70,28 +55,28 @@ export default function Employees() {
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [newRoleName, setNewRoleName] = useState("");
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<User | null>(null);
   const { toast } = useToast();
 
-  const { data: employees, isLoading } = useQuery<Employee[]>({
-    queryKey: ["/api/employees"],
+  const { data: employees, isLoading } = useQuery<User[]>({
+    queryKey: ["/api/users"],
   });
 
   const { data: departments = [] } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
   });
 
-  const { data: roles = [] } = useQuery<Role[]>({
+  const { data: roles = [] } = useQuery<RoleEnterprise[]>({
     queryKey: ["/api/roles"],
   });
 
   const createEmployeeMutation = useMutation({
-    mutationFn: async (data: CreateEmployeePayload) => {
-      const response = await apiRequest("/api/employees", "POST", data);
+    mutationFn: async (data: InsertUser) => {
+      const response = await apiRequest("/api/users", "POST", data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsDialogOpen(false);
       form.reset();
       toast({
@@ -129,18 +114,12 @@ export default function Employees() {
   });
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: UpdateEmployeePayload;
-    }) => {
-      const response = await apiRequest(`/api/employees/${id}`, "PUT", data);
+    mutationFn: async ({ id, data }: { id: string; data: UpdateUser }) => {
+      const response = await apiRequest(`/api/users/${id}`, "PUT", data);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsDialogOpen(false);
       setEditingEmployee(null);
       form.reset();
@@ -180,10 +159,10 @@ export default function Employees() {
 
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest(`/api/employees/${id}`, "DELETE");
+      await apiRequest(`/api/users/${id}`, "DELETE");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
         title: "Empleado eliminado",
         description: "El empleado ha sido eliminado exitosamente.",
@@ -205,7 +184,7 @@ export default function Employees() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setNewDepartmentName("");
       toast({
         title: "Departamento creado",
@@ -227,7 +206,7 @@ export default function Employees() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
         title: "Departamento eliminado",
         description: "El departamento ha sido eliminado exitosamente.",
@@ -249,7 +228,7 @@ export default function Employees() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setNewRoleName("");
       toast({
         title: "Rol creado",
@@ -271,7 +250,7 @@ export default function Employees() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
         title: "Rol eliminado",
         description: "El rol ha sido eliminado exitosamente.",
@@ -286,21 +265,10 @@ export default function Employees() {
     },
   });
 
-  // Esquema para el formulario (frontend - usa Date objects)
-  // Hacemos la contraseña opcional para permitir edición sin cambiar la contraseña
-  const employeeFormSchema = createUserSchema.extend({
-    hireDate: z.date(), // El formulario usa Date objects
-    password: z
-      .string()
-      .min(4, "La contraseña debe tener al menos 4 caracteres")
-      .or(z.string().length(0))
-      .optional(),
-  });
-
-  type EmployeeFormData = z.infer<typeof employeeFormSchema>;
-
-  const form = useForm<EmployeeFormData>({
-    resolver: zodResolver(employeeFormSchema),
+  const form = useForm<InsertUser | UpdateUser>({
+    resolver: zodResolver(
+      editingEmployee ? updateUserSchema : insertUserSchema,
+    ),
     defaultValues: {
       numEmployee: "",
       dni: "",
@@ -315,11 +283,10 @@ export default function Employees() {
       roleEnterpriseId: "",
     },
   });
-
-  const onSubmit = (data: EmployeeFormData) => {
+  const onSubmit = (data: InsertUser | UpdateUser) => {
     if (editingEmployee) {
-      // Para actualizar, incluimos todos los campos excepto password y roleSystem si están vacíos
-      const updatePayload: UpdateEmployeePayload = {
+      // Usar el tipo UpdateUser
+      const updatePayload: UpdateUser = {
         numEmployee: data.numEmployee,
         dni: data.dni || undefined,
         firstName: data.firstName,
@@ -329,54 +296,46 @@ export default function Employees() {
           data.departmentId === "none" || !data.departmentId
             ? undefined
             : data.departmentId,
-        hireDate: data.hireDate.toISOString(),
+        hireDate: data.hireDate,
         isActive: data.isActive,
         roleEnterpriseId:
           data.roleEnterpriseId === "none" || !data.roleEnterpriseId
             ? undefined
             : data.roleEnterpriseId,
+        roleSystem: data.roleSystem,
       };
-
-      // Solo incluir contraseña si se ha proporcionado una nueva
-      if (data.password && data.password.trim()) {
-        updatePayload.password = data.password;
-      }
-
-      // Incluir el rol si se ha especificado
-      if (data.roleSystem) {
-        updatePayload.roleSystem = data.roleSystem;
-      }
 
       updateEmployeeMutation.mutate({
         id: editingEmployee.id,
         data: updatePayload,
       });
     } else {
-      // Para crear, incluimos todos los datos y convertimos fecha
-      const createPayload: CreateEmployeePayload = {
-        numEmployee: data.numEmployee,
-        dni: data.dni || undefined,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
+      const createData = data as InsertUser; // <-- "cast" aquí
+      const createPayload: InsertUser = {
+        numEmployee: createData.numEmployee,
+        firstName: createData.firstName,
+        lastName: createData.lastName,
+        email: createData.email,
+        password: createData.password || "",
+        hireDate: createData.hireDate,
+        roleSystem: createData.roleSystem,
+        dni: createData.dni || undefined,
         departmentId:
-          data.departmentId === "none" || !data.departmentId
+          createData.departmentId === "none"
             ? undefined
-            : data.departmentId,
-        hireDate: data.hireDate.toISOString(),
-        isActive: data.isActive,
-        password: data.password || "", // Asegurarse de que sea string
-        roleSystem: data.roleSystem,
+            : createData.departmentId,
         roleEnterpriseId:
-          data.roleEnterpriseId === "none" || !data.roleEnterpriseId
+          createData.roleEnterpriseId === "none"
             ? undefined
-            : data.roleEnterpriseId,
+            : createData.roleEnterpriseId,
+        isActive: createData.isActive,
       };
+
       createEmployeeMutation.mutate(createPayload);
     }
   };
 
-  const handleEdit = (employee: Employee) => {
+  const handleEdit = (employee: User) => {
     setEditingEmployee(employee);
     form.reset({
       numEmployee: employee.numEmployee,
@@ -387,7 +346,6 @@ export default function Employees() {
       departmentId: employee.departmentId || "none", // Usar "none" si está vacío
       hireDate: new Date(employee.hireDate), // Convertir string a Date object
       isActive: employee.isActive,
-      password: "", // Vacío por defecto, opcional al editar
       roleSystem: employee.roleSystem as "admin" | "employee",
       roleEnterpriseId: employee.roleEnterpriseId || "",
     });
@@ -436,9 +394,7 @@ export default function Employees() {
       const matchesSearch =
         employee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.numEmployee
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
+        employee.numEmployee.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.email.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesDepartment =
@@ -522,7 +478,7 @@ export default function Employees() {
                 <SelectContent>
                   <SelectItem value="all">Todos los departamentos</SelectItem>
                   {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>
+                    <SelectItem key={dept.id} value={dept.id}>
                       {dept.name}
                     </SelectItem>
                   ))}
@@ -979,8 +935,8 @@ export default function Employees() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Rol:</span>
                   <span className="font-medium">
-                    {roles.find((r) => r.id === employee.roleEnterpriseId)?.name ||
-                      "Sin asignar"}
+                    {roles.find((r) => r.id === employee.roleEnterpriseId)
+                      ?.name || "Sin asignar"}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">

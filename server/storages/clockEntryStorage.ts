@@ -1,281 +1,279 @@
-import { 
-  type ClockEntry, 
+import {
+  BreakEntry,
+  type ClockEntry,
+  TimeEntry,
   clockEntries,
   dailyWorkday,
   schedules,
 } from "@shared/schema";
 import { db } from "../db";
-import { eq, and, sql } from "drizzle-orm";
-import { getDailyWorkdayByEmployeeAndDate } from "./dailyWorkdayStorage";
+import { eq, and, sql, gte, lte } from "drizzle-orm";
 
-/**
- * CLOCK ENTRY STORAGE MODULE
- * ==========================
- * 
- * Módulo de almacenamiento para operaciones relacionadas con fichajes (clock entries).
- */
-
-/**
- * OBTENER ENTRADA DE FICHAJE POR ID
- */
-export async function getClockEntry(id: string): Promise<ClockEntry | undefined> {
-  const [entry] = await db
-    .select()
-    .from(clockEntries)
-    .where(eq(clockEntries.id, id))
-    .limit(1);
-  
-  return entry;
-}
-
-/**
- * CREAR ENTRADA DE FICHAJE
- */
-export async function createClockEntry(data: Omit<ClockEntry, 'id'>): Promise<ClockEntry> {
-  const [entry] = await db
-    .insert(clockEntries)
-    .values(data)
-    .returning();
-  
-  return entry;
-}
-
-/**
- * OBTENER FICHAJE ACTIVO (último clock_in sin clock_out)
- */
-export async function getActiveClockEntry(employeeId: string): Promise<ClockEntry | undefined> {
-  // Obtener el último clock_in del empleado
-  const [lastClockIn] = await db
-    .select()
-    .from(clockEntries)
-    .where(
-      and(
-        eq(clockEntries.idUser, employeeId),
-        eq(clockEntries.entryType, 'clock_in')
-      )
-    )
-    .orderBy(sql`${clockEntries.timestamp} DESC`)
-    .limit(1);
-  
-  if (!lastClockIn) return undefined;
-  
-  // Verificar si hay un clock_out posterior
-  const [clockOut] = await db
-    .select()
-    .from(clockEntries)
-    .where(
-      and(
-        eq(clockEntries.idUser, employeeId),
-        eq(clockEntries.entryType, 'clock_out'),
-        sql`${clockEntries.timestamp} > ${lastClockIn.timestamp}`
-      )
-    )
-    .limit(1);
-  
-  // Si hay un clock_out, no hay fichaje activo
-  if (clockOut) return undefined;
-  
-  return lastClockIn;
-}
-
-/**
- * CERRAR FICHAJE (crear clock_out)
- */
-export async function closeClockEntry(employeeId: string): Promise<ClockEntry> {
-  const activeEntry = await getActiveClockEntry(employeeId);
-  
-  if (!activeEntry) {
-    throw new Error('No hay fichaje activo para cerrar');
-  }
-  
-  const [clockOut] = await db
-    .insert(clockEntries)
-    .values({
-      idUser: employeeId,
-      idDailyWorkday: activeEntry.idDailyWorkday,
-      entryType: 'clock_out',
-      timestamp: new Date(),
-      source: activeEntry.source,
-    })
-    .returning();
-  
-  // Actualizar daily_workday
-  await calcularYActualizarJornada(employeeId, new Date().toISOString().split('T')[0]);
-  
-  return clockOut;
-}
-
-/**
- * CALCULAR Y ACTUALIZAR JORNADA DIARIA
- * ====================================
- * 
- * Calcula y actualiza la jornada diaria basándose en todos los fichajes del día.
- * Esta función se exporta para ser usada por otros módulos.
- */
-export async function calcularYActualizarJornada(employeeId: string, fecha: string): Promise<void> {
-  const entriesOfDay = await db
-    .select()
-    .from(clockEntries)
-    .where(
-      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.idUser} = ${employeeId}`
-    )
-    .orderBy(clockEntries.timestamp);
-
-  let startTime: Date | null = null;
-  let endTime: Date | null = null;
-  let workedMinutes = 0;
-  let breakMinutes = 0;
-  let status: 'open' | 'closed' = 'open';
-
-  let lastClockIn: Date | null = null;
-  let lastBreakStart: Date | null = null;
-
-  for (const entry of entriesOfDay) {
-    switch (entry.entryType) {
-      case 'clock_in':
-        if (!startTime) startTime = entry.timestamp;
-        lastClockIn = entry.timestamp;
-        break;
-
-      case 'clock_out':
-        endTime = entry.timestamp;
-        if (lastClockIn) {
-          const minutes = Math.floor((endTime.getTime() - lastClockIn.getTime()) / 60000);
-          workedMinutes += minutes;
-          lastClockIn = null;
-        }
-        status = 'closed';
-        break;
-
-      case 'break_start':
-        lastBreakStart = entry.timestamp;
-        break;
-
-      case 'break_end':
-        if (lastBreakStart) {
-          const minutes = Math.floor((entry.timestamp.getTime() - lastBreakStart.getTime()) / 60000);
-          breakMinutes += minutes;
-          lastBreakStart = null;
-        }
-        break;
-    }
-  }
-
-  // BUSCAR EL HORARIO PROGRAMADO (scheduled_shift) PARA ESTE DÍA
-  const [scheduledShift] = await db
-    .select()
-    .from(schedules)
-    .where(
-      and(
-        eq(schedules.idUser, employeeId),
-        eq(schedules.date, fecha)
-      )
-    )
-    .limit(1);
-  
-  const shiftId = scheduledShift?.id || null;
-
-  const [existingWorkday] = await db
+export async function createClockEntry(
+  employeeId: string,
+  entryType: string,
+  date: string, // YYYY-MM-DD
+  source: string,
+): Promise<ClockEntry> {
+  let workdayId: string | undefined;
+  const existingWorkday = await db
     .select()
     .from(dailyWorkday)
     .where(
-      and(
-        eq(dailyWorkday.idUser, employeeId),
-        eq(dailyWorkday.date, fecha)
-      )
-    );
-
-  let workdayId: string;
-
-  if (existingWorkday) {
-    await db
-      .update(dailyWorkday)
-      .set({
-        workedMinutes,
-        breakMinutes,
-        status,
-      })
-      .where(eq(dailyWorkday.id, existingWorkday.id));
-    
-    workdayId = existingWorkday.id;
+      sql`${dailyWorkday.idUser} = ${employeeId} AND ${dailyWorkday.date} = ${date}`,
+    )
+    .limit(1)
+    .then((rows) => rows[0]);
+  // 🔹 CLOCK IN: crear dailyWorkday nuevo
+  if (entryType === "clock_in") {
+    if (!existingWorkday) {
+      const insertedWorkday = await db
+        .insert(dailyWorkday)
+        .values({
+          idUser: employeeId,
+          date,
+          status: "open",
+        })
+        .returning();
+      workdayId = insertedWorkday[0].id;
+    } else {
+      workdayId = existingWorkday.id;
+    }
   } else {
-    const [newWorkday] = await db
-      .insert(dailyWorkday)
-      .values({
-        idUser: employeeId,
-        date: fecha,
-        workedMinutes,
-        breakMinutes,
-        overtimeMinutes: 0,
-        status,
-      })
-      .returning();
-    
-    workdayId = newWorkday.id;
+    if (!existingWorkday) {
+      throw new Error(
+        `No existe un dailyWorkday para este usuario y fecha: ${date}`,
+      );
+    }
+    workdayId = existingWorkday.id;
   }
 
-  // ACTUALIZAR TODOS LOS CLOCK_ENTRIES DEL DÍA CON EL daily_workday_id
-  await db
-    .update(clockEntries)
-    .set({ idDailyWorkday: workdayId })
-    .where(
-      sql`DATE(${clockEntries.timestamp}) = ${fecha} AND ${clockEntries.idUser} = ${employeeId}`
-    );
+  // 🔹 Crear timestamp combinando la fecha con la hora actual
+  const timestamp = dateToTimestamp(date);
+
+  // 🔹 Insertar el clockEntry
+  const insertedClockEntry = await db
+    .insert(clockEntries)
+    .values({
+      idUser: employeeId,
+      idDailyWorkday: workdayId,
+      entryType,
+      timestamp,
+      source,
+    })
+    .returning();
+
+  // 🔹 Solo actualizar timeEntry y dailyWorkday si es CLOCK OUT
+  if (entryType === "clock_out") {
+    // Obtener todos los clockEntries del usuario para esta fecha
+    const userClockEntries = await db
+      .select()
+      .from(clockEntries)
+      .where(
+        sql`${clockEntries.idUser} = ${employeeId} AND DATE(${clockEntries.timestamp}) = ${date}`,
+      )
+      .orderBy(clockEntries.timestamp);
+
+    // Generar timeEntries usando clockToTimeEntries
+    const timeEntries = clockToTimeEntries(userClockEntries);
+    const todayTimeEntry = timeEntries.find((te) => te.date === date);
+
+    // Actualizar dailyWorkday con los minutos calculados
+    if (todayTimeEntry) {
+      await db
+        .update(dailyWorkday)
+        .set({
+          workedMinutes: Math.round(todayTimeEntry.totalHours * 60),
+          breakMinutes: todayTimeEntry.breakMinutes,
+          // overtimeMinutes: calcular si aplica
+        })
+        .where(sql`${dailyWorkday.id} = ${workdayId}`);
+    }
+  }
+
+  return insertedClockEntry[0];
 }
 
-/**
- * CREAR FICHAJE (WRAPPER DE ALTO NIVEL)
- * ======================================
- * 
- * Orquesta la creación de un fichaje gestionando automáticamente
- * la creación/actualización del daily_workday asociado.
- * 
- * Esta función:
- * 1. Encuentra o crea el daily_workday para el día del fichaje
- * 2. Crea el clock_entry con el idDailyWorkday correcto
- * 3. Actualiza los totales del daily_workday
- */
-export async function crearFichaje(
-  employeeId: string,
-  entryType: 'clock_in' | 'clock_out' | 'break_start' | 'break_end',
-  shiftId: string | null,
-  source: 'web' | 'mobile_app' | 'physical_terminal',
-  notes: string | null
-): Promise<ClockEntry> {
-  const now = new Date();
-  const fecha = now.toISOString().split('T')[0]; // YYYY-MM-DD
-  
-  // 1. Buscar o crear daily_workday para hoy
-  let workday = await getDailyWorkdayByEmployeeAndDate(employeeId, fecha);
-  
-  if (!workday) {
-    // Crear daily_workday con valores iniciales
-    const [newWorkday] = await db
-      .insert(dailyWorkday)
-      .values({
-        idUser: employeeId,
-        date: fecha,
-        workedMinutes: 0,
-        breakMinutes: 0,
-        overtimeMinutes: 0,
-        status: 'open',
-      })
-      .returning();
-    
-    workday = newWorkday;
+export async function getClockEntriesByDate(
+  date: string,
+): Promise<ClockEntry[]> {
+  return await db
+    .select()
+    .from(clockEntries)
+    .where(sql`DATE(${clockEntries.timestamp}) = ${date} `)
+    .orderBy(clockEntries.timestamp);
+}
+
+export async function getTimeEntriesByDate(date: string) {
+  // 1️⃣ Obtener todos los clock entries del día
+  const entries = await getClockEntriesByDate(date);
+
+  const timeEntries = await clockToTimeEntries(entries);
+
+  return timeEntries;
+}
+
+export function clockToTimeEntries(clockEntries: ClockEntry[]): TimeEntry[] {
+  // 1️⃣ Agrupar los clock entries por usuario
+  const groupedByUser: Record<string, ClockEntry[]> = {};
+  for (const entry of clockEntries) {
+    if (!groupedByUser[entry.idUser]) {
+      groupedByUser[entry.idUser] = [];
+    }
+    groupedByUser[entry.idUser].push(entry);
   }
-  
-  // 2. Crear clock_entry
-  const entry = await createClockEntry({
-    idUser: employeeId,
-    idDailyWorkday: workday.id,
-    entryType,
-    timestamp: now,
-    source: source || 'web',
-  });
-  
-  // 3. Actualizar totales del daily_workday
-  await calcularYActualizarJornada(employeeId, fecha);
-  
-  return entry;
+
+  const timeEntries: TimeEntry[] = [];
+
+  // 2️⃣ Procesar cada grupo (usuario)
+  for (const [employeeId, userEntries] of Object.entries(groupedByUser)) {
+    // Agrupar también por fecha, ya que puede haber varios días
+    const groupedByDate: Record<string, ClockEntry[]> = {};
+
+    for (const entry of userEntries) {
+      const dateKey = new Date(entry.timestamp).toISOString().split("T")[0]; // YYYY-MM-DD
+      if (!groupedByDate[dateKey]) {
+        groupedByDate[dateKey] = [];
+      }
+      groupedByDate[dateKey].push(entry);
+    }
+
+    // 3️⃣ Crear los timeEntries finales por día
+    for (const [date, entriesOfDay] of Object.entries(groupedByDate)) {
+      // Ordenar los eventos cronológicamente
+      entriesOfDay.sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      );
+
+      let clockIn: Date | null = null;
+      let clockOut: Date | null = null;
+      let breaks: BreakEntry[] = [];
+      let currentBreak: BreakEntry | null = null;
+
+      // Procesar los eventos
+      for (const entry of entriesOfDay) {
+        const timestamp = new Date(entry.timestamp);
+
+        switch (entry.entryType) {
+          case "clock_in":
+            clockIn = timestamp;
+            break;
+
+          case "clock_out":
+            clockOut = timestamp;
+            break;
+
+          case "break_start":
+            currentBreak = { start: timestamp, end: null };
+            breaks.push(currentBreak);
+            break;
+
+          case "break_end":
+            if (currentBreak && !currentBreak.end) {
+              currentBreak.end = timestamp;
+            }
+            break;
+        }
+      }
+
+      // Calcular tiempos si hay clockIn y clockOut
+      let totalHours = 0;
+      let breakMinutes = 0;
+
+      for (const br of breaks) {
+        if (br.start && br.end) {
+          breakMinutes += (br.end.getTime() - br.start.getTime()) / (1000 * 60);
+        }
+      }
+
+      if (clockIn && clockOut) {
+        const totalMs = clockOut.getTime() - clockIn.getTime();
+        totalHours = (totalMs - breakMinutes * 60 * 1000) / (1000 * 60 * 60);
+      }
+
+      // Crear el registro final
+      timeEntries.push({
+        id: `${employeeId}-${date}`,
+        employeeId,
+        clockIn: clockIn ?? new Date(date),
+        clockOut,
+        totalHours: Number(totalHours.toFixed(2)),
+        breakMinutes: Math.round(breakMinutes),
+        breaks,
+        date,
+      });
+    }
+  }
+
+  return timeEntries;
+}
+//UTIL FUNCTION
+export function timestampToDateString(timestamp: string | Date): string {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // Los meses empiezan en 0
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+export function dateToTimestamp(dateStr: string | Date): Date {
+  const now = new Date(); // Hora actual
+  let date: Date;
+
+  if (typeof dateStr === "string") {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    date = new Date(year, month - 1, day); // month-1 porque los meses empiezan en 0
+  } else {
+    date = new Date(
+      dateStr.getFullYear(),
+      dateStr.getMonth(),
+      dateStr.getDate(),
+    );
+  }
+
+  // Ajustar la hora a la hora actual
+  date.setHours(
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+    now.getMilliseconds(),
+  );
+
+  return date;
+}
+export async function getTimeEntriesByUserMonth(
+  userId: string,
+  date: string,
+): Promise<TimeEntry[]> {
+  // Convertimos la fecha a objeto Date
+  const refDate = new Date(date);
+
+  // Calcular rango de inicio y fin del mes
+  const startOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+  const endOfMonth = new Date(
+    refDate.getFullYear(),
+    refDate.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
+
+  // 🔹 Obtener todos los clock entries del usuario dentro del rango
+  const entries = await db
+    .select()
+    .from(clockEntries)
+    .where(
+      sql`${clockEntries.idUser} = ${userId} 
+        AND ${clockEntries.timestamp} BETWEEN ${startOfMonth.toISOString()} AND ${endOfMonth.toISOString()}`,
+    )
+    .orderBy(clockEntries.timestamp);
+
+  // 🔹 Transformar clock entries → time entries
+  const timeEntries = clockToTimeEntries(entries);
+
+  return timeEntries;
 }

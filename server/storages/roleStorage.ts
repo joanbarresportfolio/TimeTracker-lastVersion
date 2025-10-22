@@ -1,5 +1,6 @@
-import { 
-  type RoleEnterprise, 
+import {
+  InsertRoleEnterprise,
+  type RoleEnterprise,
   rolesEnterprise,
   users,
 } from "@shared/schema";
@@ -9,7 +10,7 @@ import { eq } from "drizzle-orm";
 /**
  * ROLE STORAGE MODULE
  * ===================
- * 
+ *
  * Módulo de almacenamiento para operaciones relacionadas con roles de empresa.
  */
 
@@ -23,7 +24,9 @@ export async function getRoles(): Promise<RoleEnterprise[]> {
 /**
  * CREAR ROL
  */
-export async function createRole(data: { name: string; description?: string }): Promise<RoleEnterprise> {
+export async function createRole(
+  data: InsertRoleEnterprise,
+): Promise<RoleEnterprise> {
   const [role] = await db.insert(rolesEnterprise).values(data).returning();
   return role;
 }
@@ -33,8 +36,11 @@ export async function createRole(data: { name: string; description?: string }): 
  */
 export async function deleteRole(id: string): Promise<void> {
   // Actualizar empleados que tienen este rol enterprise a null
-  await db.update(users).set({ roleEnterpriseId: null }).where(eq(users.roleEnterpriseId, id));
-  
+  await db
+    .update(users)
+    .set({ roleEnterpriseId: null })
+    .where(eq(users.roleEnterpriseId, id));
+
   // Luego eliminar el rol
   await db.delete(rolesEnterprise).where(eq(rolesEnterprise.id, id));
 }

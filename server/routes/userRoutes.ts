@@ -2,188 +2,103 @@
  * RUTAS DE GESTIÓN DE USUARIOS/EMPLEADOS
  * =======================================
  *
- * CRUD completo de empleados del sistema.
+ * CRUD completo de empleados del sistema usando DatabaseStorage.
  */
 
 import type { Express } from "express";
 import { storage } from "../storage";
-import {
-  createUserSchema as createEmployeeSchema,
-  updateUserSchema as updateEmployeeSchema,
-} from "@shared/schema";
+import { insertUserSchema, updateUserSchema } from "@shared/schema";
 import { requireAdmin, requireEmployeeAccess } from "../middleware/auth";
 import { handleApiError } from "./utils";
 
 export function registerUserRoutes(app: Express) {
-  /**
-   * GET /api/employees
-   * =================
-   *
-   * Obtiene lista completa de empleados del sistema.
-   *
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden ver lista completa
-   *
-   * SEGURIDAD:
-   * - Elimina campo 'password' de todas las respuestas
-   * - Solo administradores tienen acceso
-   *
-   * RESPONSES:
-   * - 200: Lista de empleados (sin passwords)
-   * - 401: No autorizado (no admin)
-   * - 500: Error interno del servidor
-   */
-  app.get("/api/employees", requireAdmin, async (req, res) => {
+  // Obtener todos los empleados
+  app.get("/api/users", requireAdmin, async (req, res) => {
     try {
-      const employees = await storage.getEmployees();
-      const safeEmployees = employees.map((emp) => {
-        const { passwordHash, ...safeEmployee } = emp;
-        return safeEmployee;
-      });
-      res.json(safeEmployees);
+      const users = await storage.getUsers();
+      res.json(
+        users.map((u) => {
+          const { passwordHash, ...safeUser } = u;
+          return safeUser;
+        }),
+      );
     } catch (error) {
-      res.status(500).json({ message: "Error al obtener empleados" });
+      handleApiError(res, error, "Error al obtener empleados");
     }
   });
 
-  /**
-   * GET /api/employees/:id
-   * =====================
-   *
-   * Obtiene datos de un empleado específico.
-   *
-   * MIDDLEWARE APLICADO:
-   * - requireEmployeeAccess: Empleado puede ver sus datos, admin ve cualquiera
-   *
-   * RESPONSES:
-   * - 200: Datos del empleado (sin password)
-   * - 401: No autorizado
-   * - 404: Empleado no encontrado
-   * - 500: Error interno del servidor
-   */
-  app.get("/api/employees/:id", requireEmployeeAccess, async (req, res) => {
+  // Obtener un empleado por ID
+  app.get("/api/users/:id", requireEmployeeAccess, async (req, res) => {
     try {
-      const employee = await storage.getEmployee(req.params.id);
-      if (!employee) {
+      const user = await storage.getUser(req.params.id);
+      if (!user)
         return res.status(404).json({ message: "Empleado no encontrado" });
-      }
-      //const { passwordHash, ...safeEmployee } = employee;
-      res.json(employee);
+
+      const { passwordHash, ...safeUser } = user;
+      res.json(safeUser);
     } catch (error) {
-      res.status(500).json({ message: "Error al obtener empleado" });
+      handleApiError(res, error, "Error al obtener empleado");
     }
   });
 
-  /**
-   * POST /api/employees
-   * ==================
-   *
-   * Crea un nuevo empleado en el sistema.
-   *
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden crear empleados
-   *
-   * RESPONSES:
-   * - 201: Empleado creado exitosamente
-   * - 400: Datos inválidos (errores Zod)
-   * - 401: No autorizado (no admin)
-   * - 500: Error interno (ej: email duplicado)
-   */
-  app.post("/api/employees", requireAdmin, async (req, res) => {
+  // Crear un nuevo empleado
+  app.post("/api/users", requireAdmin, async (req, res) => {
     try {
-      console.log("Datos recibidos en backend:", req.body);
-      const userData = createEmployeeSchema.parse(req.body);
-      console.log("Datos después de validación:", userData);
+      const userData = insertUserSchema.parse(req.body);
 
-      const employeeData = {
-        numEmployee: userData.numEmployee,
-        dni: userData.dni,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email: userData.email,
-        password: userData.password,
-        roleSystem: userData.roleSystem,
-        roleEnterpriseId: userData.roleEnterpriseId,
-        departmentId: userData.departmentId,
-        hireDate: userData.hireDate,
-        isActive: userData.isActive ?? true,
-      };
-
-      const employee = await storage.createEmployeeWithPassword(employeeData);
-      const { passwordHash, ...safeEmployee } = employee;
-      res.status(201).json(safeEmployee);
+      const newUser = await storage.createUser(userData);
+      const { passwordHash, ...safeUser } = newUser;
+      res.status(201).json(safeUser);
     } catch (error) {
       handleApiError(res, error, "Error al crear empleado");
     }
   });
 
-  /**
-   * PUT /api/employees/:id
-   * =====================
-   *
-   * Actualiza datos de un empleado existente.
-   *
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden actualizar empleados
-   *
-   * RESPONSES:
-   * - 200: Empleado actualizado exitosamente
-   * - 400: Datos inválidos
-   * - 401: No autorizado
-   * - 404: Empleado no encontrado
-   * - 500: Error interno (ej: email duplicado)
-   */
-  app.put("/api/employees/:id", requireAdmin, async (req, res) => {
+  // Actualizar un empleado existente
+  app.put("/api/users/:id", requireAdmin, async (req, res) => {
     try {
-      console.log("=== ACTUALIZACIÓN DE EMPLEADO ===");
-      console.log("ID del empleado:", req.params.id);
-      console.log("Datos recibidos para actualización:", req.body);
+      // Validar los datos recibidos (todos opcionales)
+      const userData = updateUserSchema.parse(req.body);
 
-      const employeeData = updateEmployeeSchema.parse(req.body);
-      console.log("Datos después de validación Zod:", employeeData);
-
-      const employee = await storage.updateEmployee(
-        req.params.id,
-        employeeData,
-      );
-
-      if (!employee) {
-        console.log("❌ Error: Empleado no encontrado con ID:", req.params.id);
+      // Buscar el usuario actual
+      const existingUser = await storage.getUser(req.params.id);
+      if (!existingUser)
         return res.status(404).json({ message: "Empleado no encontrado" });
+
+      // Si no se envió contraseña o está vacía, conservar la anterior
+      if (!userData.password || userData.password.trim() === "") {
+        delete userData.password; // No actualizar contraseña
+      } else {
+        // Si sí se envió una nueva contraseña, hashearla antes de guardar
+        const bcrypt = await import("bcryptjs");
+        const hash = await bcrypt.hash(userData.password, 10);
+        userData.password = hash;
+        delete userData.password;
       }
 
-      console.log("✅ Empleado actualizado exitosamente:", employee.id);
-      const { passwordHash, ...safeEmployee } = employee;
-      res.json(safeEmployee);
+      // Actualizar el usuario
+      const updatedUser = await storage.updateUser(req.params.id, userData);
+      if (!updatedUser)
+        return res.status(404).json({ message: "Empleado no encontrado" });
+
+      // Quitar el hash del resultado
+      const { passwordHash, ...safeUser } = updatedUser;
+      res.json(safeUser);
     } catch (error) {
       handleApiError(res, error, "Error al actualizar empleado");
     }
   });
 
-  /**
-   * DELETE /api/employees/:id
-   * ========================
-   *
-   * Elimina permanentemente un empleado del sistema.
-   *
-   * MIDDLEWARE APLICADO:
-   * - requireAdmin: Solo administradores pueden eliminar empleados
-   *
-   * RESPONSES:
-   * - 204: Empleado eliminado exitosamente (sin contenido)
-   * - 401: No autorizado
-   * - 404: Empleado no encontrado
-   * - 500: Error interno (ej: foreign key constraint)
-   */
-  app.delete("/api/employees/:id", requireAdmin, async (req, res) => {
+  // Eliminar un empleado
+  app.delete("/api/users/:id", requireAdmin, async (req, res) => {
     try {
-      const success = await storage.deleteEmployee(req.params.id);
-      if (!success) {
+      const deleted = await storage.deleteUser(req.params.id);
+      if (!deleted)
         return res.status(404).json({ message: "Empleado no encontrado" });
-      }
+
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Error al eliminar empleado" });
+      handleApiError(res, error, "Error al eliminar empleado");
     }
   });
 }

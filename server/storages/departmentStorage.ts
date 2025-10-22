@@ -1,6 +1,7 @@
-import { 
-  type Department, 
+import {
+  type Department,
   departments,
+  InsertDepartment,
   users,
 } from "@shared/schema";
 import { db } from "../db";
@@ -9,7 +10,7 @@ import { eq } from "drizzle-orm";
 /**
  * DEPARTMENT STORAGE MODULE
  * =========================
- * 
+ *
  * Módulo de almacenamiento para operaciones relacionadas con departamentos.
  */
 
@@ -23,7 +24,9 @@ export async function getDepartments(): Promise<Department[]> {
 /**
  * CREAR DEPARTAMENTO
  */
-export async function createDepartment(data: { name: string; description?: string }): Promise<Department> {
+export async function createDepartment(
+  data: InsertDepartment,
+): Promise<Department> {
   const [department] = await db.insert(departments).values(data).returning();
   return department;
 }
@@ -33,8 +36,11 @@ export async function createDepartment(data: { name: string; description?: strin
  */
 export async function deleteDepartment(id: string): Promise<void> {
   // Primero desasignar el departamento de todos los empleados
-  await db.update(users).set({ departmentId: null }).where(eq(users.departmentId, id));
-  
+  await db
+    .update(users)
+    .set({ departmentId: null })
+    .where(eq(users.departmentId, id));
+
   // Luego eliminar el departamento
   await db.delete(departments).where(eq(departments.id, id));
 }

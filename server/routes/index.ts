@@ -1,7 +1,7 @@
 /**
  * REGISTRO CENTRAL DE RUTAS
  * =========================
- * 
+ *
  * Este archivo centraliza el registro de todas las rutas modulares de la aplicación.
  * Cada módulo de rutas se encarga de un dominio funcional específico.
  */
@@ -23,9 +23,9 @@ import { registerReportRoutes } from "./reportRoutes";
 /**
  * FUNCIÓN PRINCIPAL DE REGISTRO DE RUTAS
  * ======================================
- * 
+ *
  * Registra todas las rutas modulares de la aplicación y crea el servidor HTTP.
- * 
+ *
  * MÓDULOS DE RUTAS:
  * 1. Autenticación - Login, logout, verificación de sesión
  * 2. Usuarios/Empleados - CRUD de empleados
@@ -37,7 +37,7 @@ import { registerReportRoutes } from "./reportRoutes";
  * 8. Horarios - Gestión de horarios programados
  * 9. Jornadas Diarias - Registro manual de jornadas laborales
  * 10. Reportes - Generación de análisis e informes
- * 
+ *
  * @param app - Instancia de Express application
  * @returns HTTP Server instance
  */
