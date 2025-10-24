@@ -245,6 +245,9 @@ export default function Schedules() {
         date: string;
         startTime: string;
         endTime: string;
+        startBreak?: string;
+        endBreak?: string;
+        scheduleType?: string;
       }>;
     }) => apiRequest("/api/date-schedules/bulk", "POST", data),
     onSuccess: () => {
@@ -865,6 +868,9 @@ export default function Schedules() {
           date: selected.dateStr,
           startTime: scheduleForm.startTime,
           endTime: scheduleForm.endTime,
+          startBreak: scheduleForm.breakStartTime || "",
+          endBreak: scheduleForm.breakEndTime || "",
+          scheduleType: scheduleForm.workdayType === "partida" ? "split" : "total",
         })),
       });
 
@@ -945,6 +951,9 @@ export default function Schedules() {
         date: schedule.date,
         startTime: schedule.startTime,
         endTime: schedule.endTime,
+        startBreak: (schedule as any).startBreak || "",
+        endBreak: (schedule as any).endBreak || "",
+        scheduleType: (schedule as any).scheduleType || "total",
       }));
 
       let successCount = 0;
