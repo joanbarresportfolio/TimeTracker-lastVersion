@@ -108,6 +108,10 @@ export async function updateDateSchedule(
     updateData.startTime = dateScheduleData.startTime;
   if (dateScheduleData.endTime !== undefined)
     updateData.endTime = dateScheduleData.endTime;
+  if (dateScheduleData.startBreak !== undefined)
+    updateData.startBreak = dateScheduleData.startBreak || null;
+  if (dateScheduleData.endBreak !== undefined)
+    updateData.endBreak = dateScheduleData.endBreak || null;
   if (dateScheduleData.scheduleType !== undefined)
     updateData.scheduleType = dateScheduleData.scheduleType;
   if (dateScheduleData.idDailyWorkday !== undefined)
@@ -150,6 +154,8 @@ export async function createBulkDateSchedules(
       date: schedule.date,
       startTime: schedule.startTime,
       endTime: schedule.endTime,
+      startBreak: schedule.startBreak || null,
+      endBreak: schedule.endBreak || null,
       scheduleType: schedule.scheduleType || "total",
       workHours: workHours,
     };
@@ -183,6 +189,8 @@ export async function createBulkDateSchedules(
     date: schedule.date,
     startTime: schedule.startTime,
     endTime: schedule.endTime,
+    startBreak: schedule.startBreak,
+    endBreak: schedule.endBreak,
     scheduleType: schedule.scheduleType,
   }));
 
