@@ -78,6 +78,8 @@ export function registerScheduleRoutes(app: Express) {
           date: shift.date,
           startTime: shift.startTime,
           endTime: shift.endTime,
+          startBreak: shift.startBreak || null,
+          endBreak: shift.endBreak || null,
           workHours: workMinutes,
           isActive: true,
         };
@@ -120,23 +122,17 @@ export function registerScheduleRoutes(app: Express) {
       const updateData: any = {};
 
       if (shiftUpdateData.idUser)
-        updateData.employeeId = shiftUpdateData.idUser;
+        updateData.idUser = shiftUpdateData.idUser;
       if (shiftUpdateData.date) updateData.date = shiftUpdateData.date;
       if (shiftUpdateData.startTime)
         updateData.startTime = shiftUpdateData.startTime;
       if (shiftUpdateData.endTime) updateData.endTime = shiftUpdateData.endTime;
-
-      if (shiftUpdateData.startTime && shiftUpdateData.endTime) {
-        const [startHour, startMin] = shiftUpdateData.startTime
-          .split(":")
-          .map(Number);
-        const [endHour, endMin] = shiftUpdateData.endTime
-          .split(":")
-          .map(Number);
-        const startMinutes = startHour * 60 + startMin;
-        const endMinutes = endHour * 60 + endMin;
-        updateData.workHours = endMinutes - startMinutes;
-      }
+      if (shiftUpdateData.startBreak !== undefined)
+        updateData.startBreak = shiftUpdateData.startBreak || null;
+      if (shiftUpdateData.endBreak !== undefined)
+        updateData.endBreak = shiftUpdateData.endBreak || null;
+      if (shiftUpdateData.scheduleType)
+        updateData.scheduleType = shiftUpdateData.scheduleType;
 
       const updatedSchedule = await storage.updateDateSchedule(id, updateData);
 

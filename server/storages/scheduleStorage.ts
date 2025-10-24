@@ -199,21 +199,5 @@ export async function createBulkDateSchedules(
     .values(shiftsToInsert)
     .returning();
 
-  return createdShifts.map((shift) => {
-    const [startHour, startMin] = shift.startTime.split(":").map(Number);
-    const [endHour, endMin] = shift.endTime.split(":").map(Number);
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    const workMinutes = endMinutes - startMinutes;
-
-    return {
-      id: shift.id,
-      employeeId: shift.idUser,
-      date: shift.date,
-      startTime: shift.startTime,
-      endTime: shift.endTime,
-      workHours: workMinutes,
-      isActive: true,
-    };
-  });
+  return createdShifts;
 }
