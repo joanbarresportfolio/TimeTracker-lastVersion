@@ -348,6 +348,8 @@ export const schedules = pgTable("schedules", {
   date: text("date").notNull(), // YYYY-MM-DD
   startTime: text("start_time").notNull(), // HH:MM
   endTime: text("end_time").notNull(), // HH:MM
+  startBreak: text("start_break"), // HH:MM (optional)
+  endBreak: text("end_break"), // HH:MM (optional)
   scheduleType: varchar("schedule_type").notNull(), // 'split', 'total'
 });
 export const insertScheduleSchema = createInsertSchema(schedules)
@@ -357,6 +359,16 @@ export const insertScheduleSchema = createInsertSchema(schedules)
   .extend({
     idUser: z.string().min(1, "Debe seleccionar un empleado"),
     idDailyWorkday: z.string().optional(), // Now optional since it's nullable
+    startBreak: z
+      .string()
+      .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio de pausa debe estar en formato HH:MM")
+      .optional()
+      .or(z.literal("")),
+    endBreak: z
+      .string()
+      .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin de pausa debe estar en formato HH:MM")
+      .optional()
+      .or(z.literal("")),
     scheduleType: z.enum(["split", "total"], {
       errorMap: () => ({
         message: "Debe seleccionar un tipo de horario válido",
@@ -387,6 +399,22 @@ export const bulkScheduleCreateSchema = z.object({
             /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
             "La hora de fin debe estar en formato HH:MM",
           ),
+        startBreak: z
+          .string()
+          .regex(
+            /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
+            "La hora de inicio de pausa debe estar en formato HH:MM",
+          )
+          .optional()
+          .or(z.literal("")),
+        endBreak: z
+          .string()
+          .regex(
+            /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
+            "La hora de fin de pausa debe estar en formato HH:MM",
+          )
+          .optional()
+          .or(z.literal("")),
         scheduleType: z.enum(["split", "total"]).default("total"),
       }),
     )
