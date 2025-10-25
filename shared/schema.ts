@@ -304,12 +304,6 @@ export const insertIncidentSchema = createInsertSchema(incidents)
     idIncidentsType: z
       .string()
       .min(1, "Debe seleccionar un tipo de incidencia"),
-    date: z
-      .string()
-      .regex(
-        /^\d{4}-\d{2}-\d{2}$/,
-        "La fecha debe estar en formato YYYY-MM-DD",
-      ),
     description: z.string().min(1, "La descripción es obligatoria"),
     status: z.enum(["pending", "approved", "rejected"]).default("pending"),
   });

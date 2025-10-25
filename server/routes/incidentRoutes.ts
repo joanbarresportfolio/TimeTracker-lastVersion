@@ -7,7 +7,7 @@
 
 import type { Express } from "express";
 import { storage } from "../storage";
-import { insertIncidentSchema } from "@shared/schema";
+import { insertIncidentSchema, incidentFormSchema } from "@shared/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { z } from "zod";
 
@@ -60,7 +60,7 @@ export function registerIncidentRoutes(app: Express) {
   // Crear nueva incidencia
   app.post("/api/incidents", requireAuth, async (req, res) => {
     try {
-      const formData = insertIncidentSchema.parse(req.body);
+      const formData = incidentFormSchema.parse(req.body);
 
       // Si es empleado, solo puede crear incidencias para sí mismo
       if (req.user!.roleSystem === "employee") {
@@ -86,7 +86,6 @@ export function registerIncidentRoutes(app: Express) {
       const incidentData = {
         idUser: formData.idUser,
         idDailyWorkday: dailyWorkday.id,
-        date: dailyWorkday.date,
         idIncidentsType: formData.idIncidentsType,
         description: formData.description,
         status: formData.status,
@@ -112,10 +111,35 @@ export function registerIncidentRoutes(app: Express) {
   // Actualizar incidencia
   app.put("/api/incidents/:id", requireAdmin, async (req, res) => {
     try {
-      const incidentData = insertIncidentSchema.partial().parse(req.body);
+      const formData = incidentFormSchema.partial().parse(req.body);
+      
+      // Si viene date, buscar o crear daily_workday
+      let updateData: any = {
+        idIncidentsType: formData.idIncidentsType,
+        description: formData.description,
+        status: formData.status,
+      };
+
+      if (formData.date && formData.idUser) {
+        let dailyWorkday = await storage.getDailyWorkdayByUserAndDate(
+          formData.idUser,
+          formData.date,
+        );
+
+        if (!dailyWorkday) {
+          dailyWorkday = await storage.createManualDailyWorkday({
+            userId: formData.idUser,
+            date: formData.date,
+            startTime: "00:00",
+            endTime: "00:00",
+          });
+        }
+        updateData.idDailyWorkday = dailyWorkday.id;
+      }
+
       const incident = await storage.updateIncident(
         req.params.id,
-        incidentData,
+        updateData,
       );
 
       if (!incident) {
