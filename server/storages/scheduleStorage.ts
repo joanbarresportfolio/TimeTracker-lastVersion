@@ -67,6 +67,11 @@ export async function getScheduledShiftsByRange(
     .where(and(gte(schedules.date, startDate), lte(schedules.date, endDate)));
 }
 
+export async function getScheduledShiftsByDate(
+  date: string,
+): Promise<ScheduledShift[]> {
+  return await db.select().from(schedules).where(eq(schedules.date, date));
+}
 /**
  * OBTENER TURNOS PROGRAMADOS POR EMPLEADO Y RANGO DE FECHAS
  */

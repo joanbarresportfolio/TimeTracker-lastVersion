@@ -75,7 +75,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import Employees from "./employees";
-
+const today = new Date().toISOString().split("T")[0]; // "2025-10-24"
 interface EmployeeSummary {
   employee: User;
   hoursWorked: number;
@@ -119,8 +119,8 @@ export default function Schedules() {
     startTime: "09:00",
     endTime: "17:00",
     workdayType: "completa" as "completa" | "partida",
-    breakStartTime: "12:00",
-    breakEndTime: "13:00",
+    breakStartTime: "",
+    breakEndTime: "",
   });
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [historyEmployee, setHistoryEmployee] = useState<User | null>(null);
@@ -132,6 +132,26 @@ export default function Schedules() {
 
   const { toast } = useToast();
 
+  const { data: todaysShifts, isLoading: todaysShiftsLoading } = useQuery({
+    queryKey: ["/api/scheduled-shifts", today],
+    queryFn: async () => {
+      if (!today) return [];
+
+      // Llamada a la nueva ruta que creamos en el backend
+      const response = await fetch(`/api/scheduled-shifts/date=${today}`, {
+        credentials: "include", // si usas cookies de sesión
+      });
+
+      if (!response.ok) {
+        console.error("Error al obtener los turnos programados del día");
+        return [];
+      }
+
+      const data = await response.json();
+      return data.shifts; // porque el backend devuelve { shifts: [...] }
+    },
+    enabled: !!today, // Solo si tenemos fecha y empleado
+  });
   const { data: employees, isLoading: employeesLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
@@ -452,6 +472,7 @@ export default function Schedules() {
     timeEntriesLoading ||
     timeEntriesEmployeeLoading ||
     workdayHistoryLoading ||
+    todaysShiftsLoading ||
     (viewMode === "calendar" && dateSchedulesLoading);
 
   if (isLoading) {
@@ -546,6 +567,7 @@ export default function Schedules() {
                 </TableHeader>
                 <TableBody>
                   {filteredSummaries.map((summary) => (
+                    
                     <TableRow
                       key={summary.employee.id}
                       data-testid={`employee-row-${summary.employee.id}`}
@@ -870,7 +892,8 @@ export default function Schedules() {
           endTime: scheduleForm.endTime,
           startBreak: scheduleForm.breakStartTime || "",
           endBreak: scheduleForm.breakEndTime || "",
-          scheduleType: scheduleForm.workdayType === "partida" ? "split" : "total",
+          scheduleType:
+            scheduleForm.workdayType === "partida" ? "split" : "total",
         })),
       });
 

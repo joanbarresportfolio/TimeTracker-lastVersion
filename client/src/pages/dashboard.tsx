@@ -75,6 +75,26 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/stats"],
   });
 
+  const { data: todaysShifts, isLoading: todaysShiftsLoading } = useQuery({
+    queryKey: ["/api/scheduled-shifts", today],
+    queryFn: async () => {
+      if (!today) return [];
+
+      // Llamada a la nueva ruta que creamos en el backend
+      const response = await fetch(`/api/scheduled-shifts/date=${today}`, {
+        credentials: "include", // si usas cookies de sesión
+      });
+
+      if (!response.ok) {
+        console.error("Error al obtener los turnos programados del día");
+        return [];
+      }
+
+      const data = await response.json();
+      return data.shifts; // porque el backend devuelve { shifts: [...] }
+    },
+    enabled: !!today, // Solo si tenemos fecha y empleado
+  });
   // Solo cargar empleados si es admin
   const { data: employees, isLoading: employeesLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
@@ -105,6 +125,35 @@ export default function Dashboard() {
     queryKey: ["/api/departments"],
     enabled: !isEmployee,
   });
+  function calculateShiftHours(
+    startTime: string,
+    endTime: string,
+    startBreak?: string,
+    endBreak?: string,
+  ): number {
+    if (!startTime || !endTime) return 0; // Si falta algo, devolvemos 0
+
+    // Convertimos las horas a objetos Date en el mismo día
+    const start = new Date(`1970-01-01T${startTime}`);
+    const end = new Date(`1970-01-01T${endTime}`);
+
+    // Duración total del turno (en horas)
+    let totalHours = (end.getTime() - start.getTime()) / 1000 / 60 / 60;
+
+    // Si hay pausa, la restamos
+    if (startBreak && endBreak) {
+      const breakStart = new Date(`1970-01-01T${startBreak}`);
+      const breakEnd = new Date(`1970-01-01T${endBreak}`);
+      const breakHours =
+        (breakEnd.getTime() - breakStart.getTime()) / 1000 / 60 / 60;
+
+      // Restamos la pausa del total
+      totalHours -= breakHours;
+    }
+
+    // Nos aseguramos de no devolver negativos
+    return totalHours > 0 ? totalHours : 0;
+  }
   const getEmployeeStatus = (employee: User) => {
     console.log(timeEntriesToday);
     const entry = timeEntriesToday?.find(
@@ -188,7 +237,8 @@ export default function Dashboard() {
     statsLoading ||
     employeesLoading ||
     timeEntriesLoading ||
-    departmentsLoading
+    departmentsLoading ||
+    todaysShiftsLoading
   ) {
     return (
       <div className="p-4 lg:p-6 space-y-6">
@@ -436,6 +486,9 @@ export default function Dashboard() {
                     const entry = timeEntriesToday?.find(
                       (e) => e.employeeId === employee.id,
                     );
+                    const shift = todaysShifts?.find(
+                      (s) => s.idUser === employee.id,
+                    );
                     const status = getEmployeeStatus(employee);
                     return (
                       <tr
@@ -490,6 +543,18 @@ export default function Dashboard() {
                         </td>
                         <td className="py-3 px-4 text-foreground">
                           {formatHours(entry?.totalHours || 0)}
+                        </td>
+                        <td className="py-3 px-4 text-foreground">
+                          {shift
+                            ? formatHours(
+                                calculateShiftHours(
+                                  shift.startTime,
+                                  shift.endTime,
+                                  shift.startBreak,
+                                  shift.endBreak,
+                                ),
+                              )
+                            : "--:--"}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center space-x-2">
