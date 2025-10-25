@@ -101,6 +101,13 @@ export class DatabaseStorage implements IStorage {
     return departmentStorage.createDepartment(dept);
   }
 
+  async updateDepartment(
+    id: string,
+    data: Partial<InsertDepartment>,
+  ): Promise<Department> {
+    return departmentStorage.updateDepartment(id, data);
+  }
+
   async deleteDepartment(id: string): Promise<void> {
     return departmentStorage.deleteDepartment(id);
   }
@@ -115,6 +122,13 @@ export class DatabaseStorage implements IStorage {
 
   async createRole(data: InsertRoleEnterprise): Promise<RoleEnterprise> {
     return roleStorage.createRole(data);
+  }
+
+  async updateRole(
+    id: string,
+    data: Partial<InsertRoleEnterprise>,
+  ): Promise<RoleEnterprise> {
+    return roleStorage.updateRole(id, data);
   }
 
   async deleteRole(id: string): Promise<void> {

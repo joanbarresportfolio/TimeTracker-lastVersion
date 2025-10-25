@@ -32,6 +32,21 @@ export async function createRole(
 }
 
 /**
+ * ACTUALIZAR ROL
+ */
+export async function updateRole(
+  id: string,
+  data: Partial<InsertRoleEnterprise>,
+): Promise<RoleEnterprise> {
+  const [role] = await db
+    .update(rolesEnterprise)
+    .set(data)
+    .where(eq(rolesEnterprise.id, id))
+    .returning();
+  return role;
+}
+
+/**
  * ELIMINAR ROL
  */
 export async function deleteRole(id: string): Promise<void> {

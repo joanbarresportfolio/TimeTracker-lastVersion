@@ -32,6 +32,21 @@ export async function createDepartment(
 }
 
 /**
+ * ACTUALIZAR DEPARTAMENTO
+ */
+export async function updateDepartment(
+  id: string,
+  data: Partial<InsertDepartment>,
+): Promise<Department> {
+  const [department] = await db
+    .update(departments)
+    .set(data)
+    .where(eq(departments.id, id))
+    .returning();
+  return department;
+}
+
+/**
  * ELIMINAR DEPARTAMENTO
  */
 export async function deleteDepartment(id: string): Promise<void> {
