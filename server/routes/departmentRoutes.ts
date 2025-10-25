@@ -72,6 +72,46 @@ export function registerDepartmentRoutes(app: Express) {
   });
 
   /**
+   * PUT /api/departments/:id
+   * =========================
+   *
+   * Actualiza el nombre de un departamento.
+   *
+   * MIDDLEWARE APLICADO:
+   * - requireAdmin: Solo administradores pueden actualizar departamentos
+   *
+   * BODY ESPERADO:
+   * {
+   *   "name": "Nuevo nombre del departamento"
+   * }
+   *
+   * RESPONSES:
+   * - 200: Departamento actualizado
+   * - 400: Datos inválidos
+   * - 401: No autorizado
+   * - 500: Error interno del servidor
+   */
+  app.put("/api/departments/:id", requireAdmin, async (req, res) => {
+    try {
+      const { name, description } = req.body;
+
+      if (!name || typeof name !== "string") {
+        return res
+          .status(400)
+          .json({ message: "El nombre del departamento es requerido" });
+      }
+
+      const department = await storage.updateDepartment(req.params.id, {
+        name,
+        description,
+      });
+      res.json(department);
+    } catch (error) {
+      res.status(500).json({ message: "Error al actualizar departamento" });
+    }
+  });
+
+  /**
    * DELETE /api/departments/:id
    * ===========================
    *

@@ -38,6 +38,27 @@ export function registerRoleRoutes(app: Express) {
     }
   });
 
+  // Actualizar un rol por ID
+  app.put("/api/roles/:id", requireAdmin, async (req, res) => {
+    try {
+      const { name, description } = req.body;
+
+      if (!name || typeof name !== "string") {
+        return res
+          .status(400)
+          .json({ message: "El nombre del rol es requerido" });
+      }
+
+      const role = await storage.updateRole(req.params.id, {
+        name,
+        description,
+      });
+      res.json(role);
+    } catch (error) {
+      handleApiError(res, error, "Error al actualizar rol");
+    }
+  });
+
   // Eliminar un rol por ID
   app.delete("/api/roles/:id", requireAdmin, async (req, res) => {
     try {
