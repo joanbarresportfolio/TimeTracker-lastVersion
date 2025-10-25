@@ -141,7 +141,6 @@ export function registerDailyWorkdayRoutes(app: Express) {
           .status(404)
           .json({ message: "Jornada laboral no encontrada" });
       }
-
       await storage.deleteClockEntriesByDailyWorkday(workdayId);
       await storage.deleteDailyWorkday(workdayId);
 

@@ -56,7 +56,6 @@ interface DashboardStats {
 }
 
 const today = new Date().toISOString().slice(0, 10);
-console.log(today);
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -89,8 +88,6 @@ export default function Dashboard() {
         console.error("Error al obtener los turnos programados del día");
         return [];
       }
-
-      // ✅ El backend devuelve directamente un array
       const data = await response.json();
       return data;
     },
@@ -194,12 +191,17 @@ export default function Dashboard() {
     });
   };
 
-  const formatHours = (minutes: number | null) => {
-    if (!minutes) return "0h 0m";
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins}m`;
-  };
+  function formatHours(hours: number): string {
+    const h = Math.floor(hours); // Parte entera → horas
+    const m = Math.round((hours - h) * 60); // Parte decimal → minutos
+
+    // Si no hay horas, muestra solo minutos
+    if (h === 0) return `${m}m`;
+    // Si no hay minutos, muestra solo horas
+    if (m === 0) return `${h}h`;
+    // En caso contrario, muestra ambas
+    return `${h}h ${m}m`;
+  }
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -232,39 +234,29 @@ export default function Dashboard() {
     setLocation("/incidents");
   };
 
-  useEffect(() => {
-    if (todaysShifts && todaysShifts.length > 0) {
-      console.log("🕒 Horarios asignados de hoy:", todaysShifts);
-    } else if (!todaysShiftsLoading) {
-      console.log("⚠️ No hay horarios asignados para hoy.");
-    }
-  }, [todaysShifts, todaysShiftsLoading]);
-
-  if (
-    statsLoading ||
-    employeesLoading ||
-    timeEntriesLoading ||
-    departmentsLoading ||
-    todaysShiftsLoading
-  ) {
-    return (
-      <div className="p-4 lg:p-6 space-y-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
-          <p className="text-muted-foreground">Resumen general del sistema</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-20 bg-muted rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+if (
+  statsLoading ||
+  employeesLoading ||
+  timeEntriesLoading ||
+  departmentsLoading ||
+  todaysShiftsLoading
+) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+      {/* Spinner moderno */}
+      <div className="relative">
+        <div className="h-16 w-16 border-4 border-primary/20 rounded-full"></div>
+        <div className="absolute top-0 left-0 h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
-    );
-  }
+
+      {/* Texto de carga */}
+      <div className="text-center">
+        <h2 className="text-xl font-semibold text-foreground">Cargando Dashboard...</h2>
+        <p className="text-muted-foreground mt-2">Por favor espera un momento</p>
+      </div>
+    </div>
+  );
+}
 
   return (
     <div className="p-4 lg:p-6 space-y-6">
@@ -339,8 +331,8 @@ export default function Dashboard() {
               <span className="font-medium ml-1 text-foreground">
                 {stats?.totalEmployees && stats.presentToday
                   ? Math.round(
-                      (stats.presentToday / stats.totalEmployees) * 100,
-                    )
+                    (stats.presentToday / stats.totalEmployees) * 100,
+                  )
                   : 0}
                 %
               </span>
@@ -359,7 +351,7 @@ export default function Dashboard() {
                   className="text-3xl font-bold text-foreground"
                   data-testid="stat-hours-worked"
                 >
-                  {stats?.hoursWorked || 0}
+                  {formatHours(stats?.hoursWorked || 0)}
                 </p>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-full">
@@ -497,15 +489,13 @@ export default function Dashboard() {
                   )
                   .map((employee) => {
                     const entry = timeEntriesToday?.find(
-                      (e: { employeeId: string }) =>
-                        e.employeeId === employee.id,
+                      (e: { employeeId: string; }) => e.employeeId === employee.id,
                     );
                     const shift = todaysShifts?.find(
-                      (s: { idUser?: string; employeeId?: string }) =>
-                        s.idUser === employee.id ||
-                        s.employeeId === employee.id,
+                      (s: { employeeId?: string }) =>
+                        s.employeeId === employee.id || s.employeeId === employee.id,
                     );
-
+                    console.log(entry)
                     const status = getEmployeeStatus(employee);
                     return (
                       <tr
@@ -555,23 +545,27 @@ export default function Dashboard() {
                         </td>
                         <td className="py-3 px-4 text-muted-foreground">
                           {entry?.clockOut
-                            ? formatTime(entry.clockOut)
+                            ? (formatTime(entry.clockOut))
                             : "--:--"}
                         </td>
                         <td className="py-3 px-4 text-muted-foreground">
-                          {entry?.clockOut ? entry.breakMinutes / 60 : "--:--"}
+                          {entry?.clockOut
+                            ? formatHours((entry.breakMinutes / 60))
+                            : "--:--"}
                         </td>
                         <td className="py-3 px-4 text-foreground">
-                          {entry?.totalHours || 0}
+                          {formatHours(entry?.totalHours || 0)}
                         </td>
                         <td className="py-3 px-4 text-foreground">
                           {shift
-                            ? calculateShiftHours(
-                                shift.startTime,
-                                shift.endTime,
-                                shift.startBreak,
-                                shift.endBreak,
-                              )
+                            ?
+                            formatHours(calculateShiftHours(
+                              shift.startTime,
+                              shift.endTime,
+                              shift.startBreak,
+                              shift.endBreak,
+                            ))
+
                             : "--:--"}
                         </td>
                         <td className="py-3 px-4">
@@ -641,11 +635,10 @@ export default function Dashboard() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1 text-sm rounded ${
-                    currentPage === page
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted"
-                  }`}
+                  className={`px-3 py-1 text-sm rounded ${currentPage === page
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                    }`}
                 >
                   {page}
                 </button>

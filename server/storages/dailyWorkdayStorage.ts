@@ -13,6 +13,7 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
+import { deleteIncidentsByDailyWorkday } from "./incidentStorage";
 
 /**
  * DAILY WORKDAY STORAGE MODULE
@@ -198,11 +199,14 @@ export async function deleteClockEntriesByDailyWorkday(
 }
 
 export async function deleteDailyWorkday(id: string): Promise<boolean> {
+  // Primero eliminar las incidencias asociadas
+  await deleteIncidentsByDailyWorkday(id);
+  
+  // Luego eliminar la jornada laboral
   const deleted = await db
     .delete(dailyWorkday)
     .where(eq(dailyWorkday.id, id))
-    .returning(); // Devuelve el registro eliminad
+    .returning();
 
-  // Devuelve la jornada eliminada (por si se quiere registrar o verificar)
   return !deleted;
 }

@@ -96,12 +96,10 @@ export function registerIncidentRoutes(app: Express) {
       res.status(201).json(incident);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({
-            message: "Datos de incidencia inválidos",
-            errors: error.errors,
-          });
+        return res.status(400).json({
+          message: "Datos de incidencia inválidos",
+          errors: error.errors,
+        });
       }
       console.error("Error creating incident:", error);
       res.status(500).json({ message: "Error al crear incidencia" });
@@ -112,7 +110,7 @@ export function registerIncidentRoutes(app: Express) {
   app.put("/api/incidents/:id", requireAdmin, async (req, res) => {
     try {
       const formData = incidentFormSchema.partial().parse(req.body);
-      
+
       // Si viene date, buscar o crear daily_workday
       let updateData: any = {
         idIncidentsType: formData.idIncidentsType,
@@ -137,10 +135,7 @@ export function registerIncidentRoutes(app: Express) {
         updateData.idDailyWorkday = dailyWorkday.id;
       }
 
-      const incident = await storage.updateIncident(
-        req.params.id,
-        updateData,
-      );
+      const incident = await storage.updateIncident(req.params.id, updateData);
 
       if (!incident) {
         return res.status(404).json({ message: "Incidencia no encontrada" });
@@ -149,12 +144,10 @@ export function registerIncidentRoutes(app: Express) {
       res.json(incident);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res
-          .status(400)
-          .json({
-            message: "Datos de incidencia inválidos",
-            errors: error.errors,
-          });
+        return res.status(400).json({
+          message: "Datos de incidencia inválidos",
+          errors: error.errors,
+        });
       }
       res.status(500).json({ message: "Error al actualizar incidencia" });
     }

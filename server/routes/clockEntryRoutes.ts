@@ -69,11 +69,9 @@ export function registerClockEntryRoutes(app: Express) {
       const timeEntries = await storage.getTimeEntriesByDate(date);
 
       if (!timeEntries || timeEntries.length === 0) {
-        return res
-          .status(404)
-          .json({
-            message: "No se encontraron registros de tiempo para ese día.",
-          });
+        return res.status(404).json({
+          message: "No se encontraron registros de tiempo para ese día.",
+        });
       }
 
       res.status(200).json(timeEntries);

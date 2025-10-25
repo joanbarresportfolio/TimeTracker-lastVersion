@@ -272,6 +272,7 @@ export const insertIncidentsTypeSchema = createInsertSchema(incidentsType)
  * TABLE: incidents
  * ================
  */
+
 export const incidents = pgTable("incidents", {
   id: varchar("id")
     .primaryKey()
@@ -317,9 +318,7 @@ export const incidentFormSchema = z.object({
   description: z.string().min(1, "La descripción es obligatoria"),
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
   registeredBy: z.string().optional(),
-});
-
-export type IncidentFormData = z.infer<typeof incidentFormSchema>;
+  });
 /**
  * Schema for user login
  */
@@ -357,18 +356,12 @@ export const insertScheduleSchema = createInsertSchema(schedules)
     idDailyWorkday: z.string().optional(), // Now optional since it's nullable
     startBreak: z
       .string()
-      .regex(
-        /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-        "La hora de inicio de pausa debe estar en formato HH:MM",
-      )
+      .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio de pausa debe estar en formato HH:MM")
       .optional()
       .or(z.literal("")),
     endBreak: z
       .string()
-      .regex(
-        /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-        "La hora de fin de pausa debe estar en formato HH:MM",
-      )
+      .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin de pausa debe estar en formato HH:MM")
       .optional()
       .or(z.literal("")),
     scheduleType: z.enum(["split", "total"], {
@@ -466,7 +459,7 @@ export type TimeEntry = {
 // ============================================================================
 // LEGACY TYPE ALIASES FOR COMPATIBILITY
 // ============================================================================
-
+export type IncidentFormData = z.infer<typeof incidentFormSchema>;
 export type Schedule = typeof schedules.$inferSelect;
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
 export type BulkScheduleCreate = z.infer<typeof bulkScheduleCreateSchema>;

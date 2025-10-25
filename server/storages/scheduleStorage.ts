@@ -65,7 +65,6 @@ export async function getScheduledShiftsByRange(
     .select()
     .from(schedules)
     .where(and(gte(schedules.date, startDate), lte(schedules.date, endDate)));
-  console.log(hola);
   return hola;
 }
 
@@ -107,8 +106,8 @@ export async function updateDateSchedule(
 ): Promise<DateSchedule | undefined> {
   const updateData: any = {};
 
-  if (dateScheduleData.idUser !== undefined)
-    updateData.idUser = dateScheduleData.idUser;
+  if (dateScheduleData.employeeId !== undefined)
+    updateData.employeeId = dateScheduleData.employeeId;
   if (dateScheduleData.date !== undefined)
     updateData.date = dateScheduleData.date;
   if (dateScheduleData.startTime !== undefined)
@@ -157,7 +156,7 @@ export async function createBulkDateSchedules(
     const workHours = calculateWorkHours(schedule.startTime, schedule.endTime);
 
     return {
-      idUser: schedule.employeeId,
+      employeeId: schedule.employeeId,
       date: schedule.date,
       startTime: schedule.startTime,
       endTime: schedule.endTime,
@@ -169,7 +168,7 @@ export async function createBulkDateSchedules(
   });
 
   const employeeIds = Array.from(
-    new Set(schedulesToCreate.map((s) => s.idUser)),
+    new Set(schedulesToCreate.map((s) => s.employeeId)),
   );
 
   const existingShifts = await db
@@ -180,7 +179,7 @@ export async function createBulkDateSchedules(
   const uniqueSchedules = schedulesToCreate.filter((newSchedule) => {
     return !existingShifts.some(
       (existing) =>
-        existing.employeeId === newSchedule.idUser &&
+        existing.employeeId === newSchedule.employeeId &&
         existing.date === newSchedule.date &&
         existing.startTime === newSchedule.startTime &&
         existing.endTime === newSchedule.endTime,
@@ -192,7 +191,7 @@ export async function createBulkDateSchedules(
   }
 
   const shiftsToInsert = uniqueSchedules.map((schedule) => ({
-    idUser: schedule.idUser,
+    employeeId: schedule.employeeId,
     date: schedule.date,
     startTime: schedule.startTime,
     endTime: schedule.endTime,

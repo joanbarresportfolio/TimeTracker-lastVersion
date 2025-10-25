@@ -77,7 +77,7 @@ export function registerReportRoutes(app: Express) {
           .from(schedules)
           .where(
             and(
-              eq(schedules.idUser, employee.id),
+              eq(schedules.employeeId, employee.id),
               sql`${schedules.date} >= ${startDate as string}`,
               sql`${schedules.date} <= ${endDate as string}`,
             ),

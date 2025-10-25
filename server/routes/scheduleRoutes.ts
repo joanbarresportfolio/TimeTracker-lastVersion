@@ -36,7 +36,6 @@ export function registerScheduleRoutes(app: Express) {
 
       // Recupera los turnos del día
       const scheduledShifts = await storage.getScheduledShiftsByDate(date);
-      console.log(scheduledShifts);
       // Estructura los datos antes de devolverlos
       const daySchedules = scheduledShifts.map((shift) => {
         const [startHour, startMin] = shift.startTime.split(":").map(Number);
@@ -44,7 +43,7 @@ export function registerScheduleRoutes(app: Express) {
         const startMinutes = startHour * 60 + startMin;
         const endMinutes = endHour * 60 + endMin;
         const workMinutes = endMinutes - startMinutes;
-
+        console.log(shift);
         return {
           id: shift.id,
           employeeId: shift.employeeId,
@@ -108,7 +107,6 @@ export function registerScheduleRoutes(app: Express) {
         }
       } else {
         if (startDate && endDate) {
-          console.log("entra");
           scheduledShifts = await storage.getScheduledShiftsByRange(
             startDate,
             endDate,
@@ -174,7 +172,8 @@ export function registerScheduleRoutes(app: Express) {
 
       const updateData: any = {};
 
-      if (shiftUpdateData.idUser) updateData.idUser = shiftUpdateData.idUser;
+      if (shiftUpdateData.employeeId)
+        updateData.employeeId = shiftUpdateData.employeeId;
       if (shiftUpdateData.date) updateData.date = shiftUpdateData.date;
       if (shiftUpdateData.startTime)
         updateData.startTime = shiftUpdateData.startTime;

@@ -178,6 +178,7 @@ export function clockToTimeEntries(clockEntries: ClockEntry[]): TimeEntry[] {
       }
 
       // Calcular tiempos si hay clockIn y clockOut
+      // Calcular tiempos si hay clockIn y clockOut
       let totalHours = 0;
       let breakMinutes = 0;
 

@@ -199,9 +199,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<ScheduledShift[]> {
     return scheduleStorage.getScheduledShiftsByRange(startDate, endDate);
   }
-  async getScheduledShiftsByDate(
-    date: string,
-  ): Promise<ScheduledShift[]> {
+  async getScheduledShiftsByDate(date: string): Promise<ScheduledShift[]> {
     return scheduleStorage.getScheduledShiftsByDate(date);
   }
 

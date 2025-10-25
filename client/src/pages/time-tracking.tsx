@@ -68,6 +68,7 @@ import {
   workdayFormSchema,
   ClockEntry,
   TimeEntry,
+  BreakEntry,
 } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -93,7 +94,17 @@ export default function TimeTracking() {
     />
   );
 }
+function formatHours(hours: number): string {
+  const h = Math.floor(hours); // Parte entera → horas
+  const m = Math.round((hours - h) * 60); // Parte decimal → minutos
 
+  // Si no hay horas, muestra solo minutos
+  if (h === 0) return `${m}m`;
+  // Si no hay minutos, muestra solo horas
+  if (m === 0) return `${h}h`;
+  // En caso contrario, muestra ambas
+  return `${h}h ${m}m`;
+}
 // Componente para administradores (vista existente)
 function AdminTimeTracking({
   searchTerm,
@@ -499,23 +510,17 @@ function AdminTimeTracking({
 
   if (isLoading) {
     return (
-      <div className="p-4 lg:p-6 space-y-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground">
-            Control Horario
-          </h2>
-          <p className="text-muted-foreground">
-            Gestiona los fichajes de entrada y salida
-          </p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+        {/* Spinner moderno */}
+        <div className="relative">
+          <div className="h-16 w-16 border-4 border-primary/20 rounded-full"></div>
+          <div className="absolute top-0 left-0 h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-32 bg-muted rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
+
+        {/* Texto de carga */}
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-foreground">Cargando control horario...</h2>
+          <p className="text-muted-foreground mt-2">Por favor espera un momento</p>
         </div>
       </div>
     );
@@ -885,13 +890,47 @@ function AdminTimeTracking({
                     </p>
                   </div>
                 </div>
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground">Tiempo trabajado</p>
+                  <p className="font-medium">
+                    {formatDuration(entry?.totalHours || null)}
+                  </p>
+                </div>
+
+                {/* 👇 Nueva sección para mostrar pausas */}
+                {entry?.breaks && entry.breaks.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Pausas ({entry.breaks.length})
+                    </p>
+                    <div className="space-y-1">
+                      {entry.breaks.map((b: BreakEntry, i: number) => (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between text-sm text-muted-foreground border rounded-md px-3 py-1"
+                        >
+                          <span>Pausa {i + 1}</span>
+                          <span>
+                            {formatTime(b.start)} —{" "}
+                            {b.end ? formatTime(b.end) : "En curso"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Total de minutos en pausa */}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Total pausas: <span className="font-medium">{entry.breakMinutes} min</span>
+                    </p>
+                  </div>
+                )}
 
                 <div className="mb-4">
                   <p className="text-sm text-muted-foreground">
                     Tiempo trabajado
                   </p>
                   <p className="font-medium">
-                    {formatDuration(entry?.totalHours || null)}
+                    {formatHours(entry?.totalHours || null)}
                   </p>
                 </div>
 

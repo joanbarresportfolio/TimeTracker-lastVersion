@@ -15,7 +15,7 @@ export function registerDashboardRoutes(app: Express) {
       const employees = await storage.getUsers();
       const today = new Date().toISOString().split("T")[0];
       const todayEntries = await storage.getTimeEntriesByDate(today);
-      console.log(todayEntries);
+
       const incidents = await storage.getIncidents();
       const dailyWorkdays = await storage.getDailyWorkdaysLastWeek();
 

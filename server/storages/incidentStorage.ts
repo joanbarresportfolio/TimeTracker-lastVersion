@@ -107,3 +107,18 @@ export async function deleteIncident(id: string): Promise<boolean> {
   const result = await db.delete(incidents).where(eq(incidents.id, id));
   return (result.rowCount ?? 0) > 0;
 }
+
+/**
+ * ELIMINAR INCIDENCIAS POR DAILY WORKDAY
+ * 
+ * Elimina todas las incidencias asociadas a una jornada laboral específica.
+ * Útil para mantener la integridad referencial al eliminar un dailyWorkday.
+ */
+export async function deleteIncidentsByDailyWorkday(
+  dailyWorkdayId: string,
+): Promise<number> {
+  const result = await db
+    .delete(incidents)
+    .where(eq(incidents.idDailyWorkday, dailyWorkdayId));
+  return result.rowCount ?? 0;
+}

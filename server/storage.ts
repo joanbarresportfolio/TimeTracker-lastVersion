@@ -87,9 +87,7 @@ export interface IStorage {
     startDate: string,
     endDate: string,
   ): Promise<ScheduledShift[]>;
-  getScheduledShiftsByDate(
-    date: string,
-  ): Promise<ScheduledShift[]>;
+  getScheduledShiftsByDate(date: string): Promise<ScheduledShift[]>;
   getScheduledShiftsByEmployeeAndRange(
     employeeId: string,
     startDate: string,

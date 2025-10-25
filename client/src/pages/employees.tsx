@@ -419,23 +419,21 @@ export default function Employees() {
     return colors[name.length % colors.length];
   };
 
-  if (isLoading) {
+  if (
+    isLoading
+  ) {
     return (
-      <div className="p-4 lg:p-6 space-y-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Empleados</h2>
-          <p className="text-muted-foreground">
-            Gestiona la información de los empleados
-          </p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
+        {/* Spinner moderno */}
+        <div className="relative">
+          <div className="h-16 w-16 border-4 border-primary/20 rounded-full"></div>
+          <div className="absolute top-0 left-0 h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-32 bg-muted rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
+
+        {/* Texto de carga */}
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-foreground">Cargando Empleados...</h2>
+          <p className="text-muted-foreground mt-2">Por favor espera un momento</p>
         </div>
       </div>
     );
