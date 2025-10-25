@@ -56,6 +56,8 @@ export default function Employees() {
   const [newDepartmentName, setNewDepartmentName] = useState("");
   const [newRoleName, setNewRoleName] = useState("");
   const [editingEmployee, setEditingEmployee] = useState<User | null>(null);
+  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
+  const [editingRole, setEditingRole] = useState<RoleEnterprise | null>(null);
   const { toast } = useToast();
 
   const { data: employees, isLoading } = useQuery<User[]>({
@@ -200,6 +202,32 @@ export default function Employees() {
     },
   });
 
+  const updateDepartmentMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const response = await apiRequest(`/api/departments/${id}`, "PUT", {
+        name,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setEditingDepartment(null);
+      setNewDepartmentName("");
+      toast({
+        title: "Departamento actualizado",
+        description: "El departamento ha sido actualizado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el departamento.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteDepartmentMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest(`/api/departments/${id}`, "DELETE");
@@ -239,6 +267,30 @@ export default function Employees() {
       toast({
         title: "Error",
         description: error.message || "No se pudo crear el rol.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const response = await apiRequest(`/api/roles/${id}`, "PUT", { name });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/roles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      setEditingRole(null);
+      setNewRoleName("");
+      toast({
+        title: "Rol actualizado",
+        description: "El rol ha sido actualizado exitosamente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el rol.",
         variant: "destructive",
       });
     },
@@ -511,20 +563,54 @@ export default function Employees() {
                       <Button
                         onClick={() => {
                           if (newDepartmentName.trim()) {
-                            createDepartmentMutation.mutate(
-                              newDepartmentName.trim(),
-                            );
+                            if (editingDepartment) {
+                              updateDepartmentMutation.mutate({
+                                id: editingDepartment.id,
+                                name: newDepartmentName.trim(),
+                              });
+                            } else {
+                              createDepartmentMutation.mutate(
+                                newDepartmentName.trim(),
+                              );
+                            }
                           }
                         }}
                         disabled={
-                          createDepartmentMutation.isPending ||
+                          (editingDepartment
+                            ? updateDepartmentMutation.isPending
+                            : createDepartmentMutation.isPending) ||
                           !newDepartmentName.trim()
                         }
-                        data-testid="button-create-department"
+                        data-testid={
+                          editingDepartment
+                            ? "button-update-department"
+                            : "button-create-department"
+                        }
                       >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Crear
+                        {editingDepartment ? (
+                          <>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Actualizar
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Crear
+                          </>
+                        )}
                       </Button>
+                      {editingDepartment && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setEditingDepartment(null);
+                            setNewDepartmentName("");
+                          }}
+                          data-testid="button-cancel-edit-department"
+                        >
+                          Cancelar
+                        </Button>
+                      )}
                     </div>
                     <div className="space-y-2">
                       {departments.map((dept) => (
@@ -533,15 +619,29 @@ export default function Employees() {
                           className="flex items-center justify-between p-2 rounded-md border"
                         >
                           <span>{dept.name}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteDepartment(dept.id)}
-                            disabled={deleteDepartmentMutation.isPending}
-                            data-testid={`button-delete-department-${dept.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingDepartment(dept);
+                                setNewDepartmentName(dept.name);
+                              }}
+                              disabled={updateDepartmentMutation.isPending}
+                              data-testid={`button-edit-department-${dept.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteDepartment(dept.id)}
+                              disabled={deleteDepartmentMutation.isPending}
+                              data-testid={`button-delete-department-${dept.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -572,17 +672,49 @@ export default function Employees() {
                       <Button
                         onClick={() => {
                           if (newRoleName.trim()) {
-                            createRoleMutation.mutate(newRoleName.trim());
+                            if (editingRole) {
+                              updateRoleMutation.mutate({
+                                id: editingRole.id,
+                                name: newRoleName.trim(),
+                              });
+                            } else {
+                              createRoleMutation.mutate(newRoleName.trim());
+                            }
                           }
                         }}
                         disabled={
-                          createRoleMutation.isPending || !newRoleName.trim()
+                          (editingRole
+                            ? updateRoleMutation.isPending
+                            : createRoleMutation.isPending) || !newRoleName.trim()
                         }
-                        data-testid="button-create-role"
+                        data-testid={
+                          editingRole ? "button-update-role" : "button-create-role"
+                        }
                       >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Crear
+                        {editingRole ? (
+                          <>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Actualizar
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Crear
+                          </>
+                        )}
                       </Button>
+                      {editingRole && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setEditingRole(null);
+                            setNewRoleName("");
+                          }}
+                          data-testid="button-cancel-edit-role"
+                        >
+                          Cancelar
+                        </Button>
+                      )}
                     </div>
                     <div className="space-y-2">
                       {roles.map((role) => (
@@ -591,15 +723,29 @@ export default function Employees() {
                           className="flex items-center justify-between p-2 rounded-md border"
                         >
                           <span>{role.name}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteRole(role.id)}
-                            disabled={deleteRoleMutation.isPending}
-                            data-testid={`button-delete-role-${role.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingRole(role);
+                                setNewRoleName(role.name);
+                              }}
+                              disabled={updateRoleMutation.isPending}
+                              data-testid={`button-edit-role-${role.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteRole(role.id)}
+                              disabled={deleteRoleMutation.isPending}
+                              data-testid={`button-delete-role-${role.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
