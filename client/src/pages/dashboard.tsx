@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -55,7 +55,8 @@ interface DashboardStats {
   newIncidentsLastWeek?: number;
 }
 
-const today = new Date().toISOString().split("T")[0];
+const today = new Date().toISOString().slice(0, 10);
+console.log(today);
 export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -76,29 +77,28 @@ export default function Dashboard() {
   });
 
   const { data: todaysShifts, isLoading: todaysShiftsLoading } = useQuery({
-    queryKey: ["/api/scheduled-shifts", today],
+    queryKey: ["/api/schedules-by-date", today],
     queryFn: async () => {
       if (!today) return [];
 
-      // Llamada a la nueva ruta que creamos en el backend
-      const response = await fetch(`/api/scheduled-shifts/date=${today}`, {
+      // ✅ Llamada correcta a la nueva ruta con query param
+      const response = await fetch(`/api/schedules-by-date?date=${today}`, {
         credentials: "include", // si usas cookies de sesión
       });
-
       if (!response.ok) {
         console.error("Error al obtener los turnos programados del día");
         return [];
       }
 
+      // ✅ El backend devuelve directamente un array
       const data = await response.json();
-      return data.shifts; // porque el backend devuelve { shifts: [...] }
+      return data;
     },
-    enabled: !!today, // Solo si tenemos fecha y empleado
+    enabled: !!today, // Solo si tenemos fecha
   });
   // Solo cargar empleados si es admin
   const { data: employees, isLoading: employeesLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
-    enabled: !isEmployee, // Solo cargar si no es empleado
   });
   const { data: timeEntriesToday, isLoading: timeEntriesLoading } = useQuery({
     queryKey: ["/api/time-entries/day", today],
@@ -155,7 +155,6 @@ export default function Dashboard() {
     return totalHours > 0 ? totalHours : 0;
   }
   const getEmployeeStatus = (employee: User) => {
-    console.log(timeEntriesToday);
     const entry = timeEntriesToday?.find(
       (e: { employeeId: string }) => e.employeeId === employee.id,
     );
@@ -232,6 +231,14 @@ export default function Dashboard() {
   const handleReportIncident = (employee: User) => {
     setLocation("/incidents");
   };
+
+  useEffect(() => {
+    if (todaysShifts && todaysShifts.length > 0) {
+      console.log("🕒 Horarios asignados de hoy:", todaysShifts);
+    } else if (!todaysShiftsLoading) {
+      console.log("⚠️ No hay horarios asignados para hoy.");
+    }
+  }, [todaysShifts, todaysShiftsLoading]);
 
   if (
     statsLoading ||
@@ -469,7 +476,13 @@ export default function Dashboard() {
                     Salida
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    Horas
+                    Descanso
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                    Horas trabajadas
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                    Horas asignadas
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Acciones
@@ -484,11 +497,15 @@ export default function Dashboard() {
                   )
                   .map((employee) => {
                     const entry = timeEntriesToday?.find(
-                      (e) => e.employeeId === employee.id,
+                      (e: { employeeId: string }) =>
+                        e.employeeId === employee.id,
                     );
                     const shift = todaysShifts?.find(
-                      (s) => s.idUser === employee.id,
+                      (s: { idUser?: string; employeeId?: string }) =>
+                        s.idUser === employee.id ||
+                        s.employeeId === employee.id,
                     );
+
                     const status = getEmployeeStatus(employee);
                     return (
                       <tr
@@ -541,18 +558,19 @@ export default function Dashboard() {
                             ? formatTime(entry.clockOut)
                             : "--:--"}
                         </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {entry?.clockOut ? entry.breakMinutes / 60 : "--:--"}
+                        </td>
                         <td className="py-3 px-4 text-foreground">
-                          {formatHours(entry?.totalHours || 0)}
+                          {entry?.totalHours || 0}
                         </td>
                         <td className="py-3 px-4 text-foreground">
                           {shift
-                            ? formatHours(
-                                calculateShiftHours(
-                                  shift.startTime,
-                                  shift.endTime,
-                                  shift.startBreak,
-                                  shift.endBreak,
-                                ),
+                            ? calculateShiftHours(
+                                shift.startTime,
+                                shift.endTime,
+                                shift.startBreak,
+                                shift.endBreak,
                               )
                             : "--:--"}
                         </td>

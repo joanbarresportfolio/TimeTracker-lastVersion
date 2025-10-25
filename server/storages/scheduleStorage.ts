@@ -51,7 +51,7 @@ export async function getScheduledShiftsByEmployee(
   return await db
     .select()
     .from(schedules)
-    .where(eq(schedules.idUser, employeeId));
+    .where(eq(schedules.employeeId, employeeId));
 }
 
 /**
@@ -61,10 +61,12 @@ export async function getScheduledShiftsByRange(
   startDate: string,
   endDate: string,
 ): Promise<ScheduledShift[]> {
-  return await db
+  const hola = await db
     .select()
     .from(schedules)
     .where(and(gte(schedules.date, startDate), lte(schedules.date, endDate)));
+  console.log(hola);
+  return hola;
 }
 
 export async function getScheduledShiftsByDate(
@@ -85,7 +87,7 @@ export async function getScheduledShiftsByEmployeeAndRange(
     .from(schedules)
     .where(
       and(
-        eq(schedules.idUser, employeeId),
+        eq(schedules.employeeId, employeeId),
         gte(schedules.date, startDate),
         lte(schedules.date, endDate),
       ),
@@ -173,12 +175,12 @@ export async function createBulkDateSchedules(
   const existingShifts = await db
     .select()
     .from(schedules)
-    .where(inArray(schedules.idUser, employeeIds));
+    .where(inArray(schedules.employeeId, employeeIds));
 
   const uniqueSchedules = schedulesToCreate.filter((newSchedule) => {
     return !existingShifts.some(
       (existing) =>
-        existing.idUser === newSchedule.idUser &&
+        existing.employeeId === newSchedule.idUser &&
         existing.date === newSchedule.date &&
         existing.startTime === newSchedule.startTime &&
         existing.endTime === newSchedule.endTime,

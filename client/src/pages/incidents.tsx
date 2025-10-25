@@ -44,7 +44,9 @@ import {
   type Incident,
   type InsertIncident,
   type IncidentsType,
+  type IncidentFormData,
   insertIncidentSchema,
+  incidentFormSchema,
   IncidentType,
 } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -77,7 +79,7 @@ export default function Incidents() {
   const [editingIncident, setEditingIncident] = useState<Incident | null>(null);
   const { toast } = useToast();
 
-  const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>(
+  const { data: employees, isLoading: employeesLoading } = useQuery<User[]>(
     {
       queryKey: ["/api/users"],
     },
@@ -96,7 +98,7 @@ export default function Incidents() {
   });
 
   const createIncidentMutation = useMutation({
-    mutationFn: async (data: InsertIncident) => {
+    mutationFn: async (data: IncidentFormData) => {
       const response = await apiRequest("/api/incidents", "POST", data);
       return response.json();
     },
@@ -124,7 +126,7 @@ export default function Incidents() {
       data,
     }: {
       id: string;
-      data: Partial<InsertIncident>;
+      data: Partial<IncidentFormData>;
     }) => {
       const response = await apiRequest(`/api/incidents/${id}`, "PUT", data);
       return response.json();
@@ -214,8 +216,8 @@ export default function Incidents() {
     },
   });
 
-  const form = useForm<InsertIncident>({
-    resolver: zodResolver(insertIncidentSchema),
+  const form = useForm<IncidentFormData>({
+    resolver: zodResolver(incidentFormSchema),
     defaultValues: {
       idUser: "",
       date: new Date().toISOString().split("T")[0], // YYYY-MM-DD format
@@ -225,7 +227,7 @@ export default function Incidents() {
     },
   });
 
-  const onSubmit = (data: InsertIncident) => {
+  const onSubmit = (data: IncidentFormData) => {
     if (editingIncident) {
       updateIncidentMutation.mutate({ id: editingIncident.id, data });
     } else {

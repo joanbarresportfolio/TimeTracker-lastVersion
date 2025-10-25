@@ -99,8 +99,6 @@ interface CalendarDay {
 }
 
 const currentYear = new Date().getFullYear();
-const startDate = `${currentYear}-01-01`;
-const endDate = `${currentYear}-12-31`;
 
 export default function Schedules() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -132,26 +130,6 @@ export default function Schedules() {
 
   const { toast } = useToast();
 
-  const { data: todaysShifts, isLoading: todaysShiftsLoading } = useQuery({
-    queryKey: ["/api/scheduled-shifts", today],
-    queryFn: async () => {
-      if (!today) return [];
-
-      // Llamada a la nueva ruta que creamos en el backend
-      const response = await fetch(`/api/scheduled-shifts/date=${today}`, {
-        credentials: "include", // si usas cookies de sesión
-      });
-
-      if (!response.ok) {
-        console.error("Error al obtener los turnos programados del día");
-        return [];
-      }
-
-      const data = await response.json();
-      return data.shifts; // porque el backend devuelve { shifts: [...] }
-    },
-    enabled: !!today, // Solo si tenemos fecha y empleado
-  });
   const { data: employees, isLoading: employeesLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
@@ -174,6 +152,22 @@ export default function Schedules() {
     queryKey: ["/api/daily-workday/all"],
   });
 
+  const { data: yearlySchedules, isLoading: yearlySchedulesLoading } = useQuery<
+    Schedule[]
+  >({
+    queryKey: ["/api/date-schedules/year", currentYear],
+    queryFn: async () => {
+      const startDate = `${currentYear}-01-01`;
+      const endDate = `${currentYear}-12-31`;
+
+      // No enviamos employeeId para obtener todos los empleados
+      const url = `/api/date-schedules?startDate=${startDate}&endDate=${endDate}`;
+
+      const response = await fetch(url, { credentials: "include" });
+      const data = await response.json(); // leer una vez
+      return data; // devolver para que useQuery lo tenga
+    }, // opcional, según tu lógica
+  });
   const {
     data: dateSchedules,
     isLoading: dateSchedulesLoading,
@@ -287,8 +281,51 @@ export default function Schedules() {
       });
     },
   });
+  function calculateAssignedHours(schedules: Schedule[]): number {
+    return schedules.reduce((total, shift) => {
+      if (!shift.startTime || !shift.endTime) return total;
 
-  // Calcular resumen de empleados con horas trabajadas vs horas de convenio
+      const [startHour, startMin] = shift.startTime.split(":").map(Number);
+      const [endHour, endMin] = shift.endTime.split(":").map(Number);
+
+      let workMinutes = endHour * 60 + endMin - (startHour * 60 + startMin);
+
+      // Restamos pausa si existe
+      if (shift.startBreak && shift.endBreak) {
+        const [breakStartHour, breakStartMin] = shift.startBreak
+          .split(":")
+          .map(Number);
+        const [breakEndHour, breakEndMin] = shift.endBreak
+          .split(":")
+          .map(Number);
+        const breakMinutes =
+          breakEndHour * 60 +
+          breakEndMin -
+          (breakStartHour * 60 + breakStartMin);
+        workMinutes -= breakMinutes;
+      }
+
+      return total + workMinutes / 60; // convertimos a horas
+    }, 0);
+  }
+
+  // useMemo para calcular horas asignadas por empleado
+  const assignedHoursMap = useMemo(() => {
+    if (!yearlySchedules || !employees) return new Map<string, number>();
+
+    const map = new Map<string, number>();
+
+    employees.forEach((employee) => {
+      const employeeSchedules = yearlySchedules.filter(
+        (s) => s.employeeId === employee.id,
+      );
+      const assignedHours = calculateAssignedHours(employeeSchedules);
+      map.set(employee.id, assignedHours);
+    });
+
+    return map; // Map<employeeId, assignedHours>
+  }, [yearlySchedules, employees]);
+  // Calcular resumen de empleados con horas trabajadas
   const employeeSummaries = useMemo((): EmployeeSummary[] => {
     if (!employees || !workdayHistory) return [];
 
@@ -472,7 +509,7 @@ export default function Schedules() {
     timeEntriesLoading ||
     timeEntriesEmployeeLoading ||
     workdayHistoryLoading ||
-    todaysShiftsLoading ||
+    yearlySchedulesLoading ||
     (viewMode === "calendar" && dateSchedulesLoading);
 
   if (isLoading) {
@@ -560,111 +597,105 @@ export default function Schedules() {
                     <TableHead>Empleado</TableHead>
                     <TableHead>Departamento</TableHead>
                     <TableHead>Horas Trabajadas</TableHead>
-                    <TableHead>Horas Convenio</TableHead>
-                    <TableHead>Progreso Anual</TableHead>
+                    <TableHead>Horas Asignadas</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSummaries.map((summary) => (
-                    
-                    <TableRow
-                      key={summary.employee.id}
-                      data-testid={`employee-row-${summary.employee.id}`}
-                    >
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="w-10 h-10">
-                            <AvatarFallback
-                              className={`bg-gradient-to-r ${getAvatarColor(summary.employee.firstName)} text-white text-sm font-semibold`}
+                  {filteredSummaries.map((summary) => {
+                    const assignedHours =
+                      assignedHoursMap.get(summary.employee.id) || 0;
+
+                    return (
+                      <TableRow
+                        key={summary.employee.id}
+                        data-testid={`employee-row-${summary.employee.id}`}
+                      >
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="w-10 h-10">
+                              <AvatarFallback
+                                className={`bg-gradient-to-r ${getAvatarColor(summary.employee.firstName)} text-white text-sm font-semibold`}
+                              >
+                                {getInitials(
+                                  summary.employee.firstName,
+                                  summary.employee.lastName,
+                                )}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium text-foreground">
+                                {summary.employee.firstName}{" "}
+                                {summary.employee.lastName}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {summary.employee.numEmployee}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
+                            <Building className="w-3 h-3" />
+                            {summary.employee.departmentId
+                              ? departmentMap.get(
+                                  summary.employee.departmentId,
+                                ) || "Sin departamento"
+                              : "Sin departamento"}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Timer className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">
+                              {summary.hoursWorked}h
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              {assignedHours}h
+                            </span>
+                          </div>
+                        </TableCell>
+
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleModifySchedule(summary.employee)
+                              }
+                              data-testid={`button-modify-${summary.employee.id}`}
                             >
-                              {getInitials(
-                                summary.employee.firstName,
-                                summary.employee.lastName,
-                              )}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium text-foreground">
-                              {summary.employee.firstName}{" "}
-                              {summary.employee.lastName}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {summary.employee.numEmployee}
-                            </div>
+                              <Edit3 className="w-4 h-4 mr-1" />
+                              Modificar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handleViewSchedule(summary.employee)
+                              }
+                              data-testid={`button-view-${summary.employee.id}`}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              Ver
+                            </Button>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className="flex items-center gap-1"
-                        >
-                          <Building className="w-3 h-3" />
-                          {summary.employee.departmentId
-                            ? departmentMap.get(
-                                summary.employee.departmentId,
-                              ) || "Sin departamento"
-                            : "Sin departamento"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Timer className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">
-                            {summary.hoursWorked}h
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            {summary.conventionHours}h
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span>{summary.percentageWorked}%</span>
-                          </div>
-                          <div className="w-full bg-muted rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full ${getProgressColor(summary.percentageWorked)} transition-all duration-300`}
-                              style={{
-                                width: `${Math.min(summary.percentageWorked, 100)}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handleModifySchedule(summary.employee)
-                            }
-                            data-testid={`button-modify-${summary.employee.id}`}
-                          >
-                            <Edit3 className="w-4 h-4 mr-1" />
-                            Modificar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewSchedule(summary.employee)}
-                            data-testid={`button-view-${summary.employee.id}`}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            Ver
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

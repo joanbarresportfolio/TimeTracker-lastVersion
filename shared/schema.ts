@@ -324,6 +324,8 @@ export const incidentFormSchema = z.object({
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
   registeredBy: z.string().optional(),
 });
+
+export type IncidentFormData = z.infer<typeof incidentFormSchema>;
 /**
  * Schema for user login
  */
@@ -339,7 +341,7 @@ export const schedules = pgTable("schedules", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  idUser: varchar("id_user")
+  employeeId: varchar("id_user")
     .notNull()
     .references(() => users.id), // FK to users
   idDailyWorkday: varchar("id_daily_workday")
@@ -361,12 +363,18 @@ export const insertScheduleSchema = createInsertSchema(schedules)
     idDailyWorkday: z.string().optional(), // Now optional since it's nullable
     startBreak: z
       .string()
-      .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de inicio de pausa debe estar en formato HH:MM")
+      .regex(
+        /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
+        "La hora de inicio de pausa debe estar en formato HH:MM",
+      )
       .optional()
       .or(z.literal("")),
     endBreak: z
       .string()
-      .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "La hora de fin de pausa debe estar en formato HH:MM")
+      .regex(
+        /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
+        "La hora de fin de pausa debe estar en formato HH:MM",
+      )
       .optional()
       .or(z.literal("")),
     scheduleType: z.enum(["split", "total"], {
