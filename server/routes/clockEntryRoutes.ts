@@ -18,6 +18,86 @@ import { clockEntries } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
 export function registerClockEntryRoutes(app: Express) {
+  /**
+   * POST /api/clock-entries
+   * Endpoint para que los empleados creen sus propias entradas de fichaje
+   * Usar requireAuth para permitir que los empleados autenticados fichen
+   */
+  app.post("/api/clock-entries", requireAuth, async (req, res) => {
+    try {
+      const { entryType, source } = req.body;
+      const userId = req.user!.id; // Obtenemos el userId del usuario autenticado
+      const today = new Date().toISOString().split("T")[0];
+
+      // Validar parámetros obligatorios
+      if (!entryType) {
+        return res.status(400).json({
+          message: "Falta el parámetro obligatorio: entryType",
+        });
+      }
+
+      // Validar tipo de registro
+      const validTypes = ["clock_in", "clock_out", "break_start", "break_end"];
+      if (!validTypes.includes(entryType)) {
+        return res.status(400).json({ message: "entryType inválido." });
+      }
+
+      // Llamar al método del storage (usando los nombres en español internamente)
+      const newClockEntry = await storage.createClockEntry(
+        userId,
+        entryType,
+        today,
+        source || "mobile_app",
+      );
+
+      res.status(201).json(newClockEntry);
+    } catch (error) {
+      console.error("Error al crear clock entry:", error);
+      res.status(500).json({
+        message: "Error al registrar el clock entry.",
+        error: (error as Error).message,
+      });
+    }
+  });
+
+  /**
+   * GET /api/clock-entries/today
+   * Obtiene el daily workday y clock entries de hoy para el empleado autenticado
+   */
+  app.get("/api/clock-entries/today", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const today = new Date().toISOString().split("T")[0];
+
+      // Obtener la jornada diaria de hoy
+      const dailyWorkday = await storage.getDailyWorkdayByUserAndDate(
+        userId,
+        today,
+      );
+
+      if (!dailyWorkday) {
+        return res.json({ dailyWorkday: null, clockEntries: [] });
+      }
+
+      // Obtener todas las entradas de reloj de hoy y filtrar por usuario
+      const allClockEntries = await storage.getClockEntriesByDate(today);
+      const userClockEntries = allClockEntries.filter(
+        (entry) => entry.idUser === userId,
+      );
+
+      res.json({
+        dailyWorkday,
+        clockEntries: userClockEntries,
+      });
+    } catch (error) {
+      console.error("Error al obtener clock entries de hoy:", error);
+      res.status(500).json({
+        message: "Error al obtener registros de hoy.",
+        error: (error as Error).message,
+      });
+    }
+  });
+
   app.post("/api/clock-entry", requireAdmin, async (req, res) => {
     try {
       const { employeeId, tipoRegistro, date, origen } = req.body;

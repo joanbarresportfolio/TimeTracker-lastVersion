@@ -20,6 +20,7 @@ import {
   IncidentType,
   IncidentFormData,
   TimeStats,
+  ClockEntry,
 } from "../types/schema";
 
 /**
@@ -315,13 +316,13 @@ export async function getCurrentTimeEntry(): Promise<TimeEntry | null> {
 /**
  * Realiza fichaje de entrada (clock-in)
  */
-export async function clockIn(): Promise<TimeEntry> {
+export async function clockIn(): Promise<ClockEntry> {
   try {
-    const result = await apiRequest<TimeEntry>("/fichajes", {
+    const result = await apiRequest<ClockEntry>("/clock-entries", {
       method: "POST",
       body: {
-        tipoRegistro: "clock_in",
-        origen: "mobile_app",
+        entryType: "clock_in",
+        source: "mobile_app",
       },
     });
     return result;
@@ -335,13 +336,13 @@ export async function clockIn(): Promise<TimeEntry> {
 /**
  * Realiza fichaje de salida (clock-out)
  */
-export async function clockOut(): Promise<TimeEntry> {
+export async function clockOut(): Promise<ClockEntry> {
   try {
-    const result = await apiRequest<TimeEntry>("/fichajes", {
+    const result = await apiRequest<ClockEntry>("/clock-entries", {
       method: "POST",
       body: {
-        tipoRegistro: "clock_out",
-        origen: "mobile_app",
+        entryType: "clock_out",
+        source: "mobile_app",
       },
     });
     return result;
@@ -355,15 +356,16 @@ export async function clockOut(): Promise<TimeEntry> {
 /**
  * Inicia una pausa (break-start)
  */
-export async function startBreak(): Promise<void> {
+export async function startBreak(): Promise<ClockEntry> {
   try {
-    await apiRequest("/fichajes", {
+    const result = await apiRequest<ClockEntry>("/clock-entries", {
       method: "POST",
       body: {
-        tipoRegistro: "break_start",
-        origen: "mobile_app",
+        entryType: "break_start",
+        source: "mobile_app",
       },
     });
+    return result;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Error al iniciar pausa";
@@ -374,15 +376,16 @@ export async function startBreak(): Promise<void> {
 /**
  * Finaliza una pausa (break-end)
  */
-export async function endBreak(): Promise<void> {
+export async function endBreak(): Promise<ClockEntry> {
   try {
-    await apiRequest("/fichajes", {
+    const result = await apiRequest<ClockEntry>("/clock-entries", {
       method: "POST",
       body: {
-        tipoRegistro: "break_end",
-        origen: "mobile_app",
+        entryType: "break_end",
+        source: "mobile_app",
       },
     });
+    return result;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Error al finalizar pausa";
