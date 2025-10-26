@@ -313,13 +313,15 @@ export class DatabaseStorage implements IStorage {
     entryType: string,
     date: string,
     source: string,
+    providedTimestamp?: Date | string,
   ): Promise<ClockEntry> {
-    // Convertimos el timestamp string a Date
+    // Convertimos el timestamp string a Date si se proporciona
     return clockEntryStorage.createClockEntry(
       employeeId,
       entryType,
       date,
       source,
+      providedTimestamp,
     );
   }
 }

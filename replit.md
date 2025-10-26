@@ -62,6 +62,18 @@ Preferred communication style: Simple, everyday language.
 - **Mobile App**: Dedicated mobile application with dashboard, schedules, incidents, and history.
 - **Internationalization**: Full migration of backend schema and codebase to English.
 
+### Mobile App Integration
+- **Authentication**: JWT-based authentication via `Authorization: Bearer <token>` header
+- **Clock Entry Endpoints** (Employee-accessible):
+  - `POST /api/clock-entries` - Create new clock entry (clock_in, clock_out, break_start, break_end)
+    - Accepts optional `timestamp` field for precise event timing (prevents midnight date skew)
+    - Server generates timestamp if not provided
+  - `GET /api/clock-entries/today` - Get today's daily workday and clock entries for authenticated employee
+- **Field Naming**: Mobile app uses English fields (`entryType`, `source`, `timestamp`) matching backend schema
+- **Break Support**: Schedules include optional `startBreak` and `endBreak` nullable fields
+- **Type Consistency**: Mobile types (`mobile-app/src/types/schema.ts`) match backend schema types
+- **Timestamp Handling**: Clock entry creation uses precise timestamps to prevent cross-midnight session issues and timezone drift
+
 ## External Dependencies
 
 ### Database and ORM

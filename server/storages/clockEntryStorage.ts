@@ -12,15 +12,34 @@ import { eq, and, sql, gte, lte } from "drizzle-orm";
 export async function createClockEntry(
   employeeId: string,
   entryType: string,
-  date: string, // YYYY-MM-DD
+  date: string, // YYYY-MM-DD (puede ser vacío si se pasa timestamp)
   source: string,
+  providedTimestamp?: Date | string, // Timestamp opcional para precisión
 ): Promise<ClockEntry> {
+  // 🔹 Determinar el timestamp preciso del evento
+  let timestamp: Date;
+  
+  if (providedTimestamp) {
+    // Caso 1: Cliente móvil proporciona timestamp preciso (nueva funcionalidad)
+    timestamp = new Date(providedTimestamp);
+  } else if (date) {
+    // Caso 2: Admin proporciona fecha (comportamiento legacy)
+    // Combinar la fecha proporcionada con la hora actual del servidor
+    timestamp = dateToTimestamp(date);
+  } else {
+    // Caso 3: Ni timestamp ni fecha (fallback)
+    timestamp = new Date();
+  }
+  
+  // 🔹 Extraer la fecha del timestamp para la lógica de workday
+  const eventDate = timestampToDateString(timestamp);
+
   let workdayId: string | undefined;
   const existingWorkday = await db
     .select()
     .from(dailyWorkday)
     .where(
-      sql`${dailyWorkday.idUser} = ${employeeId} AND ${dailyWorkday.date} = ${date}`,
+      sql`${dailyWorkday.idUser} = ${employeeId} AND ${dailyWorkday.date} = ${eventDate}`,
     )
     .limit(1)
     .then((rows) => rows[0]);
@@ -31,7 +50,7 @@ export async function createClockEntry(
         .insert(dailyWorkday)
         .values({
           idUser: employeeId,
-          date,
+          date: eventDate,
           status: "open",
         })
         .returning();
@@ -42,14 +61,11 @@ export async function createClockEntry(
   } else {
     if (!existingWorkday) {
       throw new Error(
-        `No existe un dailyWorkday para este usuario y fecha: ${date}`,
+        `No existe un dailyWorkday para este usuario y fecha: ${eventDate}`,
       );
     }
     workdayId = existingWorkday.id;
   }
-
-  // 🔹 Crear timestamp combinando la fecha con la hora actual
-  const timestamp = dateToTimestamp(date);
 
   // 🔹 Insertar el clockEntry
   const insertedClockEntry = await db
@@ -70,13 +86,13 @@ export async function createClockEntry(
       .select()
       .from(clockEntries)
       .where(
-        sql`${clockEntries.idUser} = ${employeeId} AND DATE(${clockEntries.timestamp}) = ${date}`,
+        sql`${clockEntries.idUser} = ${employeeId} AND DATE(${clockEntries.timestamp}) = ${eventDate}`,
       )
       .orderBy(clockEntries.timestamp);
 
     // Generar timeEntries usando clockToTimeEntries
     const timeEntries = clockToTimeEntries(userClockEntries);
-    const todayTimeEntry = timeEntries.find((te) => te.date === date);
+    const todayTimeEntry = timeEntries.find((te) => te.date === eventDate);
 
     // Actualizar dailyWorkday con los minutos calculados
     if (todayTimeEntry) {
@@ -212,9 +228,10 @@ export function clockToTimeEntries(clockEntries: ClockEntry[]): TimeEntry[] {
 //UTIL FUNCTION
 export function timestampToDateString(timestamp: string | Date): string {
   const date = new Date(timestamp);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0"); // Los meses empiezan en 0
-  const day = String(date.getDate()).padStart(2, "0");
+  // Usar UTC para evitar problemas de zona horaria entre cliente y servidor
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0"); // Los meses empiezan en 0
+  const day = String(date.getUTCDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }

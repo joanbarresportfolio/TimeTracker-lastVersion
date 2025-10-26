@@ -25,9 +25,8 @@ export function registerClockEntryRoutes(app: Express) {
    */
   app.post("/api/clock-entries", requireAuth, async (req, res) => {
     try {
-      const { entryType, source } = req.body;
+      const { entryType, source, timestamp } = req.body;
       const userId = req.user!.id; // Obtenemos el userId del usuario autenticado
-      const today = new Date().toISOString().split("T")[0];
 
       // Validar parámetros obligatorios
       if (!entryType) {
@@ -42,12 +41,14 @@ export function registerClockEntryRoutes(app: Express) {
         return res.status(400).json({ message: "entryType inválido." });
       }
 
-      // Llamar al método del storage (usando los nombres en español internamente)
+      // Capturar timestamp: usar el proporcionado o dejar que storage use new Date()
+      // El parámetro date ya no es necesario, se deriva del timestamp
       const newClockEntry = await storage.createClockEntry(
         userId,
         entryType,
-        today,
+        "", // date vacío, se derivará del timestamp
         source || "mobile_app",
+        timestamp, // timestamp opcional del cliente
       );
 
       res.status(201).json(newClockEntry);

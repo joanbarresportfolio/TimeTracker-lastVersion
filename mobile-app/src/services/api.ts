@@ -366,6 +366,7 @@ export async function clockIn(): Promise<ClockEntry> {
       body: {
         entryType: "clock_in",
         source: "mobile_app",
+        timestamp: new Date().toISOString(), // Timestamp preciso del evento
       },
     });
     return result;
@@ -386,6 +387,7 @@ export async function clockOut(): Promise<ClockEntry> {
       body: {
         entryType: "clock_out",
         source: "mobile_app",
+        timestamp: new Date().toISOString(), // Timestamp preciso del evento
       },
     });
     return result;
@@ -406,6 +408,7 @@ export async function startBreak(): Promise<ClockEntry> {
       body: {
         entryType: "break_start",
         source: "mobile_app",
+        timestamp: new Date().toISOString(), // Timestamp preciso del evento
       },
     });
     return result;
@@ -426,6 +429,7 @@ export async function endBreak(): Promise<ClockEntry> {
       body: {
         entryType: "break_end",
         source: "mobile_app",
+        timestamp: new Date().toISOString(), // Timestamp preciso del evento
       },
     });
     return result;
