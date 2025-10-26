@@ -98,6 +98,8 @@ export interface Schedule {
   date: string; // YYYY-MM-DD format
   startTime: string; // HH:MM format - Actualizado: startTime en lugar de expectedStartTime
   endTime: string; // HH:MM format - Actualizado: endTime en lugar de expectedEndTime
+  startBreak?: string | null; // HH:MM format - Opcional: hora de inicio de pausa
+  endBreak?: string | null; // HH:MM format - Opcional: hora de fin de pausa
   scheduleType: 'split' | 'total'; // Actualizado: scheduleType en lugar de shiftType
 }
 
@@ -108,6 +110,8 @@ export interface InsertSchedule {
   date: string; // YYYY-MM-DD format
   startTime: string; // HH:MM format
   endTime: string; // HH:MM format
+  startBreak?: string | null; // HH:MM format - Opcional
+  endBreak?: string | null; // HH:MM format - Opcional
   scheduleType: 'split' | 'total';
 }
 
