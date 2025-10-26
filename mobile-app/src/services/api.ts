@@ -298,11 +298,54 @@ export async function getCurrentUser(): Promise<User> {
  */
 
 /**
- * Obtiene el estado de fichaje actual del empleado
+ * Obtiene el estado de fichaje actual del empleado (usando nuevo sistema de clock entries)
  */
 export async function getCurrentTimeEntry(): Promise<TimeEntry | null> {
   try {
-    return await apiRequest<TimeEntry>("/time-entries/current");
+    const response = await apiRequest<{
+      dailyWorkday: DailyWorkday | null;
+      clockEntries: ClockEntry[];
+    }>("/clock-entries/today");
+
+    if (!response.dailyWorkday || response.clockEntries.length === 0) {
+      return null;
+    }
+
+    // Convertir la respuesta del nuevo sistema al formato legacy TimeEntry
+    const { dailyWorkday, clockEntries } = response;
+
+    // Encontrar clock_in y clock_out
+    const clockIn = clockEntries.find((e) => e.entryType === "clock_in");
+    const clockOut = clockEntries.find((e) => e.entryType === "clock_out");
+
+    // Encontrar todas las pausas (pares de break_start y break_end)
+    const breaks: { start: string; end?: string | null }[] = [];
+    const breakStarts = clockEntries.filter((e) => e.entryType === "break_start");
+    const breakEnds = clockEntries.filter((e) => e.entryType === "break_end");
+
+    breakStarts.forEach((start) => {
+      const matchingEnd = breakEnds.find(
+        (end) => new Date(end.timestamp) > new Date(start.timestamp),
+      );
+      breaks.push({
+        start: start.timestamp,
+        end: matchingEnd?.timestamp || null,
+      });
+    });
+
+    // Construir TimeEntry en formato legacy
+    const timeEntry: TimeEntry = {
+      id: dailyWorkday.id,
+      employeeId: dailyWorkday.idUser,
+      clockIn: clockIn?.timestamp || new Date().toISOString(),
+      clockOut: clockOut?.timestamp || null,
+      totalHours: dailyWorkday.workedMinutes / 60,
+      breakMinutes: dailyWorkday.breakMinutes,
+      breaks: breaks,
+      date: dailyWorkday.date,
+    };
+
+    return timeEntry;
   } catch (error) {
     // Distinguir entre "no hay entrada hoy" (404) y otros errores
     if (error instanceof Error && error.message.includes("404")) {
