@@ -100,7 +100,6 @@ interface CalendarDay {
 
 const currentYear = new Date().getFullYear();
 
-
 export default function Schedules() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
@@ -131,9 +130,7 @@ export default function Schedules() {
 
   const { toast } = useToast();
 
-  const { data: employees,
-    isLoading: employeesLoading
-  } = useQuery<User[]>({
+  const { data: employees, isLoading: employeesLoading } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
@@ -155,13 +152,11 @@ export default function Schedules() {
     queryKey: ["/api/daily-workday/all"],
   });
 
-  const {
-    data: yearlySchedules,
-    isLoading: yearlySchedulesLoading,
-  } = useQuery<Schedule[]>({
+  const { data: yearlySchedules, isLoading: yearlySchedulesLoading } = useQuery<
+    Schedule[]
+  >({
     queryKey: ["/api/date-schedules/year", currentYear],
     queryFn: async () => {
-
       const startDate = `${currentYear}-01-01`;
       const endDate = `${currentYear}-12-31`;
 
@@ -293,13 +288,20 @@ export default function Schedules() {
       const [startHour, startMin] = shift.startTime.split(":").map(Number);
       const [endHour, endMin] = shift.endTime.split(":").map(Number);
 
-      let workMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+      let workMinutes = endHour * 60 + endMin - (startHour * 60 + startMin);
 
       // Restamos pausa si existe
       if (shift.startBreak && shift.endBreak) {
-        const [breakStartHour, breakStartMin] = shift.startBreak.split(":").map(Number);
-        const [breakEndHour, breakEndMin] = shift.endBreak.split(":").map(Number);
-        const breakMinutes = (breakEndHour * 60 + breakEndMin) - (breakStartHour * 60 + breakStartMin);
+        const [breakStartHour, breakStartMin] = shift.startBreak
+          .split(":")
+          .map(Number);
+        const [breakEndHour, breakEndMin] = shift.endBreak
+          .split(":")
+          .map(Number);
+        const breakMinutes =
+          breakEndHour * 60 +
+          breakEndMin -
+          (breakStartHour * 60 + breakStartMin);
         workMinutes -= breakMinutes;
       }
 
@@ -315,7 +317,7 @@ export default function Schedules() {
 
     employees.forEach((employee) => {
       const employeeSchedules = yearlySchedules.filter(
-        (s) => s.employeeId === employee.id
+        (s) => s.employeeId === employee.id,
       );
       const assignedHours = calculateAssignedHours(employeeSchedules);
       map.set(employee.id, assignedHours);
@@ -521,8 +523,12 @@ export default function Schedules() {
 
         {/* Texto de carga */}
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-foreground">Cargando Horarios...</h2>
-          <p className="text-muted-foreground mt-2">Por favor espera un momento</p>
+          <h2 className="text-xl font-semibold text-foreground">
+            Cargando Horarios...
+          </h2>
+          <p className="text-muted-foreground mt-2">
+            Por favor espera un momento
+          </p>
         </div>
       </div>
     );
@@ -595,7 +601,8 @@ export default function Schedules() {
                 </TableHeader>
                 <TableBody>
                   {filteredSummaries.map((summary) => {
-                    const assignedHours = assignedHoursMap.get(summary.employee.id) || 0;
+                    const assignedHours =
+                      assignedHoursMap.get(summary.employee.id) || 0;
 
                     return (
                       <TableRow
@@ -608,12 +615,16 @@ export default function Schedules() {
                               <AvatarFallback
                                 className={`bg-gradient-to-r ${getAvatarColor(summary.employee.firstName)} text-white text-sm font-semibold`}
                               >
-                                {getInitials(summary.employee.firstName, summary.employee.lastName)}
+                                {getInitials(
+                                  summary.employee.firstName,
+                                  summary.employee.lastName,
+                                )}
                               </AvatarFallback>
                             </Avatar>
                             <div>
                               <div className="font-medium text-foreground">
-                                {summary.employee.firstName} {summary.employee.lastName}
+                                {summary.employee.firstName}{" "}
+                                {summary.employee.lastName}
                               </div>
                               <div className="text-sm text-muted-foreground">
                                 {summary.employee.numEmployee}
@@ -623,10 +634,15 @@ export default function Schedules() {
                         </TableCell>
 
                         <TableCell>
-                          <Badge variant="secondary" className="flex items-center gap-1">
+                          <Badge
+                            variant="secondary"
+                            className="flex items-center gap-1"
+                          >
                             <Building className="w-3 h-3" />
                             {summary.employee.departmentId
-                              ? departmentMap.get(summary.employee.departmentId) || "Sin departamento"
+                              ? departmentMap.get(
+                                  summary.employee.departmentId,
+                                ) || "Sin departamento"
                               : "Sin departamento"}
                           </Badge>
                         </TableCell>
@@ -634,14 +650,18 @@ export default function Schedules() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Timer className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium">{summary.hoursWorked}h</span>
+                            <span className="font-medium">
+                              {summary.hoursWorked}h
+                            </span>
                           </div>
                         </TableCell>
 
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">{assignedHours}h</span>
+                            <span className="text-muted-foreground">
+                              {assignedHours}h
+                            </span>
                           </div>
                         </TableCell>
 
@@ -650,7 +670,9 @@ export default function Schedules() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleModifySchedule(summary.employee)}
+                              onClick={() =>
+                                handleModifySchedule(summary.employee)
+                              }
                               data-testid={`button-modify-${summary.employee.id}`}
                             >
                               <Edit3 className="w-4 h-4 mr-1" />
@@ -659,7 +681,9 @@ export default function Schedules() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleViewSchedule(summary.employee)}
+                              onClick={() =>
+                                handleViewSchedule(summary.employee)
+                              }
                               data-testid={`button-view-${summary.employee.id}`}
                             >
                               <Eye className="w-4 h-4 mr-1" />
@@ -671,7 +695,6 @@ export default function Schedules() {
                     );
                   })}
                 </TableBody>
-
               </Table>
             </div>
 
@@ -1202,12 +1225,12 @@ export default function Schedules() {
                           ? "text-foreground hover-elevate"
                           : "text-muted-foreground/50",
                         day.isToday &&
-                        "bg-primary text-primary-foreground font-semibold",
+                          "bg-primary text-primary-foreground font-semibold",
                         day.isSelected &&
-                        "bg-blue-500 dark:bg-blue-600 text-white font-semibold",
+                          "bg-blue-500 dark:bg-blue-600 text-white font-semibold",
                         day.hasSchedule &&
-                        !day.isSelected &&
-                        "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 font-medium",
+                          !day.isSelected &&
+                          "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 font-medium",
                         !day.isCurrentMonth && "cursor-not-allowed",
                       ]
                         .filter(Boolean)
@@ -1341,7 +1364,7 @@ export default function Schedules() {
                           <p className="text-sm text-muted-foreground">
                             {employee.departmentId
                               ? departmentMap.get(employee.departmentId) ||
-                              "Sin departamento"
+                                "Sin departamento"
                               : "Sin departamento"}
                           </p>
                         </div>
@@ -1484,23 +1507,6 @@ export default function Schedules() {
                   </div>
                 </div>
               )}
-
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-medium mb-2">
-                  Fechas seleccionadas:
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {selectedDates.map((selected) => (
-                    <Badge
-                      key={selected.dateStr}
-                      variant="secondary"
-                      className="text-xs"
-                    >
-                      {format(selected.date, "dd/MM/yyyy", { locale: es })}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
             </div>
 
             <DialogFooter className="gap-2">
