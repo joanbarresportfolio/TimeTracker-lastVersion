@@ -1,303 +1,258 @@
+/**
+ * RUTAS DE GESTIÓN DE FICHAJES (CLOCK ENTRIES)
+ * =============================================
+ *
+ * Gestión completa del sistema de fichajes: entradas, salidas, pausas, y consultas.
+ */
+
+import type { Express } from "express";
+import { storage } from "../storage";
 import {
-  BreakEntry,
-  type ClockEntry,
-  TimeEntry,
-  clockEntries,
-  dailyWorkday,
-  schedules,
-} from "@shared/schema";
+  requireAdmin,
+  requireAuth,
+  requireEmployeeAccess,
+} from "../middleware/auth";
+import { validateClockingTime } from "./utils";
 import { db } from "../db";
-import { eq, and, sql, gte, lte } from "drizzle-orm";
-import { toZonedTime } from "date-fns-tz";
+import { clockEntries } from "@shared/schema";
+import { sql } from "drizzle-orm";
 
-const TIMEZONE = "Europe/Madrid";
+export function registerClockEntryRoutes(app: Express) {
+  /**
+   * POST /api/clock-entries
+   * Endpoint para que los empleados creen sus propias entradas de fichaje
+   * Usar requireAuth para permitir que los empleados autenticados fichen
+   */
+  app.post("/api/clock-entries", requireAuth, async (req, res) => {
+    try {
+      const { entryType, source, timestamp } = req.body;
+      const userId = req.user!.id; // Obtenemos el userId del usuario autenticado
 
-export async function createClockEntry(
-  employeeId: string,
-  entryType: string,
-  date: string, // YYYY-MM-DD (puede ser vacío si se pasa timestamp)
-  source: string,
-  providedTimestamp?: Date | string, // Timestamp opcional para precisión
-  useSpanishTime: boolean = false, // Si true, convierte a hora española
-): Promise<ClockEntry> {
-  // 🔹 Determinar el timestamp preciso del evento
-  let timestamp: Date;
-  
-  if (providedTimestamp) {
-    // Caso 1: Cliente móvil o botones de control proporcionan timestamp preciso
-    timestamp = new Date(providedTimestamp);
-    
-    // Si se especifica useSpanishTime, convertir a hora española
-    if (useSpanishTime) {
-      timestamp = toZonedTime(timestamp, TIMEZONE);
-    }
-  } else if (date) {
-    // Caso 2: Admin proporciona fecha (comportamiento legacy)
-    // Combinar la fecha proporcionada con la hora actual del servidor
-    timestamp = dateToTimestamp(date);
-  } else {
-    // Caso 3: Ni timestamp ni fecha (fallback)
-    timestamp = new Date();
-  }
-  
-  // 🔹 Extraer la fecha del timestamp para la lógica de workday
-  const eventDate = timestampToDateString(timestamp);
-
-  // --- Buscar o crear dailyWorkday ---
-  let workdayId: string | undefined;
-  const existingWorkday = await db
-    .select()
-    .from(dailyWorkday)
-    .where(
-      sql`${dailyWorkday.idUser} = ${employeeId} AND ${dailyWorkday.date} = ${eventDate}`,
-    )
-    .limit(1)
-    .then((rows) => rows[0]);
-
-  if (entryType === "clock_in") {
-    if (!existingWorkday) {
-      const insertedWorkday = await db
-        .insert(dailyWorkday)
-        .values({
-          idUser: employeeId,
-          date: eventDate,
-          status: "open",
-        })
-        .returning();
-      workdayId = insertedWorkday[0].id;
-    } else {
-      workdayId = existingWorkday.id;
-    }
-  } else {
-    if (!existingWorkday) {
-      throw new Error(
-        `No existe un dailyWorkday para este usuario y fecha: ${eventDate}`,
-      );
-    }
-    workdayId = existingWorkday.id;
-  }
-
-  // --- Insertar el clock entry ---
-  const insertedClockEntry = await db
-    .insert(clockEntries)
-    .values({
-      idUser: employeeId,
-      idDailyWorkday: workdayId,
-      entryType,
-      timestamp,
-      source,
-    })
-    .returning();
-
-  // --- Si es clock_out, recalcular tiempos ---
-  if (entryType === "clock_out") {
-    const userClockEntries = await db
-      .select()
-      .from(clockEntries)
-      .where(
-        sql`${clockEntries.idUser} = ${employeeId} AND DATE(${clockEntries.timestamp}) = ${eventDate}`,
-      )
-      .orderBy(clockEntries.timestamp);
-
-    const timeEntries = clockToTimeEntries(userClockEntries);
-    const todayTimeEntry = timeEntries.find((te) => te.date === eventDate);
-
-    if (todayTimeEntry) {
-      await db
-        .update(dailyWorkday)
-        .set({
-          workedMinutes: Math.round(todayTimeEntry.totalHours * 60),
-          breakMinutes: todayTimeEntry.breakMinutes,
-        })
-        .where(sql`${dailyWorkday.id} = ${workdayId}`);
-    }
-  }
-
-  return insertedClockEntry[0];
-}
-
-export async function getClockEntriesByDate(
-  date: string,
-): Promise<ClockEntry[]> {
-  return await db
-    .select()
-    .from(clockEntries)
-    .where(sql`DATE(${clockEntries.timestamp}) = ${date} `)
-    .orderBy(clockEntries.timestamp);
-}
-
-export async function getTimeEntriesByDate(date: string) {
-  // 1️⃣ Obtener todos los clock entries del día
-  const entries = await getClockEntriesByDate(date);
-
-  const timeEntries = await clockToTimeEntries(entries);
-
-  return timeEntries;
-}
-
-export function clockToTimeEntries(clockEntries: ClockEntry[]): TimeEntry[] {
-  // 1️⃣ Agrupar los clock entries por usuario
-  const groupedByUser: Record<string, ClockEntry[]> = {};
-  for (const entry of clockEntries) {
-    if (!groupedByUser[entry.idUser]) {
-      groupedByUser[entry.idUser] = [];
-    }
-    groupedByUser[entry.idUser].push(entry);
-  }
-
-  const timeEntries: TimeEntry[] = [];
-
-  // 2️⃣ Procesar cada grupo (usuario)
-  for (const [employeeId, userEntries] of Object.entries(groupedByUser)) {
-    // Agrupar también por fecha, ya que puede haber varios días
-    const groupedByDate: Record<string, ClockEntry[]> = {};
-
-    for (const entry of userEntries) {
-      const dateKey = new Date(entry.timestamp).toISOString().split("T")[0]; // YYYY-MM-DD
-      if (!groupedByDate[dateKey]) {
-        groupedByDate[dateKey] = [];
+      // Validar parámetros obligatorios
+      if (!entryType) {
+        return res.status(400).json({
+          message: "Falta el parámetro obligatorio: entryType",
+        });
       }
-      groupedByDate[dateKey].push(entry);
-    }
 
-    // 3️⃣ Crear los timeEntries finales por día
-    for (const [date, entriesOfDay] of Object.entries(groupedByDate)) {
-      // Ordenar los eventos cronológicamente
-      entriesOfDay.sort(
-        (a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      // Validar tipo de registro
+      const validTypes = ["clock_in", "clock_out", "break_start", "break_end"];
+      if (!validTypes.includes(entryType)) {
+        return res.status(400).json({ message: "entryType inválido." });
+      }
+
+      // Capturar timestamp: usar el proporcionado o dejar que storage use new Date()
+      // El parámetro date ya no es necesario, se deriva del timestamp
+      const newClockEntry = await storage.createClockEntry(
+        userId,
+        entryType,
+        "", // date vacío, se derivará del timestamp
+        source || "mobile_app",
+        timestamp, // timestamp opcional del cliente
       );
 
-      let clockIn: Date | null = null;
-      let clockOut: Date | null = null;
-      let breaks: BreakEntry[] = [];
-      let currentBreak: BreakEntry | null = null;
-
-      // Procesar los eventos
-      for (const entry of entriesOfDay) {
-        const timestamp = new Date(entry.timestamp);
-
-        switch (entry.entryType) {
-          case "clock_in":
-            clockIn = timestamp;
-            break;
-
-          case "clock_out":
-            clockOut = timestamp;
-            break;
-
-          case "break_start":
-            currentBreak = { start: timestamp, end: null };
-            breaks.push(currentBreak);
-            break;
-
-          case "break_end":
-            if (currentBreak && !currentBreak.end) {
-              currentBreak.end = timestamp;
-            }
-            break;
-        }
-      }
-
-      // Calcular tiempos si hay clockIn y clockOut
-      // Calcular tiempos si hay clockIn y clockOut
-      let totalHours = 0;
-      let breakMinutes = 0;
-
-      for (const br of breaks) {
-        if (br.start && br.end) {
-          breakMinutes += (br.end.getTime() - br.start.getTime()) / (1000 * 60);
-        }
-      }
-
-      if (clockIn && clockOut) {
-        const totalMs = clockOut.getTime() - clockIn.getTime();
-        totalHours = (totalMs - breakMinutes * 60 * 1000) / (1000 * 60 * 60);
-      }
-
-      // Crear el registro final
-      timeEntries.push({
-        id: `${employeeId}-${date}`,
-        employeeId,
-        clockIn: clockIn ?? new Date(date),
-        clockOut,
-        totalHours: Number(totalHours.toFixed(2)),
-        breakMinutes: Math.round(breakMinutes),
-        breaks,
-        date,
+      res.status(201).json(newClockEntry);
+    } catch (error) {
+      console.error("Error al crear clock entry:", error);
+      res.status(500).json({
+        message: "Error al registrar el clock entry.",
+        error: (error as Error).message,
       });
     }
-  }
+  });
 
-  return timeEntries;
-}
-//UTIL FUNCTION
-export function timestampToDateString(timestamp: string | Date): string {
-  const date = new Date(timestamp);
-  // Usar UTC para evitar problemas de zona horaria entre cliente y servidor
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0"); // Los meses empiezan en 0
-  const day = String(date.getUTCDate()).padStart(2, "0");
+  /**
+   * GET /api/clock-entries/today
+   * Obtiene el daily workday y clock entries de hoy para el empleado autenticado
+   */
+  app.get("/api/clock-entries/today", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const today = new Date().toISOString().split("T")[0];
 
-  return `${year}-${month}-${day}`;
-}
+      // Obtener la jornada diaria de hoy
+      const dailyWorkday = await storage.getDailyWorkdayByUserAndDate(
+        userId,
+        today,
+      );
 
-export function dateToTimestamp(dateStr: string | Date): Date {
-  const now = new Date(); // Hora actual
-  let date: Date;
+      if (!dailyWorkday) {
+        return res.json({ dailyWorkday: null, clockEntries: [] });
+      }
 
-  if (typeof dateStr === "string") {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    date = new Date(year, month - 1, day); // month-1 porque los meses empiezan en 0
-  } else {
-    date = new Date(
-      dateStr.getFullYear(),
-      dateStr.getMonth(),
-      dateStr.getDate(),
-    );
-  }
+      // Obtener todas las entradas de reloj de hoy y filtrar por usuario
+      const allClockEntries = await storage.getClockEntriesByDate(today);
+      const userClockEntries = allClockEntries.filter(
+        (entry) => entry.idUser === userId,
+      );
 
-  // Ajustar la hora a la hora actual
-  date.setHours(
-    now.getHours(),
-    now.getMinutes(),
-    now.getSeconds(),
-    now.getMilliseconds(),
+      res.json({
+        dailyWorkday,
+        clockEntries: userClockEntries,
+      });
+    } catch (error) {
+      console.error("Error al obtener clock entries de hoy:", error);
+      res.status(500).json({
+        message: "Error al obtener registros de hoy.",
+        error: (error as Error).message,
+      });
+    }
+  });
+
+  app.post("/api/clock-entry", requireAdmin, async (req, res) => {
+    try {
+      const { employeeId, tipoRegistro, date, origen } = req.body;
+
+      // Validar parámetros obligatorios
+      if (!employeeId || !tipoRegistro || !date) {
+        return res.status(400).json({
+          message:
+            "Faltan parámetros obligatorios: employeeId, tipoRegistro o date.",
+        });
+      }
+
+      // Validar tipo de registro
+      const validTypes = ["clock_in", "clock_out", "break_start", "break_end"];
+      if (!validTypes.includes(tipoRegistro)) {
+        return res.status(400).json({ message: "tipoRegistro inválido." });
+      }
+
+      // Llamar al método del storage
+      const newClockEntry = await storage.createClockEntry(
+        employeeId,
+        tipoRegistro,
+        date,
+        origen,
+      );
+
+      res.status(201).json({
+        message: "Clock entry registrado correctamente",
+        clockEntry: newClockEntry,
+      });
+    } catch (error) {
+      console.error("Error al crear clock entry:", error);
+      res.status(500).json({
+        message: "Error al registrar el clock entry.",
+        error: (error as Error).message,
+      });
+    }
+  });
+
+  app.get("/api/time-entries/day/:date", requireAdmin, async (req, res) => {
+    try {
+      const { date } = req.params;
+
+      if (!date) {
+        return res.status(400).json({ message: "Falta el parámetro 'date'." });
+      }
+
+      // Obtener los time entries del día (calculados a partir de los clock entries)
+      const timeEntries = await storage.getTimeEntriesByDate(date);
+
+      if (!timeEntries || timeEntries.length === 0) {
+        return res.status(404).json({
+          message: "No se encontraron registros de tiempo para ese día.",
+        });
+      }
+
+      res.status(200).json(timeEntries);
+    } catch (error) {
+      console.error("Error al obtener los time entries del día:", error);
+      res.status(500).json({
+        message:
+          "Error al obtener los registros de tiempo para la fecha indicada.",
+        error: (error as Error).message,
+      });
+    }
+  });
+  /**
+   * GET /api/time-entries/user/range
+   * Devuelve los registros de tiempo (TimeEntries) de un usuario autenticado
+   * entre dos fechas dadas, o los últimos 30 días si no se especifica rango.
+   */
+  app.get("/api/time-entries/user/range", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id; // usuario autenticado
+      const { startDate, endDate } = req.query as {
+        startDate?: string;
+        endDate?: string;
+      };
+
+      // 📅 Si no se especifican fechas, usar últimos 30 días
+      const today = new Date();
+      const defaultEnd = today.toISOString().split("T")[0];
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      const defaultStart = thirtyDaysAgo.toISOString().split("T")[0];
+
+      const dateStart = startDate || defaultStart;
+      const dateEnd = endDate || defaultEnd;
+
+      // 🔍 Llamar al método del storage
+      const timeEntries = await storage.getTimeEntriesUserByRange(
+        userId,
+        dateStart,
+        dateEnd,
+      );
+
+      if (!timeEntries || timeEntries.length === 0) {
+        return res.status(404).json({
+          message:
+            "No se encontraron registros de tiempo en el rango indicado.",
+        });
+      }
+
+      // ✅ Devolver resultado
+      res.status(200).json(timeEntries);
+    } catch (error) {
+      console.error("Error al obtener los time entries por rango:", error);
+      res.status(500).json({
+        message: "Error al obtener los registros de tiempo.",
+        error: (error as Error).message,
+      });
+    }
+  });
+
+  app.get(
+    "/api/time-entries/user/:userId/month/:date",
+    requireAdmin,
+    async (req, res) => {
+      try {
+        const { userId, date } = req.params;
+
+        // Validar parámetros
+        if (!userId || !date) {
+          return res
+            .status(400)
+            .json({ message: "Faltan los parámetros 'userId' o 'date'." });
+        }
+
+        // Obtener los time entries del mes correspondiente al usuario
+        const timeEntries = await storage.getTimeEntriesByUserMonth(
+          userId,
+          date,
+        );
+
+        if (!timeEntries || timeEntries.length === 0) {
+          return res.status(404).json({
+            message:
+              "No se encontraron registros de tiempo para el usuario en el mes indicado.",
+          });
+        }
+
+        // Enviar resultado
+        res.status(200).json(timeEntries);
+      } catch (error) {
+        console.error(
+          "Error al obtener los time entries del mes del usuario:",
+          error,
+        );
+        res.status(500).json({
+          message:
+            "Error al obtener los registros de tiempo del usuario para el mes indicado.",
+          error: (error as Error).message,
+        });
+      }
+    },
   );
-
-  return date;
-}
-export async function getTimeEntriesByUserMonth(
-  userId: string,
-  date: string,
-): Promise<TimeEntry[]> {
-  // Convertimos la fecha a objeto Date
-  const refDate = new Date(date);
-
-  // Calcular rango de inicio y fin del mes
-  const startOfMonth = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
-  const endOfMonth = new Date(
-    refDate.getFullYear(),
-    refDate.getMonth() + 1,
-    0,
-    23,
-    59,
-    59,
-    999,
-  );
-
-  // 🔹 Obtener todos los clock entries del usuario dentro del rango
-  const entries = await db
-    .select()
-    .from(clockEntries)
-    .where(
-      sql`${clockEntries.idUser} = ${userId} 
-        AND ${clockEntries.timestamp} BETWEEN ${startOfMonth.toISOString()} AND ${endOfMonth.toISOString()}`,
-    )
-    .orderBy(clockEntries.timestamp);
-
-  // 🔹 Transformar clock entries → time entries
-  const timeEntries = clockToTimeEntries(entries);
-
-  return timeEntries;
 }
