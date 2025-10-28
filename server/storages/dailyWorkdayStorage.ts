@@ -148,13 +148,12 @@ export async function createManualDailyWorkday(data: {
     .returning();
 
   // --- 3. Crear clock entries asociadas ---
-  // Usar formato UTC (con 'Z') para evitar problemas de zona horaria
   const entriesToInsert = [
     {
       idUser: data.userId,
       idDailyWorkday: workday.id,
       entryType: "clock_in",
-      timestamp: new Date(`${data.date}T${data.startTime}:00Z`),
+      timestamp: new Date(`${data.date}T${data.startTime}:00`),
       source: "web",
     },
     ...(data.startBreak && data.endBreak
@@ -163,14 +162,14 @@ export async function createManualDailyWorkday(data: {
             idUser: data.userId,
             idDailyWorkday: workday.id,
             entryType: "break_start",
-            timestamp: new Date(`${data.date}T${data.startBreak}:00Z`),
+            timestamp: new Date(`${data.date}T${data.startBreak}:00`),
             source: "web",
           },
           {
             idUser: data.userId,
             idDailyWorkday: workday.id,
             entryType: "break_end",
-            timestamp: new Date(`${data.date}T${data.endBreak}:00Z`),
+            timestamp: new Date(`${data.date}T${data.endBreak}:00`),
             source: "web",
           },
         ]
@@ -179,7 +178,7 @@ export async function createManualDailyWorkday(data: {
       idUser: data.userId,
       idDailyWorkday: workday.id,
       entryType: "clock_out",
-      timestamp: new Date(`${data.date}T${data.endTime}:00Z`),
+      timestamp: new Date(`${data.date}T${data.endTime}:00`),
       source: "web",
     },
   ];
