@@ -232,7 +232,7 @@ export const clockEntries = pgTable("clock_entries", {
     .notNull()
     .references(() => dailyWorkday.id), // FK to daily_workday (required)
   entryType: varchar("entry_type").notNull(), // 'clock_in', 'clock_out', 'break_start', 'break_end'
-  timestamp: timestamp("timestamp")
+  timestamp: timestamp("timestamp", { withTimezone: true, mode: 'date' })
     .notNull()
     .default(sql`now()`),
   source: varchar("source"), // 'web', 'mobile_device'
