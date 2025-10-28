@@ -58,7 +58,11 @@ Preferred communication style: Simple, everyday language.
 - **Daily Workday Calculation**: Automatic calculation of hours worked, breaks, and overtime from `clock_entries`.
 - **Scheduling**: Management of planned work shifts for employees.
 - **Incident Management**: Reporting and tracking of workplace incidents.
-- **Reporting**: Generation of detailed reports (implied by overview).
+- **Reporting**: Generation of detailed Excel reports with employee sheets showing daily schedules, actual hours, breaks, extraordinary breaks, and incidents.
+  - **Excel Export Format**: One sheet per employee with daily breakdown
+  - **Columns**: Day, assigned hours, start/end schedule, clock in/out times, break times, total break hours, actual hours worked, extraordinary breaks (signed values), incidents, hour difference
+  - **Optimization**: Backend uses batch queries (O(employees) instead of O(days)) for efficient data retrieval
+  - **Timezone Handling**: All timestamps converted to Spanish time (Europe/Madrid) in export
 - **Mobile App**: Dedicated mobile application with dashboard, schedules, incidents, and history.
 - **Internationalization**: Full migration of backend schema and codebase to English.
 
@@ -77,10 +81,14 @@ Preferred communication style: Simple, everyday language.
 ### Timezone Handling
 - **Database Storage**: All timestamps are stored in **UTC** for consistency
 - **Display Conversion**: 
-  - Frontend should convert UTC timestamps to Spanish time (Europe/Madrid) for display
-  - Helper functions available in `server/utils/timezone.ts` for backend conversions if needed
+  - Frontend converts UTC timestamps to Spanish time (Europe/Madrid) for display
+  - Helper functions in `server/utils/timezone.ts` (`getSpanishDate`, `formatSpanishTime`) for backend conversions
+  - Excel exports use Spanish timezone with `toLocaleString('es-ES', { timeZone: 'Europe/Madrid' })`
+  - Day-of-month extraction uses Spanish date string parsing to prevent date drift
+  - SQL queries use `DATE(timestamp AT TIME ZONE 'Europe/Madrid')` for date filtering
   - Prevents timezone-related bugs and ensures data integrity
 - **Best Practice**: Store in UTC, display in local timezone
+- **Date-fns-tz v3 API**: Use `fromZonedTime(date, 'Europe/Madrid')` to convert Spanish time to UTC
 
 ## External Dependencies
 
@@ -111,3 +119,7 @@ Preferred communication style: Simple, everyday language.
 ### Validation and Schemas
 - **zod**: Runtime type validation and schema definition
 - **drizzle-zod**: Drizzle and Zod integration
+
+### Reporting and Export
+- **exceljs**: Excel file generation for detailed employee reports
+- **date-fns-tz**: Timezone conversion utilities for accurate date/time handling
