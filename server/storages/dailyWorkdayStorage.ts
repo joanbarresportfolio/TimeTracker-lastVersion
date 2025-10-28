@@ -14,6 +14,9 @@ import {
   startOfWeek,
 } from "date-fns";
 import { deleteIncidentsByDailyWorkday } from "./incidentStorage";
+import { toZonedTime } from "date-fns-tz";
+
+const TIMEZONE = "Europe/Madrid";
 
 /**
  * DAILY WORKDAY STORAGE MODULE
@@ -147,13 +150,16 @@ export async function createManualDailyWorkday(data: {
     })
     .returning();
 
-  // --- 3. Crear clock entries asociadas ---
+  // --- 3. Crear clock entries en hora española ---
   const entriesToInsert = [
     {
       idUser: data.userId,
       idDailyWorkday: workday.id,
       entryType: "clock_in",
-      timestamp: new Date(`${data.date}T${data.startTime}:00`),
+      timestamp: toZonedTime(
+        new Date(`${data.date}T${data.startTime}:00`),
+        TIMEZONE
+      ),
       source: "web",
     },
     ...(data.startBreak && data.endBreak
@@ -162,14 +168,20 @@ export async function createManualDailyWorkday(data: {
             idUser: data.userId,
             idDailyWorkday: workday.id,
             entryType: "break_start",
-            timestamp: new Date(`${data.date}T${data.startBreak}:00`),
+            timestamp: toZonedTime(
+              new Date(`${data.date}T${data.startBreak}:00`),
+              TIMEZONE
+            ),
             source: "web",
           },
           {
             idUser: data.userId,
             idDailyWorkday: workday.id,
             entryType: "break_end",
-            timestamp: new Date(`${data.date}T${data.endBreak}:00`),
+            timestamp: toZonedTime(
+              new Date(`${data.date}T${data.endBreak}:00`),
+              TIMEZONE
+            ),
             source: "web",
           },
         ]
@@ -178,11 +190,13 @@ export async function createManualDailyWorkday(data: {
       idUser: data.userId,
       idDailyWorkday: workday.id,
       entryType: "clock_out",
-      timestamp: new Date(`${data.date}T${data.endTime}:00`),
+      timestamp: toZonedTime(
+        new Date(`${data.date}T${data.endTime}:00`),
+        TIMEZONE
+      ),
       source: "web",
     },
   ];
-  console.log(entriesToInsert[0].timestamp)
   await db.insert(clockEntries).values(entriesToInsert);
 
   return workday;
