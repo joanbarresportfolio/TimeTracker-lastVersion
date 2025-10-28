@@ -147,13 +147,35 @@ export async function createManualDailyWorkday(data: {
     })
     .returning();
 
-  // --- 3. Crear clock entries asociadas ---
+  // --- 3. Crear clock entries en UTC (interpretando las horas como hora española) ---
+  // Cuando el admin introduce 9:00, debe interpretarse como 9:00 hora española
+  // Convertir a UTC: restar offset de España (UTC+1 en invierno, UTC+2 en verano)
+  const parseSpanishTimeToUTC = (dateStr: string, timeStr: string) => {
+    // Crear fecha en formato ISO asumiendo hora española
+    const spanishDateTime = `${dateStr}T${timeStr}:00`;
+    const localDate = new Date(spanishDateTime);
+    
+    // España está en UTC+1 (invierno) o UTC+2 (verano)
+    // Para obtener UTC, necesitamos restar este offset
+    // JavaScript's Date interpreta la cadena como hora local del servidor (UTC)
+    // Necesitamos agregar el offset español para que sea UTC correcto
+    const now = new Date();
+    const januaryOffset = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+    const julyOffset = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
+    const isDST = Math.max(januaryOffset, julyOffset) !== now.getTimezoneOffset();
+    const spainOffsetMinutes = isDST ? -120 : -60; // UTC+2 en verano, UTC+1 en invierno
+    
+    // El servidor está en UTC, así que interpretará la cadena como UTC
+    // Necesitamos restar el offset de España para obtener el timestamp UTC correcto
+    return new Date(localDate.getTime() - spainOffsetMinutes * 60 * 1000);
+  };
+
   const entriesToInsert = [
     {
       idUser: data.userId,
       idDailyWorkday: workday.id,
       entryType: "clock_in",
-      timestamp: new Date(`${data.date}T${data.startTime}:00`),
+      timestamp: parseSpanishTimeToUTC(data.date, data.startTime),
       source: "web",
     },
     ...(data.startBreak && data.endBreak
@@ -162,14 +184,14 @@ export async function createManualDailyWorkday(data: {
             idUser: data.userId,
             idDailyWorkday: workday.id,
             entryType: "break_start",
-            timestamp: new Date(`${data.date}T${data.startBreak}:00`),
+            timestamp: parseSpanishTimeToUTC(data.date, data.startBreak),
             source: "web",
           },
           {
             idUser: data.userId,
             idDailyWorkday: workday.id,
             entryType: "break_end",
-            timestamp: new Date(`${data.date}T${data.endBreak}:00`),
+            timestamp: parseSpanishTimeToUTC(data.date, data.endBreak),
             source: "web",
           },
         ]
@@ -178,7 +200,7 @@ export async function createManualDailyWorkday(data: {
       idUser: data.userId,
       idDailyWorkday: workday.id,
       entryType: "clock_out",
-      timestamp: new Date(`${data.date}T${data.endTime}:00`),
+      timestamp: parseSpanishTimeToUTC(data.date, data.endTime),
       source: "web",
     },
   ];
