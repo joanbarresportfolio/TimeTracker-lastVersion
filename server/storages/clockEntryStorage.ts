@@ -34,6 +34,7 @@ export async function createClockEntry(
   // 🔹 Extraer la fecha del timestamp para la lógica de workday
   const eventDate = timestampToDateString(timestamp);
 
+  // --- Buscar o crear dailyWorkday ---
   let workdayId: string | undefined;
   const existingWorkday = await db
     .select()
@@ -43,7 +44,7 @@ export async function createClockEntry(
     )
     .limit(1)
     .then((rows) => rows[0]);
-  // 🔹 CLOCK IN: crear dailyWorkday nuevo
+
   if (entryType === "clock_in") {
     if (!existingWorkday) {
       const insertedWorkday = await db
@@ -67,7 +68,7 @@ export async function createClockEntry(
     workdayId = existingWorkday.id;
   }
 
-  // 🔹 Insertar el clockEntry
+  // --- Insertar el clock entry ---
   const insertedClockEntry = await db
     .insert(clockEntries)
     .values({
@@ -79,9 +80,8 @@ export async function createClockEntry(
     })
     .returning();
 
-  // 🔹 Solo actualizar timeEntry y dailyWorkday si es CLOCK OUT
+  // --- Si es clock_out, recalcular tiempos ---
   if (entryType === "clock_out") {
-    // Obtener todos los clockEntries del usuario para esta fecha
     const userClockEntries = await db
       .select()
       .from(clockEntries)
@@ -90,18 +90,15 @@ export async function createClockEntry(
       )
       .orderBy(clockEntries.timestamp);
 
-    // Generar timeEntries usando clockToTimeEntries
     const timeEntries = clockToTimeEntries(userClockEntries);
     const todayTimeEntry = timeEntries.find((te) => te.date === eventDate);
 
-    // Actualizar dailyWorkday con los minutos calculados
     if (todayTimeEntry) {
       await db
         .update(dailyWorkday)
         .set({
           workedMinutes: Math.round(todayTimeEntry.totalHours * 60),
           breakMinutes: todayTimeEntry.breakMinutes,
-          // overtimeMinutes: calcular si aplica
         })
         .where(sql`${dailyWorkday.id} = ${workdayId}`);
     }

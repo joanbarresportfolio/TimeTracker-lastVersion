@@ -201,7 +201,7 @@ export async function deleteClockEntriesByDailyWorkday(
 export async function deleteDailyWorkday(id: string): Promise<boolean> {
   // Primero eliminar las incidencias asociadas
   await deleteIncidentsByDailyWorkday(id);
-  
+
   // Luego eliminar la jornada laboral
   const deleted = await db
     .delete(dailyWorkday)
