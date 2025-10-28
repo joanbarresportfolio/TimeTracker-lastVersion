@@ -314,6 +314,7 @@ export class DatabaseStorage implements IStorage {
     date: string,
     source: string,
     providedTimestamp?: Date | string,
+    useSpanishTime: boolean = false,
   ): Promise<ClockEntry> {
     // Convertimos el timestamp string a Date si se proporciona
     return clockEntryStorage.createClockEntry(
@@ -322,6 +323,7 @@ export class DatabaseStorage implements IStorage {
       date,
       source,
       providedTimestamp,
+      useSpanishTime,
     );
   }
 }

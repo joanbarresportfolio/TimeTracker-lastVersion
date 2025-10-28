@@ -22,6 +22,7 @@ export function registerClockEntryRoutes(app: Express) {
    * POST /api/clock-entries
    * Endpoint para que los empleados creen sus propias entradas de fichaje
    * Usar requireAuth para permitir que los empleados autenticados fichen
+   * Los timestamps se guardan en hora española (Europe/Madrid)
    */
   app.post("/api/clock-entries", requireAuth, async (req, res) => {
     try {
@@ -43,12 +44,14 @@ export function registerClockEntryRoutes(app: Express) {
 
       // Capturar timestamp: usar el proporcionado o dejar que storage use new Date()
       // El parámetro date ya no es necesario, se deriva del timestamp
+      // useSpanishTime: true para guardar en hora española
       const newClockEntry = await storage.createClockEntry(
         userId,
         entryType,
         "", // date vacío, se derivará del timestamp
         source || "mobile_app",
         timestamp, // timestamp opcional del cliente
+        true, // useSpanishTime: true para botones de control horario
       );
 
       res.status(201).json(newClockEntry);

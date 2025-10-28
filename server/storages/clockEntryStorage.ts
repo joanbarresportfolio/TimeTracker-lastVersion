@@ -8,6 +8,9 @@ import {
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
+import { toZonedTime } from "date-fns-tz";
+
+const TIMEZONE = "Europe/Madrid";
 
 export async function createClockEntry(
   employeeId: string,
@@ -15,13 +18,19 @@ export async function createClockEntry(
   date: string, // YYYY-MM-DD (puede ser vacío si se pasa timestamp)
   source: string,
   providedTimestamp?: Date | string, // Timestamp opcional para precisión
+  useSpanishTime: boolean = false, // Si true, convierte a hora española
 ): Promise<ClockEntry> {
   // 🔹 Determinar el timestamp preciso del evento
   let timestamp: Date;
   
   if (providedTimestamp) {
-    // Caso 1: Cliente móvil proporciona timestamp preciso (nueva funcionalidad)
+    // Caso 1: Cliente móvil o botones de control proporcionan timestamp preciso
     timestamp = new Date(providedTimestamp);
+    
+    // Si se especifica useSpanishTime, convertir a hora española
+    if (useSpanishTime) {
+      timestamp = toZonedTime(timestamp, TIMEZONE);
+    }
   } else if (date) {
     // Caso 2: Admin proporciona fecha (comportamiento legacy)
     // Combinar la fecha proporcionada con la hora actual del servidor
