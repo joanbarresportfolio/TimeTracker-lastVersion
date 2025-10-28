@@ -14,7 +14,6 @@ import {
   startOfWeek,
 } from "date-fns";
 import { deleteIncidentsByDailyWorkday } from "./incidentStorage";
-
 /**
  * DAILY WORKDAY STORAGE MODULE
  * ============================
@@ -94,8 +93,8 @@ export async function getDailyWorkdays(): Promise<DailyWorkday[]> {
 
 export async function createManualDailyWorkday(data: {
   userId: string;
-  date: string;
-  startTime: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm (hora local España)
   endTime: string;
   startBreak?: string;
   endBreak?: string;
@@ -104,7 +103,7 @@ export async function createManualDailyWorkday(data: {
   await db.execute(sql`
     DELETE FROM clock_entries
     WHERE id_user = ${data.userId}
-    AND DATE(timestamp) = ${data.date}
+    AND DATE(timestamp AT TIME ZONE 'Europe/Madrid') = ${data.date}
   `);
 
   // --- Calcular minutos trabajados ---
@@ -125,7 +124,7 @@ export async function createManualDailyWorkday(data: {
 
   const workedMinutes = totalMinutes - breakMinutes;
 
-  // --- 2. Insertar o actualizar jornada laboral ---
+  // --- 2. Insertar o actualizar dailyWorkday ---
   const [workday] = await db
     .insert(dailyWorkday)
     .values({
@@ -147,7 +146,7 @@ export async function createManualDailyWorkday(data: {
     })
     .returning();
 
-  // --- 3. Crear clock entries asociadas ---
+  // --- 3. Crear clock entries (hora del servidor para formulario admin) ---
   const entriesToInsert = [
     {
       idUser: data.userId,
