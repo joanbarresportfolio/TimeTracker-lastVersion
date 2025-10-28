@@ -19,9 +19,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import type { User, Department } from "@shared/schema";
 
 interface ReportData {
@@ -140,104 +138,342 @@ export default function Reports() {
     }
   };
 
-  const exportToPDF = () => {
+
+  const exportToExcel = async () => {
     if (!reportData) return;
 
-    const doc = new jsPDF("landscape");
+    try {
+      // Obtener datos detallados del servidor
+      const params = new URLSearchParams({
+        startDate,
+        endDate,
+      });
 
-    doc.setFontSize(18);
-    doc.text("Informe de Jornadas Laborales", 14, 20);
+      if (selectedEmployee !== "all") {
+        params.append("employeeId", selectedEmployee);
+      }
+      if (selectedDepartment !== "all") {
+        params.append("departmentId", selectedDepartment);
+      }
 
-    doc.setFontSize(11);
-    doc.text(`Período: ${startDate} a ${endDate}`, 14, 28);
-    doc.text(
-      `Tipo: ${periodType === "day" ? "Día" : periodType === "week" ? "Semana" : periodType === "month" ? "Mes" : periodType === "quarter" ? "Trimestre" : "Año"}`,
-      14,
-      34,
-    );
-    doc.text(`Generado: ${new Date().toLocaleString("es-ES")}`, 14, 40);
+      const response = await fetch(`/api/reports/detailed-export?${params}`, {
+        credentials: "include",
+      });
 
-    const tableData = reportData.map((item) => {
-      const diffIsPositive =
-        item.hoursDifference * 60 + item.minutesDifference >= 0;
-      return [
-        item.employeeNumber,
-        item.employeeName,
-        `${item.hoursWorked}h ${item.minutesWorked}m`,
-        item.daysWorked.toString(),
-        `${item.hoursPlanned}h ${item.minutesPlanned}m`,
-        `${diffIsPositive ? "+" : ""}${item.hoursDifference}h ${item.minutesDifference}m`,
-        item.incidents.length.toString(),
-        item.absences.toString(),
-      ];
-    });
+      if (!response.ok) {
+        throw new Error("Error al obtener datos detallados");
+      }
 
-    autoTable(doc, {
-      startY: 50,
-      head: [
-        [
-          "Nº",
-          "Empleado",
-          "Horas Trab.",
-          "Días Trab.",
-          "Horas Plan.",
-          "Diferencia",
+      const detailedData = await response.json();
+
+      // Crear workbook con ExcelJS
+      const workbook = new ExcelJS.Workbook();
+
+      // Obtener año y mes del rango
+      const startDateObj = new Date(startDate);
+      const year = startDateObj.getFullYear();
+      const monthName = startDateObj.toLocaleDateString("es-ES", {
+        month: "long",
+      }).toUpperCase();
+
+      // Crear una hoja por empleado
+      for (const employeeData of detailedData) {
+        const { employee, dailyData } = employeeData;
+
+        const worksheet = workbook.addWorksheet(
+          `${employee.number} - ${employee.firstName}`,
+        );
+
+        // Fila 1: Año
+        worksheet.getCell("A1").value = year;
+        worksheet.getCell("A1").font = { bold: true, size: 14 };
+
+        // Fila 3: Encabezados de grupo
+        worksheet.mergeCells("B3:F3");
+        worksheet.getCell("B3").value = "HORARIO ASIGNADO";
+        worksheet.getCell("B3").alignment = {
+          horizontal: "center",
+          vertical: "middle",
+        };
+        worksheet.getCell("B3").font = { bold: true };
+        worksheet.getCell("B3").fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFE0E0E0" },
+        };
+
+        worksheet.mergeCells("G3:M3");
+        worksheet.getCell("G3").value = "HORARIO REALIZADO";
+        worksheet.getCell("G3").alignment = {
+          horizontal: "center",
+          vertical: "middle",
+        };
+        worksheet.getCell("G3").font = { bold: true };
+        worksheet.getCell("G3").fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFE0E0E0" },
+        };
+
+        worksheet.mergeCells("O3:O3");
+        worksheet.getCell("O3").value = "DIFERENCIA";
+        worksheet.getCell("O3").alignment = {
+          horizontal: "center",
+          vertical: "middle",
+        };
+        worksheet.getCell("O3").font = { bold: true };
+        worksheet.getCell("O3").fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFE0E0E0" },
+        };
+
+        // Fila 4: Encabezados de columna
+        const headers = [
+          monthName,
+          "Entrada",
+          "Inicio pausa",
+          "Fin pausa",
+          "Salida",
+          "Horas asignadas",
+          "Entrada",
+          "Inicio pausa",
+          "Fin pausa",
+          "Horas pausa",
+          "Salida",
+          "Horas Realizadas",
+          "Pausas Extraordinarias",
           "Incidencias",
-          "Ausencias",
-        ],
-      ],
-      body: tableData,
-      theme: "grid",
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [66, 139, 202] },
-    });
+          "HORAS",
+        ];
 
-    doc.save(`informe-${periodType}-${startDate}-${endDate}.pdf`);
-  };
+        headers.forEach((header, index) => {
+          const cell = worksheet.getCell(4, index + 1);
+          cell.value = header;
+          cell.font = { bold: true };
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF0F0F0" },
+          };
+          cell.alignment = { horizontal: "center", vertical: "middle" };
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
 
-  const exportToExcel = () => {
-    if (!reportData) return;
+        // Datos diarios (desde fila 5)
+        let rowIndex = 5;
+        for (const day of dailyData) {
+          const row = worksheet.getRow(rowIndex);
 
-    const worksheetData = [
-      ["Informe de Jornadas Laborales"],
-      [`Período: ${startDate} a ${endDate}`],
-      [
-        `Tipo: ${periodType === "day" ? "Día" : periodType === "week" ? "Semana" : periodType === "month" ? "Mes" : periodType === "quarter" ? "Trimestre" : "Año"}`,
-      ],
-      [],
-      [
-        "Número",
-        "Empleado",
-        "Horas Trabajadas",
-        "Días Trabajados",
-        "Horas Planificadas",
-        "Diferencia Horas",
-        "Incidencias",
-        "Ausencias",
-      ],
-    ];
+          // Columna A: Día del mes
+          row.getCell(1).value = day.dayOfMonth;
 
-    reportData.forEach((item) => {
-      worksheetData.push([
-        item.employeeNumber,
-        item.employeeName,
-        `${item.hoursWorked}h ${item.minutesWorked}m`,
-        item.daysWorked.toString(),
-        `${item.hoursPlanned}h ${item.minutesPlanned}m`,
-        `${item.hoursDifference >= 0 ? "+" : ""}${item.hoursDifference}h ${item.minutesDifference}m`,
-        item.incidents.length.toString(),
-        item.absences.toString(),
-      ]);
-    });
+          // HORARIO ASIGNADO (columnas B-F)
+          if (day.schedule) {
+            row.getCell(2).value = day.schedule.startTime || "";
+            row.getCell(3).value = day.schedule.startBreak || "";
+            row.getCell(4).value = day.schedule.endBreak || "";
+            row.getCell(5).value = day.schedule.endTime || "";
 
-    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Informe");
+            // Calcular horas asignadas
+            if (day.schedule.startTime && day.schedule.endTime) {
+              const [startH, startM] = day.schedule.startTime
+                .split(":")
+                .map(Number);
+              const [endH, endM] = day.schedule.endTime.split(":").map(Number);
+              const totalMinutes =
+                endH * 60 + endM - (startH * 60 + startM);
 
-    XLSX.writeFile(
-      workbook,
-      `informe-${periodType}-${startDate}-${endDate}.xlsx`,
-    );
+              // Restar pausa de comida
+              let breakMinutes = 0;
+              if (day.schedule.startBreak && day.schedule.endBreak) {
+                const [bStartH, bStartM] = day.schedule.startBreak
+                  .split(":")
+                  .map(Number);
+                const [bEndH, bEndM] = day.schedule.endBreak
+                  .split(":")
+                  .map(Number);
+                breakMinutes = bEndH * 60 + bEndM - (bStartH * 60 + bStartM);
+              }
+
+              const workedMinutes = totalMinutes - breakMinutes;
+              const hours = Math.floor(workedMinutes / 60);
+              const minutes = workedMinutes % 60;
+              row.getCell(6).value = `${hours}:${minutes.toString().padStart(2, "0")}`;
+            }
+          }
+
+          // HORARIO REALIZADO (columnas G-L)
+          if (day.clockEntries && day.clockEntries.length > 0) {
+            const clockIn = day.clockEntries.find(
+              (e: any) => e.entryType === "clock_in",
+            );
+            const clockOut = day.clockEntries.find(
+              (e: any) => e.entryType === "clock_out",
+            );
+            const breakStart = day.clockEntries.find(
+              (e: any) => e.entryType === "break_start",
+            );
+            const breakEnd = day.clockEntries.find(
+              (e: any) => e.entryType === "break_end",
+            );
+
+            if (clockIn) {
+              const time = new Date(clockIn.timestamp);
+              const spanishTime = time.toLocaleString("es-ES", {
+                timeZone: "Europe/Madrid",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              });
+              row.getCell(7).value = spanishTime;
+            }
+            if (breakStart) {
+              const time = new Date(breakStart.timestamp);
+              const spanishTime = time.toLocaleString("es-ES", {
+                timeZone: "Europe/Madrid",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              });
+              row.getCell(8).value = spanishTime;
+            }
+            if (breakEnd) {
+              const time = new Date(breakEnd.timestamp);
+              const spanishTime = time.toLocaleString("es-ES", {
+                timeZone: "Europe/Madrid",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              });
+              row.getCell(9).value = spanishTime;
+            }
+
+            // Horas pausa total (en minutos -> formato HH:MM)
+            const pausaHours = Math.floor(day.totalBreakMinutes / 60);
+            const pausaMinutes = Math.floor(day.totalBreakMinutes % 60);
+            row.getCell(10).value = `${pausaHours}:${pausaMinutes.toString().padStart(2, "0")}`;
+
+            if (clockOut) {
+              const time = new Date(clockOut.timestamp);
+              const spanishTime = time.toLocaleString("es-ES", {
+                timeZone: "Europe/Madrid",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              });
+              row.getCell(11).value = spanishTime;
+            }
+          }
+
+          // Horas realizadas (de workday)
+          if (day.workday) {
+            const hours = Math.floor(day.workday.workedMinutes / 60);
+            const minutes = day.workday.workedMinutes % 60;
+            row.getCell(12).value = `${hours}:${minutes.toString().padStart(2, "0")}`;
+          }
+
+          // Pausas extraordinarias (columna M) - puede ser positivo o negativo
+          if (day.extraordinaryBreakMinutes !== 0) {
+            const absMinutes = Math.abs(day.extraordinaryBreakMinutes);
+            const hours = Math.floor(absMinutes / 60);
+            const minutes = Math.floor(absMinutes % 60);
+            const sign = day.extraordinaryBreakMinutes < 0 ? "-" : "";
+            row.getCell(13).value = `${sign}${hours}:${minutes.toString().padStart(2, "0")}`;
+          }
+
+          // Incidencias (columna N)
+          if (day.incidents && day.incidents.length > 0) {
+            row.getCell(14).value = day.incidents.length;
+          }
+
+          // DIFERENCIA HORAS (columna O)
+          if (day.workday && day.schedule) {
+            // Calcular diferencia entre horas realizadas y asignadas
+            const workedMinutes = day.workday.workedMinutes;
+
+            let assignedMinutes = 0;
+            if (day.schedule.startTime && day.schedule.endTime) {
+              const [startH, startM] = day.schedule.startTime
+                .split(":")
+                .map(Number);
+              const [endH, endM] = day.schedule.endTime.split(":").map(Number);
+              assignedMinutes = endH * 60 + endM - (startH * 60 + startM);
+
+              // Restar pausa de comida
+              if (day.schedule.startBreak && day.schedule.endBreak) {
+                const [bStartH, bStartM] = day.schedule.startBreak
+                  .split(":")
+                  .map(Number);
+                const [bEndH, bEndM] = day.schedule.endBreak
+                  .split(":")
+                  .map(Number);
+                const breakMinutes =
+                  bEndH * 60 + bEndM - (bStartH * 60 + bStartM);
+                assignedMinutes -= breakMinutes;
+              }
+            }
+
+            const diff = workedMinutes - assignedMinutes;
+            const diffHours = Math.floor(Math.abs(diff) / 60);
+            const diffMinutes = Math.abs(diff) % 60;
+            const sign = diff >= 0 ? "" : "-";
+            row.getCell(15).value = `${sign}${diffHours}:${diffMinutes.toString().padStart(2, "0")}`;
+          }
+
+          // Aplicar bordes a toda la fila
+          for (let col = 1; col <= 15; col++) {
+            row.getCell(col).border = {
+              top: { style: "thin" },
+              left: { style: "thin" },
+              bottom: { style: "thin" },
+              right: { style: "thin" },
+            };
+          }
+
+          rowIndex++;
+        }
+
+        // Ajustar anchos de columna
+        worksheet.columns = [
+          { width: 10 }, // Día
+          { width: 10 }, // Entrada asignada
+          { width: 12 }, // Inicio pausa asignada
+          { width: 12 }, // Fin pausa asignada
+          { width: 10 }, // Salida asignada
+          { width: 15 }, // Horas asignadas
+          { width: 10 }, // Entrada realizada
+          { width: 12 }, // Inicio pausa realizada
+          { width: 12 }, // Fin pausa realizada
+          { width: 12 }, // Horas pausa
+          { width: 10 }, // Salida realizada
+          { width: 15 }, // Horas realizadas
+          { width: 18 }, // Pausas extraordinarias
+          { width: 12 }, // Incidencias
+          { width: 10 }, // Diferencia
+        ];
+      }
+
+      // Guardar archivo
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `informe-fichadas-${startDate}-${endDate}.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error al exportar a Excel:", error);
+      alert("Error al generar el archivo Excel");
+    }
   };
 
   const totalHoursWorked =
@@ -367,15 +603,6 @@ export default function Reports() {
 
           <div className="flex gap-2 mt-4">
             <Button
-              onClick={exportToPDF}
-              disabled={!reportData || reportData.length === 0}
-              data-testid="button-export-pdf"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Exportar PDF
-            </Button>
-            <Button
-              variant="outline"
               onClick={exportToExcel}
               disabled={!reportData || reportData.length === 0}
               data-testid="button-export-excel"
