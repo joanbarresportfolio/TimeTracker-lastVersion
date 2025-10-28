@@ -30,8 +30,8 @@ export async function createClockEntry(
     // Caso 3: Ni timestamp ni fecha (fallback)
     timestamp = new Date();
   }
-  console.log(timestamp)
-  // 🔹 Extraer la fecha del timestamp para la lógica de workday
+  
+  // 🔹 Extraer la fecha del timestamp para la lógica de workday (UTC)
   const eventDate = timestampToDateString(timestamp);
 
   let workdayId: string | undefined;

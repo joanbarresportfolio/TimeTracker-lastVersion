@@ -68,15 +68,19 @@ Preferred communication style: Simple, everyday language.
   - `POST /api/clock-entries` - Create new clock entry (clock_in, clock_out, break_start, break_end)
     - Accepts optional `timestamp` field for precise event timing (prevents midnight date skew)
     - Server generates timestamp if not provided
-    - **Timestamps are converted to Spanish time (Europe/Madrid timezone)**
+    - **All timestamps stored in UTC in database**
   - `GET /api/clock-entries/today` - Get today's daily workday and clock entries for authenticated employee
 - **Field Naming**: Mobile app uses English fields (`entryType`, `source`, `timestamp`) matching backend schema
 - **Break Support**: Schedules include optional `startBreak` and `endBreak` nullable fields
 - **Type Consistency**: Mobile types (`mobile-app/src/types/schema.ts`) match backend schema types
-- **Timestamp Handling**: 
-  - Clock entry creation from control buttons (web/mobile) uses Spanish time (Europe/Madrid)
-  - Manual entries from admin forms use server local time
-  - Prevents cross-midnight session issues and timezone drift
+
+### Timezone Handling
+- **Database Storage**: All timestamps are stored in **UTC** for consistency
+- **Display Conversion**: 
+  - Frontend should convert UTC timestamps to Spanish time (Europe/Madrid) for display
+  - Helper functions available in `server/utils/timezone.ts` for backend conversions if needed
+  - Prevents timezone-related bugs and ensures data integrity
+- **Best Practice**: Store in UTC, display in local timezone
 
 ## External Dependencies
 

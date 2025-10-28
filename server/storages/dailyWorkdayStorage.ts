@@ -182,7 +182,7 @@ export async function createManualDailyWorkday(data: {
       source: "web",
     },
   ];
-  console.log(entriesToInsert[0].timestamp)
+  
   await db.insert(clockEntries).values(entriesToInsert);
 
   return workday;
