@@ -7,7 +7,7 @@
 
 import type { Express } from "express";
 import { storage } from "../storage";
-import { requireAdmin } from "../middleware/auth";
+import { requireAdmin, requireAuth } from "../middleware/auth";
 import { handleApiError } from "./utils";
 import { z } from "zod";
 import { workdayFormSchema } from "@shared/schema";
@@ -24,8 +24,9 @@ const manualDailyWorkdaySchema = z.object({
 
 export function registerDailyWorkdayRoutes(app: Express) {
   // Obtener jornadas del usuario autenticado (para app móvil) - NO requiere admin
-  app.get("/api/daily-workdays", async (req, res) => {
+  app.get("/api/daily-workdays",requireAuth, async (req, res) => {
     try {
+
       if (!req.session?.user?.id) {
         return res.status(401).json({ message: "No autenticado" });
       }
@@ -53,7 +54,7 @@ export function registerDailyWorkdayRoutes(app: Express) {
   });
 
   // Obtener jornada laboral por usuario y fecha
-  app.get("/api/daily-workday", requireAdmin, async (req, res) => {
+  app.get("/api/daily-workday", requireAuth, async (req, res) => {
     try {
       const { userId, date } = req.query;
       if (!userId || !date) {
@@ -86,7 +87,7 @@ export function registerDailyWorkdayRoutes(app: Express) {
   });
 
   // Obtener historial de jornadas por rango de fechas
-  app.get("/api/daily-workday/history", requireAdmin, async (req, res) => {
+  app.get("/api/daily-workday/history", requireAuth, async (req, res) => {
     try {
       const { userId, startDate, endDate } = req.query;
       if (!userId || !startDate || !endDate) {

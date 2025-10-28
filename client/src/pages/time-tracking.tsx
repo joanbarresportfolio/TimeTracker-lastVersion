@@ -310,7 +310,6 @@ function AdminTimeTracking({
   };
 
   const handleConfirm = () => {
-    console.log(confirmAction);
     if (confirmAction === "update" && pendingData) {
       updateWorkdayMutation.mutate(pendingData);
     } else if (confirmAction === "delete") {
@@ -519,8 +518,12 @@ function AdminTimeTracking({
 
         {/* Texto de carga */}
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-foreground">Cargando control horario...</h2>
-          <p className="text-muted-foreground mt-2">Por favor espera un momento</p>
+          <h2 className="text-xl font-semibold text-foreground">
+            Cargando control horario...
+          </h2>
+          <p className="text-muted-foreground mt-2">
+            Por favor espera un momento
+          </p>
         </div>
       </div>
     );
@@ -891,7 +894,9 @@ function AdminTimeTracking({
                   </div>
                 </div>
                 <div className="mb-4">
-                  <p className="text-sm text-muted-foreground">Tiempo trabajado</p>
+                  <p className="text-sm text-muted-foreground">
+                    Tiempo trabajado
+                  </p>
                   <p className="font-medium">
                     {formatDuration(entry?.totalHours || null)}
                   </p>
@@ -920,7 +925,10 @@ function AdminTimeTracking({
 
                     {/* Total de minutos en pausa */}
                     <p className="text-xs text-muted-foreground mt-2">
-                      Total pausas: <span className="font-medium">{entry.breakMinutes} min</span>
+                      Total pausas:{" "}
+                      <span className="font-medium">
+                        {entry.breakMinutes} min
+                      </span>
                     </p>
                   </div>
                 )}

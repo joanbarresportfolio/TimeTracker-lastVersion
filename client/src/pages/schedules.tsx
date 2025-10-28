@@ -205,7 +205,6 @@ export default function Schedules() {
         if (!res.ok) throw new Error("Failed to fetch employee time entries");
 
         const data = (await res.json()) as TimeEntry[];
-        console.log("Time entries recibidas:", data);
         return data;
       },
       enabled: !!selectedEmployee && !!historyMonth, // 👈 solo ejecuta si hay empleado y mes

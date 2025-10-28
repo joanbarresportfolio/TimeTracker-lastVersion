@@ -14,9 +14,6 @@ import {
   startOfWeek,
 } from "date-fns";
 import { deleteIncidentsByDailyWorkday } from "./incidentStorage";
-import { toZonedTime } from "date-fns-tz";
-
-const TIMEZONE = "Europe/Madrid";
 
 /**
  * DAILY WORKDAY STORAGE MODULE
@@ -25,9 +22,11 @@ const TIMEZONE = "Europe/Madrid";
  * Módulo de almacenamiento para operaciones relacionadas con jornadas diarias.
  */
 export async function getDailyWorkdaysLastWeek(): Promise<DailyWorkday[]> {
+  // Obtener fechas de inicio y fin de la semana actual
   const startDate = format(startOfWeek(new Date()), "yyyy-MM-dd");
   const endDate = format(endOfWeek(new Date()), "yyyy-MM-dd");
 
+  // Selecciona los registros dentro del rango de fechas
   const workdays = await db
     .select()
     .from(dailyWorkday)
@@ -42,7 +41,7 @@ export async function getDailyWorkdaysLastWeek(): Promise<DailyWorkday[]> {
     workedMinutes: wd.workedMinutes,
     breakMinutes: wd.breakMinutes,
     overtimeMinutes: wd.overtimeMinutes,
-    status: wd.status,
+    status: wd.status, // 'closed' o 'open'
   }));
 }
 
@@ -56,6 +55,9 @@ export async function getDailyWorkdayById(
   return workday;
 }
 
+/**
+ * OBTENER JORNADA LABORAL POR EMPLEADO Y FECHA
+ */
 export async function getDailyWorkdayByUserAndDate(
   UserId: string,
   date: string,
@@ -67,6 +69,9 @@ export async function getDailyWorkdayByUserAndDate(
   return workday;
 }
 
+/**
+ * OBTENER JORNADAS LABORALES POR EMPLEADO Y RANGO
+ */
 export async function getDailyWorkdaysByUserAndRange(
   UserId: string,
   startDate: string,
@@ -89,8 +94,8 @@ export async function getDailyWorkdays(): Promise<DailyWorkday[]> {
 
 export async function createManualDailyWorkday(data: {
   userId: string;
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:mm (hora española)
+  date: string;
+  startTime: string;
   endTime: string;
   startBreak?: string;
   endBreak?: string;
@@ -99,7 +104,7 @@ export async function createManualDailyWorkday(data: {
   await db.execute(sql`
     DELETE FROM clock_entries
     WHERE id_user = ${data.userId}
-    AND DATE(timestamp AT TIME ZONE 'Europe/Madrid') = ${data.date}
+    AND DATE(timestamp) = ${data.date}
   `);
 
   // --- Calcular minutos trabajados ---
@@ -120,7 +125,7 @@ export async function createManualDailyWorkday(data: {
 
   const workedMinutes = totalMinutes - breakMinutes;
 
-  // --- 2. Insertar o actualizar dailyWorkday ---
+  // --- 2. Insertar o actualizar jornada laboral ---
   const [workday] = await db
     .insert(dailyWorkday)
     .values({
@@ -142,23 +147,13 @@ export async function createManualDailyWorkday(data: {
     })
     .returning();
 
-  // --- 3. Crear clock entries en hora española ---
-  // Convertir las horas locales españolas a timestamps UTC
-  const clockInTimestamp = toZonedTime(
-    new Date(`${data.date}T${data.startTime}:00`),
-    TIMEZONE
-  );
-  const clockOutTimestamp = toZonedTime(
-    new Date(`${data.date}T${data.endTime}:00`),
-    TIMEZONE
-  );
-
+  // --- 3. Crear clock entries asociadas ---
   const entriesToInsert = [
     {
       idUser: data.userId,
       idDailyWorkday: workday.id,
       entryType: "clock_in",
-      timestamp: clockInTimestamp,
+      timestamp: new Date(`${data.date}T${data.startTime}:00`),
       source: "web",
     },
     ...(data.startBreak && data.endBreak
@@ -167,20 +162,14 @@ export async function createManualDailyWorkday(data: {
             idUser: data.userId,
             idDailyWorkday: workday.id,
             entryType: "break_start",
-            timestamp: toZonedTime(
-              new Date(`${data.date}T${data.startBreak}:00`),
-              TIMEZONE
-            ),
+            timestamp: new Date(`${data.date}T${data.startBreak}:00`),
             source: "web",
           },
           {
             idUser: data.userId,
             idDailyWorkday: workday.id,
             entryType: "break_end",
-            timestamp: toZonedTime(
-              new Date(`${data.date}T${data.endBreak}:00`),
-              TIMEZONE
-            ),
+            timestamp: new Date(`${data.date}T${data.endBreak}:00`),
             source: "web",
           },
         ]
@@ -189,16 +178,17 @@ export async function createManualDailyWorkday(data: {
       idUser: data.userId,
       idDailyWorkday: workday.id,
       entryType: "clock_out",
-      timestamp: clockOutTimestamp,
+      timestamp: new Date(`${data.date}T${data.endTime}:00`),
       source: "web",
     },
   ];
-
+  console.log(entriesToInsert[0].timestamp)
   await db.insert(clockEntries).values(entriesToInsert);
 
   return workday;
 }
 
+// En storage (dailyWorkdayStorage.ts o index.ts)
 export async function deleteClockEntriesByDailyWorkday(
   dailyWorkdayId: string,
 ): Promise<boolean> {
@@ -209,8 +199,10 @@ export async function deleteClockEntriesByDailyWorkday(
 }
 
 export async function deleteDailyWorkday(id: string): Promise<boolean> {
+  // Primero eliminar las incidencias asociadas
   await deleteIncidentsByDailyWorkday(id);
 
+  // Luego eliminar la jornada laboral
   const deleted = await db
     .delete(dailyWorkday)
     .where(eq(dailyWorkday.id, id))

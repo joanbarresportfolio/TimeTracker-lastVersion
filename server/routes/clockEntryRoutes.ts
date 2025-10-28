@@ -22,7 +22,6 @@ export function registerClockEntryRoutes(app: Express) {
    * POST /api/clock-entries
    * Endpoint para que los empleados creen sus propias entradas de fichaje
    * Usar requireAuth para permitir que los empleados autenticados fichen
-   * Los timestamps se guardan en hora española (Europe/Madrid)
    */
   app.post("/api/clock-entries", requireAuth, async (req, res) => {
     try {
@@ -44,14 +43,12 @@ export function registerClockEntryRoutes(app: Express) {
 
       // Capturar timestamp: usar el proporcionado o dejar que storage use new Date()
       // El parámetro date ya no es necesario, se deriva del timestamp
-      // useSpanishTime: true para guardar en hora española
       const newClockEntry = await storage.createClockEntry(
         userId,
         entryType,
         "", // date vacío, se derivará del timestamp
         source || "mobile_app",
         timestamp, // timestamp opcional del cliente
-        true, // useSpanishTime: true para botones de control horario
       );
 
       res.status(201).json(newClockEntry);
@@ -164,6 +161,53 @@ export function registerClockEntryRoutes(app: Express) {
       res.status(500).json({
         message:
           "Error al obtener los registros de tiempo para la fecha indicada.",
+        error: (error as Error).message,
+      });
+    }
+  });
+  /**
+   * GET /api/time-entries/user/range
+   * Devuelve los registros de tiempo (TimeEntries) de un usuario autenticado
+   * entre dos fechas dadas, o los últimos 30 días si no se especifica rango.
+   */
+  app.get("/api/time-entries/user/range", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id; // usuario autenticado
+      const { startDate, endDate } = req.query as {
+        startDate?: string;
+        endDate?: string;
+      };
+
+      // 📅 Si no se especifican fechas, usar últimos 30 días
+      const today = new Date();
+      const defaultEnd = today.toISOString().split("T")[0];
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      const defaultStart = thirtyDaysAgo.toISOString().split("T")[0];
+
+      const dateStart = startDate || defaultStart;
+      const dateEnd = endDate || defaultEnd;
+
+
+      // 🔍 Llamar al método del storage
+      const timeEntries = await storage.getTimeEntriesUserByRange(
+        userId,
+        dateStart,
+        dateEnd
+      );
+
+      if (!timeEntries || timeEntries.length === 0) {
+        return res.status(404).json({
+          message: "No se encontraron registros de tiempo en el rango indicado.",
+        });
+      }
+
+      // ✅ Devolver resultado
+      res.status(200).json(timeEntries);
+    } catch (error) {
+      console.error("Error al obtener los time entries por rango:", error);
+      res.status(500).json({
+        message: "Error al obtener los registros de tiempo.",
         error: (error as Error).message,
       });
     }
