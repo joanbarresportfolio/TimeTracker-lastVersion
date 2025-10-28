@@ -478,10 +478,11 @@ function AdminTimeTracking({
 
   const formatTime = (date: Date | string | null) => {
     if (!date) return "--:--";
-    return new Date(date).toLocaleTimeString("es-ES", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const d = new Date(date);
+    // Usar UTC para evitar conversión de zona horaria
+    const hours = String(d.getUTCHours()).padStart(2, "0");
+    const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
   };
 
   const formatDuration = (minutes: number | null) => {
