@@ -221,6 +221,9 @@ export default function Schedules() {
     }) => apiRequest("/api/date-schedules", "POST", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/date-schedules/year", currentYear],
+      });
       refetchDateSchedules();
       setSelectedDates([]);
       setShowScheduleDialog(false);
@@ -240,6 +243,9 @@ export default function Schedules() {
       apiRequest(`/api/date-schedules/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/date-schedules/year", currentYear],
+      });
       refetchDateSchedules();
       toast({ title: "Éxito", description: "Horario eliminado correctamente" });
     },
@@ -267,6 +273,9 @@ export default function Schedules() {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/date-schedules", selectedEmployee?.id, calendarYear],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/date-schedules/year", currentYear],
       });
       refetchDateSchedules();
       setSelectedDates([]);
@@ -1045,6 +1054,9 @@ export default function Schedules() {
         });
       });
       queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/date-schedules/year", currentYear],
+      });
 
       if (successCount > 0) {
         toast({
