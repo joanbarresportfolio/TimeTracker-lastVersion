@@ -85,8 +85,13 @@ const getApiBaseUrl = (): string => {
       return "http://localhost:5000/api";
     }
   } else {
-    // En producción, usar el backend público en Replit
-    return "https://time-trackr-joanbarresportf.replit.app/api";
+    // ⚠️ IMPORTANTE: Cambiar esta URL por la de tu servidor publicado en Replit
+    // Para obtener la URL correcta:
+    // 1. Publica tu servidor web en Replit (botón "Publish")
+    // 2. Copia la URL que termina en .replit.app
+    // 3. Añade /api al final
+    // Ejemplo: "https://tu-proyecto.replit.app/api"
+    return "https://YOUR-PROJECT-NAME.replit.app/api";
   }
 };
 
