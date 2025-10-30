@@ -46,6 +46,61 @@ export function registerUserRoutes(app: Express) {
     try {
       const userData = insertUserSchema.parse(req.body);
 
+      // Validar que se haya seleccionado departamento si es requerido
+      if (!userData.departmentId) {
+        return res.status(400).json({
+          errors: [{
+            path: ["departmentId"],
+            message: "Debe seleccionar un departamento"
+          }]
+        });
+      }
+
+      // Validar que se haya seleccionado rol si es requerido
+      if (!userData.roleEnterpriseId) {
+        return res.status(400).json({
+          errors: [{
+            path: ["roleEnterpriseId"],
+            message: "Debe seleccionar un rol"
+          }]
+        });
+      }
+
+      // Verificar si el DNI ya existe
+      if (userData.dni) {
+        const existingUserByDNI = await storage.getUserByDNI(userData.dni);
+        if (existingUserByDNI) {
+          return res.status(400).json({
+            errors: [{
+              path: ["dni"],
+              message: "Este DNI ya está registrado"
+            }]
+          });
+        }
+      }
+
+      // Verificar si el email ya existe
+      const existingUserByEmail = await storage.getUserByEmail(userData.email);
+      if (existingUserByEmail) {
+        return res.status(400).json({
+          errors: [{
+            path: ["email"],
+            message: "Este correo electrónico ya está registrado"
+          }]
+        });
+      }
+
+      // Verificar si el número de empleado ya existe
+      const existingUserByNumber = await storage.getUserByNumber(userData.numEmployee);
+      if (existingUserByNumber) {
+        return res.status(400).json({
+          errors: [{
+            path: ["numEmployee"],
+            message: "Este número de empleado ya está registrado"
+          }]
+        });
+      }
+
       const newUser = await storage.createUser(userData);
       const { passwordHash, ...safeUser } = newUser;
       res.status(201).json(safeUser);

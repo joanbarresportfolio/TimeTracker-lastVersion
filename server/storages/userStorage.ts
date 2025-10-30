@@ -95,6 +95,30 @@ export async function getUserByNumber(
   return user;
 }
 
+export async function getUserByEmail(
+  email: string,
+): Promise<User | undefined> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  return user;
+}
+
+export async function getUserByDNI(
+  dni: string,
+): Promise<User | undefined> {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.dni, dni))
+    .limit(1);
+
+  return user;
+}
+
 export async function updateUser(
   id: string,
   userData: UpdateUser,

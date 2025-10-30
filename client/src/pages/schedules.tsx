@@ -778,7 +778,21 @@ export default function Schedules() {
                             const mins = minutes % 60;
                             return `${hours}h ${mins}m`;
                           };
+                          function decimalAHorasMinutos(
+                            horasDecimales: number,
+                          ): string {
+                            const horas = Math.floor(horasDecimales);
+                            const minutos = Math.round(
+                              (horasDecimales - horas) * 60,
+                            );
 
+                            // Corrige el caso donde los minutos redondean a 60
+                            if (minutos === 60) {
+                              return `${horas + 1}h 0m`;
+                            }
+
+                            return `${horas}h ${minutos}m`;
+                          }
                           return (
                             <TableRow
                               key={entry.id}
@@ -800,7 +814,7 @@ export default function Schedules() {
                                   : "-"}
                               </TableCell>
                               <TableCell className="text-center">
-                                {formatMinutesToHours(entry.totalHours)}
+                                {decimalAHorasMinutos(entry.totalHours)}
                               </TableCell>
                               <TableCell className="text-center">
                                 {formatMinutesToHours(entry.breakMinutes)}

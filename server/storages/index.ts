@@ -74,6 +74,14 @@ export class DatabaseStorage implements IStorage {
     return userStorage.getUserByNumber(UserNumber);
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return userStorage.getUserByEmail(email);
+  }
+
+  async getUserByDNI(dni: string): Promise<User | undefined> {
+    return userStorage.getUserByDNI(dni);
+  }
+
   async createUser(User: InsertUser): Promise<User> {
     return userStorage.createUser(User);
   }
