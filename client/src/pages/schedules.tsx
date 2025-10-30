@@ -127,6 +127,7 @@ export default function Schedules() {
   const [selectedEmployeesToCopy, setSelectedEmployeesToCopy] = useState<
     string[]
   >([]);
+  const [isCopyingSchedules, setIsCopyingSchedules] = useState(false);
 
   const { toast } = useToast();
 
@@ -999,17 +1000,9 @@ export default function Schedules() {
     )
       return;
 
-    try {
-      // Determinar shiftType basado en la hora de inicio
-      const determineShiftType = (
-        startTime: string,
-      ): "morning" | "afternoon" | "night" => {
-        const hour = parseInt(startTime.split(":")[0]);
-        if (hour < 12) return "morning";
-        if (hour < 18) return "afternoon";
-        return "night";
-      };
+    setIsCopyingSchedules(true);
 
+    try {
       // Crear array de horarios para copiar
       const schedulesToCopy = dateSchedules.map((schedule) => ({
         employeeId: "", // Se llenará para cada empleado destino
@@ -1080,6 +1073,8 @@ export default function Schedules() {
           "Hubo un error al copiar los horarios. Por favor, intenta de nuevo.",
         variant: "destructive",
       });
+    } finally {
+      setIsCopyingSchedules(false);
     }
   };
 
@@ -1339,82 +1334,129 @@ export default function Schedules() {
                 Selecciona los empleados a los que quieres copiar los{" "}
                 {dateSchedules?.length || 0} horarios de{" "}
                 {selectedEmployee?.firstName} {selectedEmployee?.lastName} del
-                año {calendarYear}
+                año {calendarYear}. Los empleados que ya tienen horarios en alguna de estas fechas están deshabilitados.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="space-y-3 max-h-96 overflow-y-auto border rounded-lg p-4">
-                {employees
-                  ?.filter((emp) => emp.id !== selectedEmployee?.id)
-                  .map((employee) => (
-                    <div
-                      key={employee.id}
-                      className="flex items-center space-x-3 hover-elevate p-2 rounded"
-                    >
-                      <Checkbox
-                        id={`emp-${employee.id}`}
-                        checked={selectedEmployeesToCopy.includes(employee.id)}
-                        onCheckedChange={() =>
-                          toggleEmployeeSelection(employee.id)
-                        }
-                        data-testid={`checkbox-employee-${employee.id}`}
-                      />
-                      <label
-                        htmlFor={`emp-${employee.id}`}
-                        className="flex items-center gap-3 flex-1 cursor-pointer"
-                      >
-                        <Avatar>
-                          <AvatarFallback>
-                            {employee.firstName[0]}
-                            {employee.lastName[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">
-                            {employee.firstName} {employee.lastName}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {employee.departmentId
-                              ? departmentMap.get(employee.departmentId) ||
-                                "Sin departamento"
-                              : "Sin departamento"}
-                          </p>
-                        </div>
-                      </label>
-                    </div>
-                  ))}
-              </div>
-
-              {selectedEmployeesToCopy.length > 0 && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm font-medium">
-                    {selectedEmployeesToCopy.length} empleado(s) seleccionado(s)
+            {isCopyingSchedules ? (
+              <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <div className="relative">
+                  <div className="h-16 w-16 border-4 border-primary/20 rounded-full"></div>
+                  <div className="absolute top-0 left-0 h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    Copiando Horarios...
+                  </h3>
+                  <p className="text-muted-foreground mt-1">
+                    Por favor espera mientras se copian los horarios a {selectedEmployeesToCopy.length} empleado(s)
                   </p>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  <div className="space-y-3 max-h-96 overflow-y-auto border rounded-lg p-4">
+                    {employees
+                      ?.filter((emp) => emp.id !== selectedEmployee?.id)
+                      .map((employee) => {
+                        // Verificar si el empleado ya tiene horarios en alguna de las fechas del empleado fuente
+                        const employeeSchedules = yearlySchedules?.filter(
+                          (s) => s.employeeId === employee.id
+                        ) || [];
+                        const sourceDates = new Set(
+                          dateSchedules?.map((s) => s.date) || []
+                        );
+                        const hasConflict = employeeSchedules.some((schedule) =>
+                          sourceDates.has(schedule.date)
+                        );
 
-            <DialogFooter className="gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowCopyDialog(false);
-                  setSelectedEmployeesToCopy([]);
-                }}
-                data-testid="button-cancel-copy"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleCopySchedules}
-                disabled={selectedEmployeesToCopy.length === 0}
-                data-testid="button-confirm-copy"
-              >
-                <Copy className="w-4 h-4 mr-2" />
-                Copiar Horarios
-              </Button>
-            </DialogFooter>
+                        return (
+                          <div
+                            key={employee.id}
+                            className={`flex items-center space-x-3 p-2 rounded ${
+                              hasConflict
+                                ? "opacity-50 cursor-not-allowed"
+                                : "hover-elevate"
+                            }`}
+                          >
+                            <Checkbox
+                              id={`emp-${employee.id}`}
+                              checked={selectedEmployeesToCopy.includes(employee.id)}
+                              onCheckedChange={() => {
+                                if (!hasConflict) {
+                                  toggleEmployeeSelection(employee.id);
+                                }
+                              }}
+                              disabled={hasConflict}
+                              data-testid={`checkbox-employee-${employee.id}`}
+                            />
+                            <label
+                              htmlFor={`emp-${employee.id}`}
+                              className={`flex items-center gap-3 flex-1 ${
+                                hasConflict ? "cursor-not-allowed" : "cursor-pointer"
+                              }`}
+                            >
+                              <Avatar>
+                                <AvatarFallback>
+                                  {employee.firstName[0]}
+                                  {employee.lastName[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <p className="font-medium">
+                                  {employee.firstName} {employee.lastName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {employee.departmentId
+                                    ? departmentMap.get(employee.departmentId) ||
+                                      "Sin departamento"
+                                    : "Sin departamento"}
+                                  {hasConflict && (
+                                    <span className="text-destructive ml-2">
+                                      • Ya tiene horarios en estas fechas
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {selectedEmployeesToCopy.length > 0 && (
+                    <div className="p-3 bg-muted rounded-lg">
+                      <p className="text-sm font-medium">
+                        {selectedEmployeesToCopy.length} empleado(s) seleccionado(s)
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <DialogFooter className="gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowCopyDialog(false);
+                      setSelectedEmployeesToCopy([]);
+                    }}
+                    disabled={isCopyingSchedules}
+                    data-testid="button-cancel-copy"
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleCopySchedules}
+                    disabled={selectedEmployeesToCopy.length === 0 || isCopyingSchedules}
+                    data-testid="button-confirm-copy"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copiar Horarios
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
           </DialogContent>
         </Dialog>
 
