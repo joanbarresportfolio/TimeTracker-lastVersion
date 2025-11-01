@@ -37,10 +37,13 @@ Preferred communication style: Simple, everyday language.
 - **Schema Language**: All tables and columns use consistent English naming conventions
 - **Key Entities**: `users`, `departments`, `roles_enterprise`, `schedules`, `clock_entries`, `daily_workday`, `incidents`, `incidents_type`
 - **Architecture Pattern**: Event-based time tracking (`clock_entries`) with daily workday consolidation (`daily_workday`).
+- **Geolocation**: `clock_entries` table includes optional `latitude` and `longitude` columns (VARCHAR) for GPS tracking
 - **Critical Constraints**:
   - One workday per user per day (unique index on `id_user`, `date`)
   - `schedules.idDailyWorkday` is optional (nullable) - schedules can exist independently
   - `daily_workday.date` is required (NOT NULL, format: YYYY-MM-DD)
+  - `users.num_employee` must be unique
+  - `roles_enterprise.name` must be unique
 
 ### Development Architecture
 - **Monorepo Structure**: Shared schemas and types between frontend and backend
@@ -73,10 +76,12 @@ Preferred communication style: Simple, everyday language.
     - Accepts optional `timestamp` field for precise event timing (prevents midnight date skew)
     - Server generates timestamp if not provided
     - **All timestamps stored in UTC in database**
+    - **Geolocation**: Optional `latitude` and `longitude` fields for tracking location of clock entries
   - `GET /api/clock-entries/today` - Get today's daily workday and clock entries for authenticated employee
 - **Field Naming**: Mobile app uses English fields (`entryType`, `source`, `timestamp`) matching backend schema
 - **Break Support**: Schedules include optional `startBreak` and `endBreak` nullable fields
 - **Type Consistency**: Mobile types (`mobile-app/src/types/schema.ts`) match backend schema types
+- **Geolocation Tracking**: Clock entries can store GPS coordinates (latitude/longitude) for location verification
 
 ### Timezone Handling
 - **Database Storage**: All timestamps are stored in **UTC** for consistency
