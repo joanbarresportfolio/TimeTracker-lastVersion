@@ -976,17 +976,33 @@ export default function Schedules() {
         .filter((s) => s !== undefined)
         .map((s) => s!.id);
 
-      // Borrar cada horario
-      for (const scheduleId of schedulesToDelete) {
-        await deleteDateScheduleMutation.mutateAsync(scheduleId);
-      }
+      // Borrar todos los horarios en una sola petición
+      await apiRequest("/api/date-schedules/bulk-delete", "POST", {
+        ids: schedulesToDelete,
+      });
+
+      // Invalidar cache
+      queryClient.invalidateQueries({ queryKey: ["/api/date-schedules"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/date-schedules/year", currentYear],
+      });
+      refetchDateSchedules();
 
       // Limpiar selección
       setSelectedDates([]);
       setSelectionType(null);
       setShowScheduleDialog(false);
+
+      toast({
+        title: "Horarios eliminados",
+        description: `Se eliminaron ${schedulesToDelete.length} horario(s) correctamente`,
+      });
     } catch (error) {
-      // Error handling is done in mutation onError callbacks
+      toast({
+        title: "Error",
+        description: "Error al eliminar los horarios",
+        variant: "destructive",
+      });
     }
   };
 

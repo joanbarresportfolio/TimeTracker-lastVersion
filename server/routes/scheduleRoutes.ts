@@ -223,4 +223,28 @@ export function registerScheduleRoutes(app: Express) {
       res.status(500).json({ message: "Error al eliminar horario por fecha" });
     }
   });
+
+  app.post("/api/date-schedules/bulk-delete", requireAdmin, async (req, res) => {
+    try {
+      const schema = z.object({
+        ids: z.array(z.string()).min(1, "Debe proporcionar al menos un ID"),
+      });
+
+      const { ids } = schema.parse(req.body);
+      const deletedCount = await storage.deleteBulkDateSchedules(ids);
+
+      res.json({
+        message: `${deletedCount} horario(s) eliminado(s) exitosamente`,
+        count: deletedCount,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Datos inválidos",
+          errors: error.errors,
+        });
+      }
+      res.status(500).json({ message: "Error al eliminar horarios" });
+    }
+  });
 }

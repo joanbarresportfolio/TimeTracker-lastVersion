@@ -12,13 +12,11 @@ import type {
   Schedule,
   InsertSchedule,
   TimeEntry,
-  BulkDateScheduleCreate,
   ScheduledShift,
   BulkScheduleCreate,
   DateSchedule,
   InsertDateSchedule,
 } from "@shared/schema";
-import { insertClockEntry } from "./storages/clockEntryStorage";
 
 export interface IStorage {
   // =====================
@@ -99,6 +97,7 @@ export interface IStorage {
     bulkData: BulkScheduleCreate,
   ): Promise<DateSchedule[]>;
   deleteDateSchedule(id: string): Promise<boolean>;
+  deleteBulkDateSchedules(ids: string[]): Promise<number>;
   updateDateSchedule(
     id: string,
     dateScheduleData: Partial<InsertDateSchedule>,

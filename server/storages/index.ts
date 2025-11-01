@@ -26,7 +26,6 @@ import type {
   RoleEnterprise,
   InsertRoleEnterprise,
   TimeEntry,
-  BulkDateScheduleCreate,
   ScheduledShift,
   DateSchedule,
   BulkScheduleCreate,
@@ -243,6 +242,9 @@ export class DatabaseStorage implements IStorage {
   }
   async deleteDateSchedule(id: string): Promise<boolean> {
     return scheduleStorage.deleteDateSchedule(id);
+  }
+  async deleteBulkDateSchedules(ids: string[]): Promise<number> {
+    return scheduleStorage.deleteBulkDateSchedules(ids);
   }
   async updateDateSchedule(
     id: string,

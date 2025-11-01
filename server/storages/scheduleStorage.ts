@@ -143,6 +143,16 @@ export async function deleteDateSchedule(id: string): Promise<boolean> {
 }
 
 /**
+ * ELIMINAR MÚLTIPLES HORARIOS POR FECHA
+ */
+export async function deleteBulkDateSchedules(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  
+  const result = await db.delete(schedules).where(inArray(schedules.id, ids));
+  return result.rowCount ?? 0;
+}
+
+/**
  * CREAR HORARIOS MASIVOS POR FECHA CON ANTI-DUPLICADOS
  */
 export async function createBulkDateSchedules(
