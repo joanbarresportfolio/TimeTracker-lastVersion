@@ -236,6 +236,8 @@ export const clockEntries = pgTable("clock_entries", {
     .notNull()
     .default(sql`now()`),
   source: varchar("source"), // 'web', 'mobile_device'
+  latitude: varchar("latitude"), // Geolocation latitude (optional)
+  longitude: varchar("longitude"), // Geolocation longitude (optional)
 });
 export const insertClockEntrySchema = createInsertSchema(clockEntries)
   .omit({
@@ -247,6 +249,8 @@ export const insertClockEntrySchema = createInsertSchema(clockEntries)
     idDailyWorkday: z.string().min(1, "Debe seleccionar una jornada diaria"),
     entryType: z.enum(["clock_in", "clock_out", "break_start", "break_end"]),
     source: z.enum(["web", "mobile_device"]).optional(),
+    latitude: z.string().optional(),
+    longitude: z.string().optional(),
   });
 /**
  * TABLE: incidents_type
