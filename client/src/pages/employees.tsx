@@ -355,6 +355,7 @@ export default function Employees() {
             ? undefined
             : data.roleEnterpriseId,
         roleSystem: data.roleSystem,
+        password: data.password && data.password.trim() !== "" ? data.password : undefined,
       };
 
       updateEmployeeMutation.mutate({

@@ -120,19 +120,19 @@ export function registerUserRoutes(app: Express) {
       if (!existingUser)
         return res.status(404).json({ message: "Empleado no encontrado" });
 
-      // Si no se envió contraseña o está vacía, conservar la anterior
-      if (!userData.password || userData.password.trim() === "") {
-        delete userData.password; // No actualizar contraseña
-      } else {
-        // Si sí se envió una nueva contraseña, hashearla antes de guardar
+      // Preparar los datos de actualización
+      const updateData: any = { ...userData };
+      delete updateData.password; // Quitar password del objeto base
+
+      // Si se envió una nueva contraseña, hashearla
+      if (userData.password && userData.password.trim() !== "") {
         const bcrypt = await import("bcryptjs");
         const hash = await bcrypt.hash(userData.password, 10);
-        userData.password = hash;
-        delete userData.password;
+        updateData.passwordHash = hash; // Guardar como passwordHash
       }
 
       // Actualizar el usuario
-      const updatedUser = await storage.updateUser(req.params.id, userData);
+      const updatedUser = await storage.updateUser(req.params.id, updateData);
       if (!updatedUser)
         return res.status(404).json({ message: "Empleado no encontrado" });
 
