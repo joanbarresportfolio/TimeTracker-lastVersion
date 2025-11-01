@@ -1,6 +1,6 @@
-import { type InsertUser, UpdateUser, type User, users } from "@shared/schema";
+import { type InsertUser, UpdateUser, type User, users, schedules, dailyWorkday, clockEntries, incidents } from "@shared/schema";
 import { db } from "../db";
-import { eq } from "drizzle-orm";
+import { eq, or, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 /**
@@ -133,6 +133,37 @@ export async function updateUser(
 }
 
 export async function deleteUser(id: string): Promise<boolean> {
+  // Primero necesitamos obtener los IDs de daily_workday del empleado
+  // porque clock_entries tiene FK a daily_workday
+  const userWorkdays = await db
+    .select({ id: dailyWorkday.id })
+    .from(dailyWorkday)
+    .where(eq(dailyWorkday.idUser, id));
+  
+  const workdayIds = userWorkdays.map(w => w.id);
+
+  // 1. Borrar clock_entries relacionados con los daily_workday del empleado
+  if (workdayIds.length > 0) {
+    await db.delete(clockEntries).where(
+      inArray(clockEntries.idDailyWorkday, workdayIds)
+    );
+  }
+
+  // 2. Borrar schedules del empleado
+  await db.delete(schedules).where(eq(schedules.employeeId, id));
+
+  // 3. Borrar daily_workday del empleado
+  await db.delete(dailyWorkday).where(eq(dailyWorkday.idUser, id));
+
+  // 4. Borrar incidents donde el empleado es el afectado o quien registró
+  await db.delete(incidents).where(
+    or(
+      eq(incidents.idUser, id),
+      eq(incidents.registeredBy, id)
+    )
+  );
+
+  // 5. Finalmente borrar el empleado
   const result = await db.delete(users).where(eq(users.id, id));
   return (result.rowCount ?? 0) > 0;
 }
