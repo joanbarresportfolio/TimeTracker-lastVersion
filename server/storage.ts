@@ -138,6 +138,9 @@ export interface IStorage {
     entryType: string,
     date: string,
     source: string,
+    providedTimestamp?: string,
+    latitud?: number,
+    longitud?: number,
   ): Promise<ClockEntry>;
 }
 
