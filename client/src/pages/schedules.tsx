@@ -420,19 +420,30 @@ export default function Schedules() {
       const monthEnd = endOfMonth(month);
       const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-      // Solo mostrar días del mes actual (sin días de otros meses)
-      const allDays = days;
+      // Calcular espacios en blanco al inicio para alinear con día de la semana
+      // getDay devuelve 0=domingo, 1=lunes, ... 6=sábado
+      // Queremos lunes=0, martes=1, ... domingo=6
+      const startDay = (getDay(monthStart) + 6) % 7;
+      
+      // Crear array con espacios en blanco al inicio
+      const emptySlots = Array(startDay).fill(null);
+      const allDays = [...emptySlots, ...days];
 
       return {
         month,
-        days: allDays.map((date): CalendarDay => {
+        days: allDays.map((date, index): CalendarDay | null => {
+          // Si es un espacio vacío, retornar null
+          if (date === null) {
+            return null;
+          }
+
           const dateStr = format(date, "yyyy-MM-dd");
           const schedule = dateSchedules?.find((s) => s.date === dateStr);
 
           return {
             date,
             dateStr,
-            isCurrentMonth: true, // Siempre true porque solo mostramos días del mes actual
+            isCurrentMonth: true,
             isToday: isToday(date),
             isSelected: selectedDates.some(
               (selected) => selected.dateStr === dateStr,
@@ -1222,6 +1233,11 @@ export default function Schedules() {
                   {/* Días del mes */}
                   <div className="grid grid-cols-7 gap-1">
                     {days.map((day, index) => {
+                      // Si es un espacio vacío, renderizar celda vacía
+                      if (day === null) {
+                        return <div key={`empty-${index}`} className="w-8 h-8" />;
+                      }
+
                       // Determinar el color según el tipo de jornada
                       const hasBreak = day.schedule?.startBreak && day.schedule?.endBreak;
                       
