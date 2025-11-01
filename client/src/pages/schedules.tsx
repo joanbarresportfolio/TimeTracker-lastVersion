@@ -420,25 +420,8 @@ export default function Schedules() {
       const monthEnd = endOfMonth(month);
       const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-      // Agregar días del mes anterior para completar la primera semana (Monday-first)
-      const startDay = (getDay(monthStart) + 6) % 7; // Convert Sunday-first to Monday-first
-      const prevDays = [];
-      for (let i = startDay - 1; i >= 0; i--) {
-        const prevDate = new Date(monthStart);
-        prevDate.setDate(prevDate.getDate() - i - 1);
-        prevDays.push(prevDate);
-      }
-
-      // Agregar días del mes siguiente para completar la última semana (Monday-first)
-      const endDay = (getDay(monthEnd) + 6) % 7; // Convert Sunday-first to Monday-first
-      const nextDays = [];
-      for (let i = 1; i <= 6 - endDay; i++) {
-        const nextDate = new Date(monthEnd);
-        nextDate.setDate(nextDate.getDate() + i);
-        nextDays.push(nextDate);
-      }
-
-      const allDays = [...prevDays, ...days, ...nextDays];
+      // Solo mostrar días del mes actual (sin días de otros meses)
+      const allDays = days;
 
       return {
         month,
@@ -449,7 +432,7 @@ export default function Schedules() {
           return {
             date,
             dateStr,
-            isCurrentMonth: isSameMonth(date, month),
+            isCurrentMonth: true, // Siempre true porque solo mostramos días del mes actual
             isToday: isToday(date),
             isSelected: selectedDates.some(
               (selected) => selected.dateStr === dateStr,
@@ -1239,19 +1222,26 @@ export default function Schedules() {
                   {/* Días del mes */}
                   <div className="grid grid-cols-7 gap-1">
                     {days.map((day, index) => {
+                      // Determinar el color según el tipo de jornada
+                      const hasBreak = day.schedule?.startBreak && day.schedule?.endBreak;
+                      
                       const dayClasses = [
                         "w-8 h-8 text-xs flex items-center justify-center rounded-md cursor-pointer transition-all duration-200",
-                        day.isCurrentMonth
-                          ? "text-foreground hover-elevate"
-                          : "text-muted-foreground/50",
+                        "text-foreground hover-elevate",
                         day.isToday &&
                           "bg-primary text-primary-foreground font-semibold",
                         day.isSelected &&
                           "bg-blue-500 dark:bg-blue-600 text-white font-semibold",
+                        // Jornada partida (con pausa) → Naranja
                         day.hasSchedule &&
                           !day.isSelected &&
+                          hasBreak &&
+                          "bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 font-medium",
+                        // Turno seguido (sin pausa) → Verde
+                        day.hasSchedule &&
+                          !day.isSelected &&
+                          !hasBreak &&
                           "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 font-medium",
-                        !day.isCurrentMonth && "cursor-not-allowed",
                       ]
                         .filter(Boolean)
                         .join(" ");
@@ -1263,10 +1253,8 @@ export default function Schedules() {
                           onClick={() => handleDateClick(day)}
                           title={
                             day.hasSchedule
-                              ? `Horario: ${day.schedule?.startTime} - ${day.schedule?.endTime}`
-                              : day.isCurrentMonth
-                                ? format(day.date, "dd/MM/yyyy")
-                                : undefined
+                              ? `Horario: ${day.schedule?.startTime} - ${day.schedule?.endTime}${hasBreak ? ` | Pausa: ${day.schedule?.startBreak} - ${day.schedule?.endBreak}` : " (turno seguido)"}`
+                              : format(day.date, "dd/MM/yyyy")
                           }
                           data-testid={`calendar-day-${day.dateStr}`}
                         >
@@ -1291,7 +1279,11 @@ export default function Schedules() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-700 rounded"></div>
-                <span>Con horario</span>
+                <span>Turno seguido (sin pausa)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-orange-100 dark:bg-orange-900 border border-orange-300 dark:border-orange-700 rounded"></div>
+                <span>Jornada partida (con pausa)</span>
               </div>
             </div>
 
