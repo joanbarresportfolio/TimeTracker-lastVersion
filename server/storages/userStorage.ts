@@ -134,7 +134,7 @@ export async function updateUser(
 
 export async function deleteUser(id: string): Promise<boolean> {
   // Primero necesitamos obtener los IDs de daily_workday del empleado
-  // porque clock_entries tiene FK a daily_workday
+  // porque clock_entries e incidents tienen FK a daily_workday
   const userWorkdays = await db
     .select({ id: dailyWorkday.id })
     .from(dailyWorkday)
@@ -149,19 +149,33 @@ export async function deleteUser(id: string): Promise<boolean> {
     );
   }
 
-  // 2. Borrar schedules del empleado
+  // 2. Borrar incidents donde:
+  //    - El empleado es el afectado (idUser)
+  //    - El empleado registró el incidente (registeredBy)
+  //    - El incidente está relacionado con un daily_workday del empleado (idDailyWorkday)
+  if (workdayIds.length > 0) {
+    await db.delete(incidents).where(
+      or(
+        eq(incidents.idUser, id),
+        eq(incidents.registeredBy, id),
+        inArray(incidents.idDailyWorkday, workdayIds)
+      )
+    );
+  } else {
+    // Si no hay workdays, solo borrar por idUser y registeredBy
+    await db.delete(incidents).where(
+      or(
+        eq(incidents.idUser, id),
+        eq(incidents.registeredBy, id)
+      )
+    );
+  }
+
+  // 3. Borrar schedules del empleado
   await db.delete(schedules).where(eq(schedules.employeeId, id));
 
-  // 3. Borrar daily_workday del empleado
+  // 4. Borrar daily_workday del empleado
   await db.delete(dailyWorkday).where(eq(dailyWorkday.idUser, id));
-
-  // 4. Borrar incidents donde el empleado es el afectado o quien registró
-  await db.delete(incidents).where(
-    or(
-      eq(incidents.idUser, id),
-      eq(incidents.registeredBy, id)
-    )
-  );
 
   // 5. Finalmente borrar el empleado
   const result = await db.delete(users).where(eq(users.id, id));
