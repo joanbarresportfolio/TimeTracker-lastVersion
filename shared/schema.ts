@@ -236,8 +236,8 @@ export const clockEntries = pgTable("clock_entries", {
     .notNull()
     .default(sql`now()`),
   source: varchar("source"), // 'web', 'mobile_device'
-  latitude: varchar("latitude"), // Geolocation latitude (optional)
-  longitude: varchar("longitude"), // Geolocation longitude (optional)
+  latitude: doublePrecision("latitude"), // número con decimales
+  longitude: doublePrecision("longitude"),
 });
 export const insertClockEntrySchema = createInsertSchema(clockEntries)
   .omit({

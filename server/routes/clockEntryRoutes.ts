@@ -25,7 +25,7 @@ export function registerClockEntryRoutes(app: Express) {
    */
   app.post("/api/clock-entries", requireAuth, async (req, res) => {
     try {
-      const { entryType, source, timestamp } = req.body;
+      const { entryType, source, timestamp, latitud, longitud } = req.body;
       const userId = req.user!.id; // Obtenemos el userId del usuario autenticado
 
       // Validar parámetros obligatorios
@@ -48,7 +48,9 @@ export function registerClockEntryRoutes(app: Express) {
         entryType,
         "", // date vacío, se derivará del timestamp
         source || "mobile_app",
-        timestamp, // timestamp opcional del cliente
+        timestamp,
+        latitud,
+        longitud, // timestamp opcional del cliente
       );
 
       res.status(201).json(newClockEntry);
@@ -188,17 +190,17 @@ export function registerClockEntryRoutes(app: Express) {
       const dateStart = startDate || defaultStart;
       const dateEnd = endDate || defaultEnd;
 
-
       // 🔍 Llamar al método del storage
       const timeEntries = await storage.getTimeEntriesUserByRange(
         userId,
         dateStart,
-        dateEnd
+        dateEnd,
       );
 
       if (!timeEntries || timeEntries.length === 0) {
         return res.status(404).json({
-          message: "No se encontraron registros de tiempo en el rango indicado.",
+          message:
+            "No se encontraron registros de tiempo en el rango indicado.",
         });
       }
 

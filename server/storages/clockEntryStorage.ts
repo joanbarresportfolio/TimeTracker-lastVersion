@@ -13,26 +13,21 @@ import { getSpanishDate } from "../utils/timezone";
 export async function createClockEntry(
   employeeId: string,
   entryType: string,
-  date: string, // YYYY-MM-DD (puede ser vacío si se pasa timestamp)
+  date: string,
   source: string,
-  providedTimestamp?: Date | string, // Timestamp opcional para precisión
+  providedTimestamp?: Date | string,
+  latitud?: number,
+  longitud?: number,
 ): Promise<ClockEntry> {
-  // 🔹 Determinar el timestamp preciso del evento
   let timestamp: Date;
 
   if (providedTimestamp) {
-    // Caso 1: Cliente móvil proporciona timestamp preciso (nueva funcionalidad)
     timestamp = new Date(providedTimestamp);
   } else if (date) {
-    // Caso 2: Admin proporciona fecha (comportamiento legacy)
-    // Combinar la fecha proporcionada con la hora actual del servidor
     timestamp = dateToTimestamp(date);
   } else {
-    // Caso 3: Ni timestamp ni fecha (fallback)
     timestamp = new Date();
   }
-  
-  // 🔹 Extraer la fecha del timestamp para la lógica de workday (UTC)
   const eventDate = timestampToDateString(timestamp);
 
   let workdayId: string | undefined;
@@ -77,7 +72,10 @@ export async function createClockEntry(
       entryType,
       timestamp,
       source,
+      latitude: latitud,
+      longitude: longitud,
     })
+
     .returning();
 
   // 🔹 Solo actualizar timeEntry y dailyWorkday si es CLOCK OUT
@@ -87,7 +85,7 @@ export async function createClockEntry(
       .select()
       .from(clockEntries)
       .where(
-        sql`${clockEntries.idUser} = ${employeeId} AND DATE(${clockEntries.timestamp} AT TIME ZONE 'Europe/Madrid') = ${eventDate}`,
+        sql`${clockEntries.idUser} = ${employeeId} AND DATE(${clockEntries.timestamp}) = ${eventDate}`,
       )
       .orderBy(clockEntries.timestamp);
 
@@ -102,7 +100,7 @@ export async function createClockEntry(
         .set({
           workedMinutes: Math.round(todayTimeEntry.totalHours * 60),
           breakMinutes: todayTimeEntry.breakMinutes,
-          status: "closed"
+          status: "closed",
         })
         .where(sql`${dailyWorkday.id} = ${workdayId}`);
     }
@@ -118,7 +116,9 @@ export async function getClockEntriesByDate(
   return await db
     .select()
     .from(clockEntries)
-    .where(sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'Europe/Madrid') = ${date}`)
+    .where(
+      sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'Europe/Madrid') = ${date}`,
+    )
     .orderBy(clockEntries.timestamp);
 }
 
@@ -135,8 +135,8 @@ export async function getClockEntriesUserByRange(
       and(
         sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'Europe/Madrid') >= ${startDate}`,
         sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'Europe/Madrid') <= ${endDate}`,
-        eq(clockEntries.idUser, idUser)
-      )
+        eq(clockEntries.idUser, idUser),
+      ),
     )
     .orderBy(clockEntries.timestamp);
 }
@@ -150,7 +150,11 @@ export async function getTimeEntriesByDate(date: string) {
   return timeEntries;
 }
 
-export async function getTimeEntriesUserByRange(idUser: string, dateStart: string, dateEnd: string):Promise<TimeEntry[]> {
+export async function getTimeEntriesUserByRange(
+  idUser: string,
+  dateStart: string,
+  dateEnd: string,
+): Promise<TimeEntry[]> {
   // 1️⃣ Obtener todos los clock entries del día
   const entries = await getClockEntriesUserByRange(idUser, dateStart, dateEnd);
 
