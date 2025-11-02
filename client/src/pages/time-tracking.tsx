@@ -484,7 +484,7 @@ function AdminTimeTracking({
     };
   };
 
-  const formatTime = (date: Date | string | null) => {
+  const formatTime = (date: Date | string | null | undefined) => {
     if (!date) return "--:--";
     return new Date(date).toLocaleTimeString("es-ES", {
       hour: "2-digit",
@@ -895,13 +895,12 @@ function AdminTimeTracking({
                   {entry && (
                     <Button
                       variant="ghost"
-                      size="mlg"
+                      size="icon"
                       onClick={() => {
                         setSelectedEntry(entry);
                         setShowMap(true);
                       }}
                       title="Ver ubicaciones"
-                      className="w-12 h-12 hover:bg-blue-50 transition-all"
                     >
                       <MapPin className="w-5 h-5 text-blue-600" />
                     </Button>
@@ -1068,7 +1067,7 @@ function AdminTimeTracking({
                   : [40.4168, -3.7038]
               }
               zoom={13}
-              style={{ flex: 1, width: "100%", height: "500px" }} // Aquí flex:1 hace que ocupe toda la altura disponible
+              style={{ flex: 1, width: "100%", height: "500px" }}
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
