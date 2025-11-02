@@ -890,19 +890,19 @@ function AdminTimeTracking({
                       </p>
                     </div>
                   </div>
-
                   {/* --- Icono de ubicación --- */}
                   {entry && (
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="lg"
                       onClick={() => {
                         setSelectedEntry(entry);
                         setShowMap(true);
                       }}
                       title="Ver ubicaciones"
+                      className="p-4"
                     >
-                      <MapPin className="w-5 h-5 text-blue-600" />
+                      <MapPin className="!w-10 !h-10 text-grey-600" />
                     </Button>
                   )}
                 </div>
