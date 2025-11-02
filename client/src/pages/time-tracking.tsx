@@ -1064,10 +1064,10 @@ function AdminTimeTracking({
                       selectedEntry.locationClockIn.latitude,
                       selectedEntry.locationClockIn.longitude,
                     ]
-                  : [40.4168, -3.7038] // fallback a Madrid
+                  : [40.4168, -3.7038]
               }
               zoom={13}
-              style={{ height: "100%", width: "100%" }}
+              style={{ flex: 1, width: "100%", height: "500px" }} // Aquí flex:1 hace que ocupe toda la altura disponible
             >
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
