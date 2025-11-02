@@ -895,12 +895,13 @@ function AdminTimeTracking({
                   {entry && (
                     <Button
                       variant="ghost"
-                      size="icon"
+                      size="mlg"
                       onClick={() => {
                         setSelectedEntry(entry);
                         setShowMap(true);
                       }}
                       title="Ver ubicaciones"
+                      className="w-12 h-12 hover:bg-blue-50 transition-all"
                     >
                       <MapPin className="w-5 h-5 text-blue-600" />
                     </Button>
