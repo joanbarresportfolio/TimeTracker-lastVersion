@@ -2,7 +2,17 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { Icon, LatLngExpression } from "leaflet";
+import { MapPin } from "lucide-react";
 import { z } from "zod";
+import "leaflet/dist/leaflet.css";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog.tsx";
 import {
   Card,
   CardContent,
@@ -29,13 +39,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,7 +77,11 @@ import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-
+const locationIcon = new Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
 export default function TimeTracking() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
@@ -119,6 +126,8 @@ function AdminTimeTracking({
   setSelectedDate: (date: string) => void;
   toast: any;
 }) {
+  const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
+  const [showMap, setShowMap] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmAction, setConfirmAction] = useState<
@@ -843,21 +852,26 @@ function AdminTimeTracking({
 
       {/* Lista de empleados */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filteredEmployees.map((employee) => {
-          const entry = getUserTimeEntriesDay(employee.id);
+        {filteredEmployees.map((employee: any) => {
+          const entry: TimeEntry | undefined = getUserTimeEntriesDay(
+            employee.id,
+          );
           const status = getEmployeeStatus(employee);
+
           return (
             <Card
               key={employee.id}
-              className="hover:shadow-md transition-shadow"
-              data-testid={`employee-time-card-${employee.id}`}
+              className="hover:shadow-md transition-shadow relative"
             >
               <CardContent className="p-6">
+                {/* --- Encabezado con icono de mapa --- */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-12 h-12">
                       <AvatarFallback
-                        className={`bg-gradient-to-r ${getAvatarColor(employee.firstName)} text-white font-semibold`}
+                        className={`bg-gradient-to-r ${getAvatarColor(
+                          employee.firstName,
+                        )} text-white font-semibold`}
                       >
                         {getInitials(employee.firstName, employee.lastName)}
                       </AvatarFallback>
@@ -871,38 +885,41 @@ function AdminTimeTracking({
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {departments?.find(
-                          (d) => d.id === employee.departmentId,
+                          (d: any) => d.id === employee.departmentId,
                         )?.name || "Sin asignar"}
                       </p>
                     </div>
                   </div>
-                  <Badge className={status.color}>{status.label}</Badge>
+
+                  {/* --- Icono de ubicación --- */}
+                  {entry && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedEntry(entry);
+                        setShowMap(true);
+                      }}
+                      title="Ver ubicaciones"
+                    >
+                      <MapPin className="w-5 h-5 text-blue-600" />
+                    </Button>
+                  )}
                 </div>
 
+                {/* --- Info de entrada/salida --- */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Entrada</p>
-                    <p className="font-medium">
-                      {formatTime(entry?.clockIn || null)}
-                    </p>
+                    <p className="font-medium">{formatTime(entry?.clockIn)}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Salida</p>
-                    <p className="font-medium">
-                      {formatTime(entry?.clockOut || null)}
-                    </p>
+                    <p className="font-medium">{formatTime(entry?.clockOut)}</p>
                   </div>
                 </div>
-                <div className="mb-4">
-                  <p className="text-sm text-muted-foreground">
-                    Tiempo trabajado
-                  </p>
-                  <p className="font-medium">
-                    {formatDuration(entry?.totalHours || null)}
-                  </p>
-                </div>
 
-                {/* 👇 Nueva sección para mostrar pausas */}
+                {/* --- Pausas --- */}
                 {entry?.breaks && entry.breaks.length > 0 && (
                   <div className="mb-4">
                     <p className="text-sm text-muted-foreground mb-1">
@@ -922,26 +939,20 @@ function AdminTimeTracking({
                         </div>
                       ))}
                     </div>
-
-                    {/* Total de minutos en pausa */}
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Total pausas:{" "}
-                      <span className="font-medium">
-                        {entry.breakMinutes} min
-                      </span>
-                    </p>
                   </div>
                 )}
 
+                {/* --- Tiempo total --- */}
                 <div className="mb-4">
                   <p className="text-sm text-muted-foreground">
                     Tiempo trabajado
                   </p>
                   <p className="font-medium">
-                    {formatHours(entry?.totalHours || null)}
+                    {formatHours(entry?.totalHours || 0)}
                   </p>
                 </div>
 
+                {/* --- Botones de acción --- */}
                 <div className="flex space-x-2">
                   {status.status === "not_started" && (
                     <Button
@@ -954,7 +965,6 @@ function AdminTimeTracking({
                       }
                       disabled={clockEntryMutation.isPending}
                       className="flex-1"
-                      data-testid={`button-clock-in-${employee.id}`}
                     >
                       <LogIn className="w-4 h-4 mr-2" />
                       Fichar Entrada
@@ -974,7 +984,6 @@ function AdminTimeTracking({
                         disabled={clockEntryMutation.isPending}
                         variant="outline"
                         className="flex-1"
-                        data-testid={`button-break-start-${employee.id}`}
                       >
                         <Clock className="w-4 h-4 mr-2" />
                         Iniciar Pausa
@@ -990,40 +999,11 @@ function AdminTimeTracking({
                         disabled={clockEntryMutation.isPending}
                         variant="outline"
                         className="flex-1"
-                        data-testid={`button-clock-out-${employee.id}`}
                       >
                         <LogOut className="w-4 h-4 mr-2" />
                         Fichar Salida
                       </Button>
                     </>
-                  )}
-
-                  {status.status === "on_break" && (
-                    <Button
-                      onClick={() =>
-                        clockEntryMutation.mutate({
-                          employeeId: employee.id,
-                          tipoRegistro: "break_end",
-                          date: selectedDate,
-                        })
-                      }
-                      disabled={clockEntryMutation.isPending}
-                      variant="outline"
-                      className="flex-1"
-                      data-testid={`button-break-end-${employee.id}`}
-                    >
-                      <Clock className="w-4 h-4 mr-2" />
-                      Finalizar Pausa
-                    </Button>
-                  )}
-
-                  {status.status === "completed" && (
-                    <Badge
-                      variant="outline"
-                      className="flex-1 justify-center py-2"
-                    >
-                      Jornada Completada
-                    </Badge>
                   )}
                 </div>
               </CardContent>
@@ -1031,7 +1011,6 @@ function AdminTimeTracking({
           );
         })}
       </div>
-
       {filteredEmployees.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
@@ -1044,7 +1023,101 @@ function AdminTimeTracking({
           </CardContent>
         </Card>
       )}
+      <Dialog open={showMap} onOpenChange={setShowMap}>
+        <DialogContent className="max-w-3xl h-[600px]">
+          <DialogHeader>
+            <DialogTitle>Ubicaciones de fichaje</DialogTitle>
+          </DialogHeader>
 
+          {selectedEntry && (
+            <MapContainer
+              center={
+                selectedEntry.locationClockIn
+                  ? [
+                      selectedEntry.locationClockIn.latitude,
+                      selectedEntry.locationClockIn.longitude,
+                    ]
+                  : [40.4168, -3.7038] // fallback a Madrid
+              }
+              zoom={13}
+              style={{ height: "100%", width: "100%" }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+
+              {/* Clock In */}
+              {selectedEntry.locationClockIn && (
+                <Marker
+                  icon={locationIcon}
+                  position={
+                    [
+                      selectedEntry.locationClockIn.latitude,
+                      selectedEntry.locationClockIn.longitude,
+                    ] as LatLngExpression
+                  }
+                >
+                  <Popup>Entrada: {formatTime(selectedEntry.clockIn)}</Popup>
+                </Marker>
+              )}
+
+              {/* Clock Out */}
+              {selectedEntry.locationClockOut && (
+                <Marker
+                  icon={locationIcon}
+                  position={
+                    [
+                      selectedEntry.locationClockOut.latitude,
+                      selectedEntry.locationClockOut.longitude,
+                    ] as LatLngExpression
+                  }
+                >
+                  <Popup>Salida: {formatTime(selectedEntry.clockOut)}</Popup>
+                </Marker>
+              )}
+
+              {/* Breaks */}
+              {selectedEntry.breaks.map((br, i) => (
+                <>
+                  {br.locationStart && (
+                    <Marker
+                      key={`start-${i}`}
+                      icon={locationIcon}
+                      position={
+                        [
+                          br.locationStart.latitude,
+                          br.locationStart.longitude,
+                        ] as LatLngExpression
+                      }
+                    >
+                      <Popup>
+                        Pausa {i + 1} inicio: {formatTime(br.start)}
+                      </Popup>
+                    </Marker>
+                  )}
+                  {br.locationEnd && (
+                    <Marker
+                      key={`end-${i}`}
+                      icon={locationIcon}
+                      position={
+                        [
+                          br.locationEnd.latitude,
+                          br.locationEnd.longitude,
+                        ] as LatLngExpression
+                      }
+                    >
+                      <Popup>
+                        Pausa {i + 1} fin: {formatTime(br.end)}
+                      </Popup>
+                    </Marker>
+                  )}
+                </>
+              ))}
+            </MapContainer>
+          )}
+        </DialogContent>
+      </Dialog>
       <AlertDialog
         open={showConfirmDialog}
         onOpenChange={(open) => {

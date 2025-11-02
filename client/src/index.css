@@ -1,19 +1,21 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "leaflet/dist/leaflet.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* LIGHT MODE */
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  --button-outline: rgba(0, 0, 0, .10);
+  --badge-outline: rgba(0, 0, 0, .05);
 
   /* Automatic computation of border around primary / danger buttons */
-  --opaque-button-border-intensity: -8; /* In terms of percentages */
+  --opaque-button-border-intensity: -8;
+  /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(0,0,0, .02);
-  --elevate-2: rgba(0,0,0, .06);
+  --elevate-1: rgba(0, 0, 0, .02);
+  --elevate-2: rgba(0, 0, 0, .06);
 
   --background: hsl(210 40% 98%);
   --foreground: hsl(222.2 84% 4.9%);
@@ -53,7 +55,8 @@
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
-  --radius: .75rem; /* 12px */
+  --radius: .75rem;
+  /* 12px */
   --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
   --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
@@ -97,14 +100,15 @@
 }
 
 .dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
+  --button-outline: rgba(255, 255, 255, .10);
+  --badge-outline: rgba(255, 255, 255, .05);
 
-  --opaque-button-border-intensity: 9;  /* In terms of percentages */
+  --opaque-button-border-intensity: 9;
+  /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(255,255,255, .03);
-  --elevate-2: rgba(255,255,255, .07);
+  --elevate-1: rgba(255, 255, 255, .03);
+  --elevate-2: rgba(255, 255, 255, .07);
 
   --background: hsl(222.2 84% 4.9%);
   --foreground: hsl(210 40% 98%);

@@ -37,7 +37,7 @@ Preferred communication style: Simple, everyday language.
 - **Schema Language**: All tables and columns use consistent English naming conventions
 - **Key Entities**: `users`, `departments`, `roles_enterprise`, `schedules`, `clock_entries`, `daily_workday`, `incidents`, `incidents_type`
 - **Architecture Pattern**: Event-based time tracking (`clock_entries`) with daily workday consolidation (`daily_workday`).
-- **Geolocation**: `clock_entries` table includes optional `latitude` and `longitude` columns (VARCHAR) for GPS tracking
+- **Geolocation**: `clock_entries` table includes optional `latitude` and `longitude` columns (DOUBLE PRECISION) for GPS tracking
 - **Critical Constraints**:
   - One workday per user per day (unique index on `id_user`, `date`)
   - `schedules.idDailyWorkday` is optional (nullable) - schedules can exist independently

@@ -250,8 +250,8 @@ export const insertClockEntrySchema = createInsertSchema(clockEntries)
     idDailyWorkday: z.string().min(1, "Debe seleccionar una jornada diaria"),
     entryType: z.enum(["clock_in", "clock_out", "break_start", "break_end"]),
     source: z.enum(["web", "mobile_device"]).optional(),
-    latitude: z.string().optional(),
-    longitude: z.string().optional(),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
   });
 /**
  * TABLE: incidents_type
@@ -451,9 +451,16 @@ export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 // ADDITIONAL TYPES
 // ============================================================================
 
+export type GeoLocation = {
+  latitude: number;
+  longitude: number;
+};
+
 export type BreakEntry = {
   start: Date;
   end: Date | null;
+  locationStart?: GeoLocation;
+  locationEnd?: GeoLocation;
 };
 
 export type TimeEntry = {
@@ -465,6 +472,8 @@ export type TimeEntry = {
   breakMinutes: number;
   breaks: BreakEntry[];
   date: string;
+  locationClockIn?: GeoLocation;
+  locationClockOut?: GeoLocation;
 };
 
 // ============================================================================

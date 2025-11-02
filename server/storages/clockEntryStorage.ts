@@ -5,6 +5,7 @@ import {
   clockEntries,
   dailyWorkday,
   schedules,
+  GeoLocation,
 } from "@shared/schema";
 import { db } from "../db";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
@@ -143,7 +144,7 @@ export async function getClockEntriesUserByRange(
 
 export async function getTimeEntriesByDate(date: string) {
   // 1️⃣ Obtener todos los clock entries del día
-  const entries = await getClockEntriesByDate(date);
+  const entries = await getClockEntriesByDate(date); //Devuelve array con todos los clock entries del día
 
   const timeEntries = await clockToTimeEntries(entries);
 
@@ -162,10 +163,10 @@ export async function getTimeEntriesUserByRange(
 
   return timeEntries;
 }
-
 export function clockToTimeEntries(clockEntries: ClockEntry[]): TimeEntry[] {
   // 1️⃣ Agrupar los clock entries por usuario
   const groupedByUser: Record<string, ClockEntry[]> = {};
+
   for (const entry of clockEntries) {
     if (!groupedByUser[entry.idUser]) {
       groupedByUser[entry.idUser] = [];
@@ -175,23 +176,22 @@ export function clockToTimeEntries(clockEntries: ClockEntry[]): TimeEntry[] {
 
   const timeEntries: TimeEntry[] = [];
 
-  // 2️⃣ Procesar cada grupo (usuario)
+  // 2️⃣ Procesar cada grupo de usuario
   for (const [employeeId, userEntries] of Object.entries(groupedByUser)) {
-    // Agrupar también por fecha, ya que puede haber varios días
+    // Agrupar por fecha (en horario español)
     const groupedByDate: Record<string, ClockEntry[]> = {};
 
     for (const entry of userEntries) {
-      // Usar hora española para agrupar por fecha (importante para timestamps cerca de medianoche)
-      const dateKey = getSpanishDate(entry.timestamp); // YYYY-MM-DD en hora española
+      const dateKey = getSpanishDate(entry.timestamp); // Devuelve 'YYYY-MM-DD'
       if (!groupedByDate[dateKey]) {
         groupedByDate[dateKey] = [];
       }
       groupedByDate[dateKey].push(entry);
     }
 
-    // 3️⃣ Crear los timeEntries finales por día
+    // 3️⃣ Crear los TimeEntries finales por día
     for (const [date, entriesOfDay] of Object.entries(groupedByDate)) {
-      // Ordenar los eventos cronológicamente
+      // Ordenar cronológicamente
       entriesOfDay.sort(
         (a, b) =>
           new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
@@ -199,37 +199,54 @@ export function clockToTimeEntries(clockEntries: ClockEntry[]): TimeEntry[] {
 
       let clockIn: Date | null = null;
       let clockOut: Date | null = null;
-      let breaks: BreakEntry[] = [];
+
+      // Ubicaciones
+      let locationClockIn: GeoLocation | undefined;
+      let locationClockOut: GeoLocation | undefined;
+
+      const breaks: BreakEntry[] = [];
       let currentBreak: BreakEntry | null = null;
 
-      // Procesar los eventos
+      // Procesar los eventos del día
       for (const entry of entriesOfDay) {
         const timestamp = new Date(entry.timestamp);
+
+        // 🧭 Si tiene coordenadas, creamos el objeto GeoLocation
+        const entryLocation: GeoLocation | undefined =
+          entry.latitude != null && entry.longitude != null
+            ? { latitude: entry.latitude, longitude: entry.longitude }
+            : undefined;
 
         switch (entry.entryType) {
           case "clock_in":
             clockIn = timestamp;
+            locationClockIn = entryLocation;
             break;
 
           case "clock_out":
             clockOut = timestamp;
+            locationClockOut = entryLocation;
             break;
 
           case "break_start":
-            currentBreak = { start: timestamp, end: null };
+            currentBreak = {
+              start: timestamp,
+              end: null,
+              locationStart: entryLocation,
+            };
             breaks.push(currentBreak);
             break;
 
           case "break_end":
             if (currentBreak && !currentBreak.end) {
               currentBreak.end = timestamp;
+              currentBreak.locationEnd = entryLocation;
             }
             break;
         }
       }
 
-      // Calcular tiempos si hay clockIn y clockOut
-      // Calcular tiempos si hay clockIn y clockOut
+      // 4️⃣ Calcular tiempos totales y descansos
       let totalHours = 0;
       let breakMinutes = 0;
 
@@ -244,8 +261,8 @@ export function clockToTimeEntries(clockEntries: ClockEntry[]): TimeEntry[] {
         totalHours = (totalMs - breakMinutes * 60 * 1000) / (1000 * 60 * 60);
       }
 
-      // Crear el registro final
-      timeEntries.push({
+      // 5️⃣ Crear el registro final del día
+      const timeEntry: TimeEntry = {
         id: `${employeeId}-${date}`,
         employeeId,
         clockIn: clockIn ?? new Date(date),
@@ -254,12 +271,17 @@ export function clockToTimeEntries(clockEntries: ClockEntry[]): TimeEntry[] {
         breakMinutes: Math.round(breakMinutes),
         breaks,
         date,
-      });
+        locationClockIn,
+        locationClockOut,
+      };
+
+      timeEntries.push(timeEntry);
     }
   }
 
   return timeEntries;
 }
+
 //UTIL FUNCTION
 export function timestampToDateString(timestamp: string | Date): string {
   const date = new Date(timestamp);
