@@ -82,6 +82,19 @@ const locationIcon = new Icon({
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
+const iconBase = (color: string) =>
+  new Icon({
+    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
+    shadowUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+  });
+
+const iconIn = iconBase("blue"); // Entrada
+const iconOut = iconBase("red"); // Salida
+const iconBreak = iconBase("orange"); // Pausa
 export default function TimeTracking() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
@@ -894,7 +907,7 @@ function AdminTimeTracking({
                   {entry && (
                     <Button
                       variant="ghost"
-                      size="lg"
+                      size="icon"
                       onClick={() => {
                         setSelectedEntry(entry);
                         setShowMap(true);
@@ -902,7 +915,7 @@ function AdminTimeTracking({
                       title="Ver ubicaciones"
                       className="p-4"
                     >
-                      <MapPin className="!w-8 !h-8 text-grey-600" />
+                      <MapPin className="!w-8 !h-8 text-grey-500" />
                     </Button>
                   )}
                 </div>
@@ -1077,7 +1090,7 @@ function AdminTimeTracking({
               {/* Clock In */}
               {selectedEntry.locationClockIn && (
                 <Marker
-                  icon={locationIcon}
+                  icon={iconIn}
                   position={
                     [
                       selectedEntry.locationClockIn.latitude,
@@ -1092,7 +1105,7 @@ function AdminTimeTracking({
               {/* Clock Out */}
               {selectedEntry.locationClockOut && (
                 <Marker
-                  icon={locationIcon}
+                  icon={iconOut}
                   position={
                     [
                       selectedEntry.locationClockOut.latitude,
@@ -1110,7 +1123,7 @@ function AdminTimeTracking({
                   {br.locationStart && (
                     <Marker
                       key={`start-${i}`}
-                      icon={locationIcon}
+                      icon={iconBreak}
                       position={
                         [
                           br.locationStart.latitude,
@@ -1126,7 +1139,7 @@ function AdminTimeTracking({
                   {br.locationEnd && (
                     <Marker
                       key={`end-${i}`}
-                      icon={locationIcon}
+                      icon={iconBreak}
                       position={
                         [
                           br.locationEnd.latitude,
