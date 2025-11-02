@@ -902,7 +902,7 @@ function AdminTimeTracking({
                       title="Ver ubicaciones"
                       className="p-4"
                     >
-                      <MapPin className="!w-10 !h-10 text-grey-600" />
+                      <MapPin className="!w-8 !h-8 text-grey-600" />
                     </Button>
                   )}
                 </div>
