@@ -424,7 +424,7 @@ export default function Schedules() {
       // getDay devuelve 0=domingo, 1=lunes, ... 6=sábado
       // Queremos lunes=0, martes=1, ... domingo=6
       const startDay = (getDay(monthStart) + 6) % 7;
-      
+
       // Crear array con espacios en blanco al inicio
       const emptySlots = Array(startDay).fill(null);
       const allDays = [...emptySlots, ...days];
@@ -1251,12 +1251,15 @@ export default function Schedules() {
                     {days.map((day, index) => {
                       // Si es un espacio vacío, renderizar celda vacía
                       if (day === null) {
-                        return <div key={`empty-${index}`} className="w-8 h-8" />;
+                        return (
+                          <div key={`empty-${index}`} className="w-8 h-8" />
+                        );
                       }
 
                       // Determinar el color según el tipo de jornada
-                      const hasBreak = day.schedule?.startBreak && day.schedule?.endBreak;
-                      
+                      const hasBreak =
+                        day.schedule?.startBreak && day.schedule?.endBreak;
+
                       const dayClasses = [
                         "w-8 h-8 text-xs flex items-center justify-center rounded-md cursor-pointer transition-all duration-200",
                         "text-foreground hover-elevate",
@@ -1370,7 +1373,8 @@ export default function Schedules() {
                 Selecciona los empleados a los que quieres copiar los{" "}
                 {dateSchedules?.length || 0} horarios de{" "}
                 {selectedEmployee?.firstName} {selectedEmployee?.lastName} del
-                año {calendarYear}. Los empleados que ya tienen horarios en alguna de estas fechas están deshabilitados.
+                año {calendarYear}. Los empleados que ya tienen horarios en
+                alguna de estas fechas están deshabilitados.
               </DialogDescription>
             </DialogHeader>
 
@@ -1385,7 +1389,8 @@ export default function Schedules() {
                     Copiando Horarios...
                   </h3>
                   <p className="text-muted-foreground mt-1">
-                    Por favor espera mientras se copian los horarios a {selectedEmployeesToCopy.length} empleado(s)
+                    Por favor espera mientras se copian los horarios a{" "}
+                    {selectedEmployeesToCopy.length} empleado(s)
                   </p>
                 </div>
               </div>
@@ -1397,14 +1402,15 @@ export default function Schedules() {
                       ?.filter((emp) => emp.id !== selectedEmployee?.id)
                       .map((employee) => {
                         // Verificar si el empleado ya tiene horarios en alguna de las fechas del empleado fuente
-                        const employeeSchedules = yearlySchedules?.filter(
-                          (s) => s.employeeId === employee.id
-                        ) || [];
+                        const employeeSchedules =
+                          yearlySchedules?.filter(
+                            (s) => s.employeeId === employee.id,
+                          ) || [];
                         const sourceDates = new Set(
-                          dateSchedules?.map((s) => s.date) || []
+                          dateSchedules?.map((s) => s.date) || [],
                         );
                         const hasConflict = employeeSchedules.some((schedule) =>
-                          sourceDates.has(schedule.date)
+                          sourceDates.has(schedule.date),
                         );
 
                         return (
@@ -1418,7 +1424,9 @@ export default function Schedules() {
                           >
                             <Checkbox
                               id={`emp-${employee.id}`}
-                              checked={selectedEmployeesToCopy.includes(employee.id)}
+                              checked={selectedEmployeesToCopy.includes(
+                                employee.id,
+                              )}
                               onCheckedChange={() => {
                                 if (!hasConflict) {
                                   toggleEmployeeSelection(employee.id);
@@ -1430,7 +1438,9 @@ export default function Schedules() {
                             <label
                               htmlFor={`emp-${employee.id}`}
                               className={`flex items-center gap-3 flex-1 ${
-                                hasConflict ? "cursor-not-allowed" : "cursor-pointer"
+                                hasConflict
+                                  ? "cursor-not-allowed"
+                                  : "cursor-pointer"
                               }`}
                             >
                               <Avatar>
@@ -1445,8 +1455,9 @@ export default function Schedules() {
                                 </p>
                                 <p className="text-sm text-muted-foreground">
                                   {employee.departmentId
-                                    ? departmentMap.get(employee.departmentId) ||
-                                      "Sin departamento"
+                                    ? departmentMap.get(
+                                        employee.departmentId,
+                                      ) || "Sin departamento"
                                     : "Sin departamento"}
                                   {hasConflict && (
                                     <span className="text-destructive ml-2">
@@ -1464,7 +1475,8 @@ export default function Schedules() {
                   {selectedEmployeesToCopy.length > 0 && (
                     <div className="p-3 bg-muted rounded-lg">
                       <p className="text-sm font-medium">
-                        {selectedEmployeesToCopy.length} empleado(s) seleccionado(s)
+                        {selectedEmployeesToCopy.length} empleado(s)
+                        seleccionado(s)
                       </p>
                     </div>
                   )}
@@ -1484,7 +1496,9 @@ export default function Schedules() {
                   </Button>
                   <Button
                     onClick={handleCopySchedules}
-                    disabled={selectedEmployeesToCopy.length === 0 || isCopyingSchedules}
+                    disabled={
+                      selectedEmployeesToCopy.length === 0 || isCopyingSchedules
+                    }
                     data-testid="button-confirm-copy"
                   >
                     <Copy className="w-4 h-4 mr-2" />
@@ -1518,7 +1532,14 @@ export default function Schedules() {
                 <Select
                   value={scheduleForm.workdayType}
                   onValueChange={(value: "completa" | "partida") =>
-                    setScheduleForm((prev) => ({ ...prev, workdayType: value }))
+                    setScheduleForm((prev) => ({
+                      ...prev,
+                      workdayType: value,
+                      // Si es jornada completa, vaciamos las pausas
+                      ...(value === "completa"
+                        ? { breakStartTime: "", breakEndTime: "" }
+                        : {}),
+                    }))
                   }
                 >
                   <SelectTrigger data-testid="select-workday-type">
