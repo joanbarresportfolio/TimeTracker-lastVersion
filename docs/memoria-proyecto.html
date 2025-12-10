@@ -87,7 +87,7 @@
         }
         
         .toc li {
-            padding: 5px 0;
+            padding: 4px 0;
             border-bottom: 1px dotted #ddd;
         }
         
@@ -96,7 +96,7 @@
             text-decoration: none;
         }
         
-        .toc .level-1 { font-weight: 600; margin-top: 15px; }
+        .toc .level-1 { font-weight: 600; margin-top: 12px; }
         .toc .level-2 { padding-left: 20px; }
         .toc .level-3 { padding-left: 40px; font-size: 10pt; }
         
@@ -126,6 +126,12 @@
             font-size: 11pt;
             color: #2563eb;
             margin: 15px 0 8px 0;
+        }
+        
+        h5 {
+            font-size: 10pt;
+            color: #3b82f6;
+            margin: 12px 0 6px 0;
         }
         
         p {
@@ -197,6 +203,20 @@
             margin: 15px 0;
         }
         
+        .warning-box {
+            background-color: #fef2f2;
+            padding: 15px;
+            border-left: 4px solid #ef4444;
+            margin: 15px 0;
+        }
+        
+        .success-box {
+            background-color: #f0fdf4;
+            padding: 15px;
+            border-left: 4px solid #22c55e;
+            margin: 15px 0;
+        }
+        
         .diagram {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -234,6 +254,56 @@
             margin-top: 8px;
             font-style: italic;
         }
+        
+        .legal-article {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+        
+        .legal-article h4 {
+            color: #1e40af;
+            margin-bottom: 10px;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin: 20px 0;
+        }
+        
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #3b82f6;
+        }
+        
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            background: #3b82f6;
+            border-radius: 50%;
+        }
+        
+        .timeline-date {
+            font-weight: 600;
+            color: #1e40af;
+        }
     </style>
 </head>
 <body>
@@ -242,12 +312,14 @@
 <div class="cover-page">
     <h1>SISTEMA DE CONTROL DE FICHAJES DE EMPLEADOS</h1>
     <p class="subtitle">Aplicación Web y Móvil para la Gestión del Tiempo de Trabajo</p>
+    <p class="subtitle" style="font-size: 14pt; color: #1e40af;">Adaptado a la Nueva Normativa Española de Registro Horario Digital</p>
     <div class="info">
         <p><strong>Proyecto de Desarrollo de Aplicaciones</strong></p>
         <p>Full-Stack Web & Mobile Development</p>
+        <p style="margin-top: 20px;">React · TypeScript · Node.js · PostgreSQL · React Native</p>
     </div>
     <div class="date">
-        <p>Noviembre 2025</p>
+        <p>Diciembre 2025</p>
     </div>
 </div>
 
@@ -255,90 +327,419 @@
 <div class="toc page-break">
     <h2>TABLA DE CONTENIDO</h2>
     <ul>
-        <li class="level-1"><a href="#intro">1. INTRODUCCIÓN</a></li>
-        <li class="level-2"><a href="#desc">1.1. Descripción del Proyecto</a></li>
-        <li class="level-2"><a href="#info">1.2. Información General</a></li>
-        <li class="level-2"><a href="#obj">1.3. Objetivos del Proyecto</a></li>
+        <li class="level-1"><a href="#motivacion">1. MOTIVACIÓN Y JUSTIFICACIÓN DEL PROYECTO</a></li>
+        <li class="level-2"><a href="#contexto-legal">1.1. Contexto Legal en España</a></li>
+        <li class="level-2"><a href="#normativa">1.2. Nueva Normativa de Registro Horario Digital</a></li>
+        <li class="level-2"><a href="#requisitos-legales">1.3. Requisitos Técnicos Exigidos por la Ley</a></li>
+        <li class="level-2"><a href="#sanciones">1.4. Sanciones por Incumplimiento</a></li>
+        <li class="level-2"><a href="#necesidad">1.5. Necesidad de una Solución Tecnológica</a></li>
         
-        <li class="level-1"><a href="#contexto">2. CONTEXTUALIZACIÓN DEL PROYECTO</a></li>
-        <li class="level-2"><a href="#obj-concretos">2.1. Objetivos Concretos</a></li>
-        <li class="level-2"><a href="#tech">2.2. Tecnologías Utilizadas</a></li>
-        <li class="level-2"><a href="#tech-alt">2.3. Tecnologías Alternativas</a></li>
+        <li class="level-1"><a href="#intro">2. INTRODUCCIÓN AL PROYECTO</a></li>
+        <li class="level-2"><a href="#desc">2.1. Descripción del Proyecto</a></li>
+        <li class="level-2"><a href="#info">2.2. Información General</a></li>
+        <li class="level-2"><a href="#obj">2.3. Objetivos del Proyecto</a></li>
+        <li class="level-2"><a href="#alcance">2.4. Alcance y Limitaciones</a></li>
         
-        <li class="level-1"><a href="#planif">3. PLANIFICACIÓN DEL PROYECTO</a></li>
-        <li class="level-2"><a href="#temp">3.1. Temporalización</a></li>
-        <li class="level-2"><a href="#metod">3.2. Metodología de Desarrollo</a></li>
+        <li class="level-1"><a href="#contexto">3. CONTEXTUALIZACIÓN TÉCNICA</a></li>
+        <li class="level-2"><a href="#obj-concretos">3.1. Objetivos Concretos</a></li>
+        <li class="level-2"><a href="#tech">3.2. Tecnologías Utilizadas</a></li>
+        <li class="level-2"><a href="#tech-alt">3.3. Tecnologías Alternativas Evaluadas</a></li>
+        <li class="level-2"><a href="#justificacion-tech">3.4. Justificación de Decisiones Tecnológicas</a></li>
         
-        <li class="level-1"><a href="#desarrollo">4. DESARROLLO DEL PROYECTO</a></li>
-        <li class="level-2"><a href="#fase0">4.0. Fase 0: Fase Previa</a></li>
-        <li class="level-2"><a href="#fase1">4.1. Fase 1: Fase de Concepción</a></li>
-        <li class="level-2"><a href="#fase2">4.2. Fase 2: Fase de Diseño</a></li>
-        <li class="level-2"><a href="#fase3">4.3. Fase 3: Fase de Planificación</a></li>
-        <li class="level-2"><a href="#fase4">4.4. Fase 4: Fase de Producción</a></li>
-        <li class="level-2"><a href="#fase5">4.5. Fase 5: Fase de Pruebas</a></li>
-        <li class="level-2"><a href="#fase6">4.6. Fase 6: Fase de Despliegue</a></li>
+        <li class="level-1"><a href="#planif">4. PLANIFICACIÓN DEL PROYECTO</a></li>
+        <li class="level-2"><a href="#temp">4.1. Temporalización</a></li>
+        <li class="level-2"><a href="#metod">4.2. Metodología de Desarrollo</a></li>
+        <li class="level-2"><a href="#riesgos">4.3. Gestión de Riesgos</a></li>
         
-        <li class="level-1"><a href="#arquitectura">5. ARQUITECTURA DE LA APLICACIÓN</a></li>
-        <li class="level-2"><a href="#arq-general">5.1. Arquitectura General</a></li>
-        <li class="level-2"><a href="#arq-backend">5.2. Arquitectura del Backend</a></li>
-        <li class="level-2"><a href="#arq-frontend">5.3. Arquitectura del Frontend</a></li>
+        <li class="level-1"><a href="#desarrollo">5. DESARROLLO DEL PROYECTO</a></li>
+        <li class="level-2"><a href="#fase0">5.0. Fase Previa: Configuración del Entorno</a></li>
+        <li class="level-2"><a href="#fase1">5.1. Fase de Concepción y Análisis</a></li>
+        <li class="level-2"><a href="#fase2">5.2. Fase de Diseño</a></li>
+        <li class="level-2"><a href="#fase3">5.3. Fase de Planificación Técnica</a></li>
+        <li class="level-2"><a href="#fase4">5.4. Fase de Producción</a></li>
+        <li class="level-2"><a href="#fase5">5.5. Fase de Pruebas</a></li>
+        <li class="level-2"><a href="#fase6">5.6. Fase de Despliegue</a></li>
         
-        <li class="level-1"><a href="#visual">6. ESTRUCTURA VISUAL DE LA APLICACIÓN</a></li>
-        <li class="level-2"><a href="#visual-web">6.1. Aplicación Web</a></li>
-        <li class="level-2"><a href="#visual-mobile">6.2. Aplicación Móvil</a></li>
+        <li class="level-1"><a href="#arquitectura">6. ARQUITECTURA DE LA APLICACIÓN</a></li>
+        <li class="level-2"><a href="#arq-general">6.1. Arquitectura General del Sistema</a></li>
+        <li class="level-2"><a href="#arq-backend">6.2. Arquitectura del Backend</a></li>
+        <li class="level-2"><a href="#arq-frontend">6.3. Arquitectura del Frontend</a></li>
+        <li class="level-2"><a href="#arq-mobile">6.4. Arquitectura de la Aplicación Móvil</a></li>
         
-        <li class="level-1"><a href="#datos">7. GESTIÓN DE DATOS</a></li>
-        <li class="level-2"><a href="#modelo">7.1. Modelo de Datos</a></li>
-        <li class="level-2"><a href="#timezone">7.2. Gestión de Zonas Horarias</a></li>
+        <li class="level-1"><a href="#implementacion">7. IMPLEMENTACIÓN DETALLADA</a></li>
+        <li class="level-2"><a href="#impl-auth">7.1. Sistema de Autenticación</a></li>
+        <li class="level-2"><a href="#impl-fichaje">7.2. Sistema de Fichaje</a></li>
+        <li class="level-2"><a href="#impl-horarios">7.3. Gestión de Horarios</a></li>
+        <li class="level-2"><a href="#impl-informes">7.4. Generación de Informes</a></li>
+        <li class="level-2"><a href="#impl-geo">7.5. Geolocalización</a></li>
         
-        <li class="level-1"><a href="#seguridad">8. SEGURIDAD</a></li>
-        <li class="level-2"><a href="#auth">8.1. Autenticación</a></li>
-        <li class="level-2"><a href="#authz">8.2. Autorización</a></li>
+        <li class="level-1"><a href="#visual">8. ESTRUCTURA VISUAL</a></li>
+        <li class="level-2"><a href="#visual-web">8.1. Interfaz Web</a></li>
+        <li class="level-2"><a href="#visual-mobile">8.2. Interfaz Móvil</a></li>
         
-        <li class="level-1"><a href="#tests">9. TESTS Y VALIDACIÓN</a></li>
+        <li class="level-1"><a href="#datos">9. GESTIÓN DE DATOS</a></li>
+        <li class="level-2"><a href="#modelo">9.1. Modelo de Datos Completo</a></li>
+        <li class="level-2"><a href="#timezone">9.2. Gestión de Zonas Horarias</a></li>
+        <li class="level-2"><a href="#integridad">9.3. Integridad y Consistencia</a></li>
         
-        <li class="level-1"><a href="#analisis">10. ANÁLISIS Y VALORACIÓN</a></li>
-        <li class="level-2"><a href="#conclusiones">10.1. Conclusiones</a></li>
-        <li class="level-2"><a href="#mejoras">10.2. Mejoras Propuestas</a></li>
+        <li class="level-1"><a href="#seguridad">10. SEGURIDAD</a></li>
+        <li class="level-2"><a href="#auth">10.1. Autenticación</a></li>
+        <li class="level-2"><a href="#authz">10.2. Autorización</a></li>
+        <li class="level-2"><a href="#proteccion">10.3. Protección de Datos (RGPD)</a></li>
         
-        <li class="level-1"><a href="#biblio">11. BIBLIOGRAFÍA Y REFERENCIAS</a></li>
+        <li class="level-1"><a href="#tests">11. TESTS Y VALIDACIÓN</a></li>
         
-        <li class="level-1"><a href="#anexos">12. ANEXOS</a></li>
+        <li class="level-1"><a href="#cumplimiento">12. CUMPLIMIENTO NORMATIVO</a></li>
+        
+        <li class="level-1"><a href="#analisis">13. ANÁLISIS Y VALORACIÓN</a></li>
+        <li class="level-2"><a href="#conclusiones">13.1. Conclusiones</a></li>
+        <li class="level-2"><a href="#mejoras">13.2. Mejoras Propuestas</a></li>
+        
+        <li class="level-1"><a href="#biblio">14. BIBLIOGRAFÍA Y REFERENCIAS</a></li>
+        
+        <li class="level-1"><a href="#anexos">15. ANEXOS</a></li>
     </ul>
 </div>
 
-<!-- CAPÍTULO 1: INTRODUCCIÓN -->
-<h1 id="intro" class="page-break">1. INTRODUCCIÓN</h1>
+<!-- CAPÍTULO 1: MOTIVACIÓN Y JUSTIFICACIÓN -->
+<h1 id="motivacion" class="page-break">1. MOTIVACIÓN Y JUSTIFICACIÓN DEL PROYECTO</h1>
 
-<h2 id="desc">1.1. Descripción del Proyecto</h2>
+<h2 id="contexto-legal">1.1. Contexto Legal en España</h2>
 
-<p>El presente proyecto consiste en el desarrollo de un <strong>Sistema de Control de Fichajes de Empleados</strong>, una solución integral que permite a las organizaciones gestionar de manera eficiente el registro de horas de trabajo de sus empleados. El sistema está compuesto por dos aplicaciones complementarias: una aplicación web para la administración y gestión, y una aplicación móvil para que los empleados puedan fichar desde cualquier ubicación.</p>
+<p>El desarrollo de este Sistema de Control de Fichajes de Empleados responde a una necesidad real y urgente del tejido empresarial español: la obligación de implementar sistemas de registro horario digital que cumplan con la nueva normativa laboral.</p>
 
-<p>La aplicación web proporciona a los administradores y responsables de recursos humanos una plataforma completa para gestionar empleados, departamentos, horarios, incidencias y generar informes detallados. Por su parte, la aplicación móvil ofrece a los empleados una interfaz intuitiva para registrar sus entradas, salidas y pausas, con soporte para geolocalización.</p>
+<p>Desde el año 2019, con la entrada en vigor del <strong>Real Decreto-ley 8/2019</strong>, todas las empresas en España están obligadas a llevar un registro diario de la jornada laboral de sus trabajadores. Esta normativa supuso un cambio significativo en la gestión del tiempo de trabajo, estableciendo la obligatoriedad de registrar la hora de inicio y fin de la jornada de cada empleado.</p>
 
-<p>El sistema ha sido diseñado siguiendo los principios de arquitectura moderna, utilizando tecnologías de última generación como React, TypeScript, Node.js y PostgreSQL. Se ha puesto especial énfasis en la experiencia de usuario, la seguridad de los datos y la escalabilidad del sistema.</p>
-
-<div class="info-box">
-    <strong>Características principales del sistema:</strong>
-    <ul>
-        <li>Registro de fichajes con geolocalización opcional</li>
-        <li>Gestión completa de empleados, departamentos y roles</li>
-        <li>Planificación de horarios con calendario anual</li>
-        <li>Control de pausas y descansos</li>
-        <li>Gestión de incidencias laborales</li>
-        <li>Generación de informes en formato Excel</li>
-        <li>Interfaz responsive y modo oscuro</li>
-        <li>Aplicación móvil nativa para iOS y Android</li>
-    </ul>
+<div class="legal-article">
+    <h4>Real Decreto-ley 8/2019, de 8 de marzo</h4>
+    <p><em>"La empresa garantizará el registro diario de jornada, que deberá incluir el horario concreto de inicio y finalización de la jornada de trabajo de cada persona trabajadora, sin perjuicio de la flexibilidad horaria que se establece en este artículo."</em></p>
+    <p style="font-size: 9pt; color: #64748b;">Artículo 34.9 del Estatuto de los Trabajadores (modificado por el RDL 8/2019)</p>
 </div>
 
-<h2 id="info">1.2. Información General</h2>
+<p>Sin embargo, la normativa de 2019 dejaba cierta flexibilidad en cuanto al método de registro, permitiendo sistemas tan diversos como hojas de papel, ficheros Excel, o sistemas informáticos. Esta ambigüedad, si bien facilitó la transición inicial, ha generado problemas de fraude, manipulación de registros y dificultades para las inspecciones de trabajo.</p>
 
-<p>El proyecto se ha desarrollado en el entorno de Replit, una plataforma de desarrollo en la nube que permite la creación, ejecución y despliegue de aplicaciones de manera integrada. Esta elección tecnológica ha permitido un desarrollo ágil y la posibilidad de desplegar la aplicación directamente desde la misma plataforma.</p>
+<h2 id="normativa">1.2. Nueva Normativa de Registro Horario Digital (2024-2025)</h2>
+
+<p>Ante las deficiencias detectadas en el cumplimiento de la normativa de 2019, el Gobierno de España ha impulsado una nueva regulación que introduce cambios sustanciales en los requisitos del registro horario. Esta nueva normativa, que se encuentra en las fases finales de su tramitación parlamentaria, establece la <strong>obligatoriedad del formato digital</strong> para el registro de jornada.</p>
+
+<h3>1.2.1. Principales Novedades de la Nueva Ley</h3>
 
 <table>
     <tr>
         <th>Aspecto</th>
+        <th>Normativa 2019</th>
+        <th>Nueva Normativa 2024-2025</th>
+    </tr>
+    <tr>
+        <td>Formato del registro</td>
+        <td>Libre (papel, Excel, digital)</td>
+        <td><strong>Digital obligatorio</strong></td>
+    </tr>
+    <tr>
+        <td>Métodos permitidos</td>
+        <td>Sin restricciones específicas</td>
+        <td>Solo sistemas electrónicos trazables</td>
+    </tr>
+    <tr>
+        <td>Acceso de la Inspección</td>
+        <td>Presencial, bajo solicitud</td>
+        <td><strong>Telemático en tiempo real</strong></td>
+    </tr>
+    <tr>
+        <td>Modificaciones</td>
+        <td>Sin control específico</td>
+        <td>Trazabilidad completa de cambios</td>
+    </tr>
+    <tr>
+        <td>Biometría</td>
+        <td>Permitida sin restricciones</td>
+        <td><strong>Restringida</strong> (solo casos excepcionales)</td>
+    </tr>
+    <tr>
+        <td>Conservación</td>
+        <td>4 años</td>
+        <td>4 años (sin cambios)</td>
+    </tr>
+</table>
+
+<h3>1.2.2. Cronología de la Nueva Normativa</h3>
+
+<div class="timeline">
+    <div class="timeline-item">
+        <span class="timeline-date">Marzo 2019</span>
+        <p>Entrada en vigor del Real Decreto-ley 8/2019. Obligación de registro horario para todas las empresas.</p>
+    </div>
+    <div class="timeline-item">
+        <span class="timeline-date">2020-2023</span>
+        <p>Periodo de adaptación. La Inspección de Trabajo detecta numerosas irregularidades: registros manipulados, falta de control, uso de métodos no fiables.</p>
+    </div>
+    <div class="timeline-item">
+        <span class="timeline-date">2024</span>
+        <p>El Ministerio de Trabajo anuncia la reforma para exigir el registro digital obligatorio. Se inicia la tramitación del anteproyecto de ley.</p>
+    </div>
+    <div class="timeline-item">
+        <span class="timeline-date">Diciembre 2025</span>
+        <p>La normativa se encuentra en trámite parlamentario. Se prevé su aprobación por decreto ley de forma independiente a la reducción de jornada.</p>
+    </div>
+    <div class="timeline-item">
+        <span class="timeline-date">2026 (previsto)</span>
+        <p>Entrada en vigor tras un periodo de adaptación de 5-6 meses desde la publicación en el BOE.</p>
+    </div>
+</div>
+
+<h3>1.2.3. Ámbito de Aplicación</h3>
+
+<p>La nueva normativa de registro horario digital se aplica a:</p>
+
+<ul>
+    <li><strong>Todas las empresas</strong>, sin importar tamaño o sector:
+        <ul>
+            <li>Grandes empresas y multinacionales</li>
+            <li>PYMES (pequeñas y medianas empresas)</li>
+            <li>Microempresas</li>
+            <li>Autónomos con empleados a su cargo</li>
+        </ul>
+    </li>
+    <li><strong>Todos los sectores de actividad</strong>:
+        <ul>
+            <li>Industria y manufactura</li>
+            <li>Comercio y retail</li>
+            <li>Hostelería y turismo</li>
+            <li>Servicios profesionales</li>
+            <li>Construcción</li>
+            <li>Transporte y logística</li>
+            <li>Tecnología y telecomunicaciones</li>
+        </ul>
+    </li>
+    <li><strong>Todos los tipos de trabajadores</strong>:
+        <ul>
+            <li>Contratos indefinidos</li>
+            <li>Contratos temporales</li>
+            <li>Contratos a tiempo parcial</li>
+            <li>Contratos en prácticas</li>
+            <li>Teletrabajadores</li>
+            <li>Trabajadores itinerantes (comerciales, técnicos)</li>
+        </ul>
+    </li>
+</ul>
+
+<div class="info-box">
+    <strong>Exclusiones:</strong> Quedan excluidos de la obligación los autónomos sin empleados a su cargo y los becarios (aunque estos últimos deben llevar un control de horas de beca, pero sin las formalidades del registro laboral).
+</div>
+
+<h2 id="requisitos-legales" class="page-break">1.3. Requisitos Técnicos Exigidos por la Ley</h2>
+
+<p>La nueva normativa establece requisitos técnicos específicos que deben cumplir los sistemas de registro horario digital. Estos requisitos son fundamentales para garantizar la validez legal del registro y evitar sanciones.</p>
+
+<h3>1.3.1. Requisitos Obligatorios del Sistema</h3>
+
+<table>
+    <tr>
+        <th>Requisito</th>
+        <th>Descripción</th>
+        <th>Cumplimiento en Este Proyecto</th>
+    </tr>
+    <tr>
+        <td>Formato digital</td>
+        <td>El sistema debe ser electrónico (software, app, terminal)</td>
+        <td>✓ Aplicación web y móvil</td>
+    </tr>
+    <tr>
+        <td>Trazabilidad</td>
+        <td>Identificación inequívoca del empleado, fecha y hora exactas</td>
+        <td>✓ UUID de usuario, timestamps en UTC</td>
+    </tr>
+    <tr>
+        <td>Inmutabilidad</td>
+        <td>Evitar modificaciones no autorizadas, registrar cambios</td>
+        <td>✓ Entradas de clock_entries inmutables, log de cambios</td>
+    </tr>
+    <tr>
+        <td>Accesibilidad</td>
+        <td>Trabajadores, representantes e Inspección deben poder consultar</td>
+        <td>✓ Historial visible para empleados, exportación para inspección</td>
+    </tr>
+    <tr>
+        <td>Conservación</td>
+        <td>Registros guardados durante 4 años mínimo</td>
+        <td>✓ Base de datos PostgreSQL persistente</td>
+    </tr>
+    <tr>
+        <td>Registro de pausas</td>
+        <td>Pausas y descansos que afecten al cómputo horario</td>
+        <td>✓ break_start y break_end implementados</td>
+    </tr>
+    <tr>
+        <td>Fichaje personal</td>
+        <td>Al inicio y fin de jornada, por el propio trabajador</td>
+        <td>✓ Login individual requerido para fichar</td>
+    </tr>
+    <tr>
+        <td>Interoperabilidad</td>
+        <td>Compatible con sistemas de la Administración</td>
+        <td>✓ Exportación Excel estándar</td>
+    </tr>
+    <tr>
+        <td>Servidores en UE</td>
+        <td>Cumplimiento RGPD, datos en territorio europeo</td>
+        <td>✓ PostgreSQL en servidores Neon (UE)</td>
+    </tr>
+</table>
+
+<h3>1.3.2. Métodos NO Permitidos</h3>
+
+<p>La nueva normativa prohíbe expresamente ciertos métodos de registro que eran habituales hasta ahora:</p>
+
+<div class="warning-box">
+    <strong>Métodos prohibidos por la nueva normativa:</strong>
+    <ul>
+        <li><strong>Hojas de papel:</strong> Partes de firma, libros de registro físicos</li>
+        <li><strong>Excel u hojas de cálculo:</strong> Por ser fácilmente manipulables (solo permitidas temporalmente en caso de caída técnica del sistema, debiendo digitalizar posteriormente)</li>
+        <li><strong>Sistemas biométricos:</strong> Huella dactilar, reconocimiento facial (salvo casos excepcionales muy justificados, ya que la AEPD y el CEPD los consideran desproporcionados)</li>
+        <li><strong>Geolocalización permanente:</strong> El seguimiento GPS fuera de la jornada laboral está prohibido</li>
+        <li><strong>Fichaje con móvil personal obligatorio:</strong> La empresa debe proporcionar los medios necesarios</li>
+    </ul>
+</div>
+
+<h3>1.3.3. Métodos Permitidos</h3>
+
+<div class="success-box">
+    <strong>Métodos válidos según la nueva normativa:</strong>
+    <ul>
+        <li><strong>Software de control horario:</strong> Aplicaciones SaaS, cloud, on-premise</li>
+        <li><strong>Aplicaciones móviles:</strong> Apps iOS/Android proporcionadas por la empresa</li>
+        <li><strong>Terminales físicos:</strong> Tablets, quioscos digitales, terminales de fichaje</li>
+        <li><strong>Tarjetas electrónicas:</strong> Con código único e identificación del empleado</li>
+        <li><strong>Códigos QR:</strong> Escaneados con dispositivos de la empresa</li>
+        <li><strong>Acceso web:</strong> Plataformas online con login individual</li>
+        <li><strong>Firma digital:</strong> Mediante aplicación autorizada</li>
+    </ul>
+</div>
+
+<h2 id="sanciones">1.4. Sanciones por Incumplimiento</h2>
+
+<p>El incumplimiento de la normativa de registro horario conlleva sanciones económicas significativas que pueden afectar gravemente a las empresas, especialmente a las pequeñas y medianas.</p>
+
+<h3>1.4.1. Tipificación de Infracciones</h3>
+
+<table>
+    <tr>
+        <th>Tipo de Infracción</th>
+        <th>Ejemplos</th>
+        <th>Sanción</th>
+    </tr>
+    <tr>
+        <td>Leve</td>
+        <td>Defectos formales menores en el registro</td>
+        <td>60 € - 625 €</td>
+    </tr>
+    <tr>
+        <td>Grave</td>
+        <td>No disponer de sistema de registro, no conservar registros 4 años</td>
+        <td>625 € - 6.250 €</td>
+    </tr>
+    <tr>
+        <td>Muy Grave</td>
+        <td>Falsificación de registros, exceso reiterado de horas extras, negativa a facilitar acceso a Inspección</td>
+        <td>6.251 € - 225.018 €</td>
+    </tr>
+</table>
+
+<h3>1.4.2. Datos de Sanciones (2024)</h3>
+
+<p>Según datos de la Inspección de Trabajo, durante el año 2024:</p>
+
+<ul>
+    <li><strong>20,2 millones de euros</strong> en sanciones por incumplimiento del registro horario</li>
+    <li><strong>1.869 infracciones</strong> detectadas y sancionadas</li>
+    <li><strong>21.649 trabajadores</strong> afectados por irregularidades</li>
+    <li>La media de sanción por infracción grave supera los <strong>10.800 €</strong></li>
+</ul>
+
+<div class="highlight">
+    <strong>Impacto económico:</strong> Una PYME que no cumpla con la normativa puede enfrentarse a multas que superen fácilmente sus beneficios anuales. La inversión en un sistema de registro digital homologado es siempre más económica que afrontar las sanciones por incumplimiento.
+</div>
+
+<h2 id="necesidad">1.5. Necesidad de una Solución Tecnológica</h2>
+
+<p>Ante este panorama normativo, la necesidad de contar con una solución tecnológica adecuada es evidente. Este proyecto nace precisamente para dar respuesta a esta demanda del mercado, ofreciendo:</p>
+
+<h3>1.5.1. Beneficios para las Empresas</h3>
+
+<ol>
+    <li><strong>Cumplimiento legal garantizado:</strong> El sistema está diseñado siguiendo todos los requisitos técnicos de la nueva normativa.</li>
+    <li><strong>Reducción de costes:</strong> Evita sanciones que pueden alcanzar los 225.000 € y automatiza procesos manuales.</li>
+    <li><strong>Transparencia:</strong> Los empleados tienen acceso a su historial de fichajes, reduciendo conflictos laborales.</li>
+    <li><strong>Optimización de recursos:</strong> Los informes automáticos facilitan la gestión de RRHH y la planificación de turnos.</li>
+    <li><strong>Preparación para inspecciones:</strong> Los datos están siempre disponibles y pueden exportarse en formatos estándar.</li>
+    <li><strong>Flexibilidad:</strong> Funciona tanto en oficina (web) como en movilidad (app móvil).</li>
+</ol>
+
+<h3>1.5.2. Beneficios para los Trabajadores</h3>
+
+<ol>
+    <li><strong>Control de su tiempo:</strong> Visibilidad total sobre sus horas trabajadas.</li>
+    <li><strong>Garantía de derechos:</strong> Las horas extras quedan registradas fehacientemente.</li>
+    <li><strong>Facilidad de uso:</strong> Fichaje rápido desde móvil o web.</li>
+    <li><strong>Conciliación:</strong> Mejor control favorece el respeto a los horarios pactados.</li>
+</ol>
+
+<h3>1.5.3. Ventajas Competitivas de Este Proyecto</h3>
+
+<p>Frente a otras soluciones del mercado, este Sistema de Control de Fichajes ofrece:</p>
+
+<ul>
+    <li><strong>Código abierto y personalizable:</strong> Puede adaptarse a las necesidades específicas de cada empresa.</li>
+    <li><strong>Coste reducido:</strong> Al ser desarrollado sobre tecnologías open source, no hay licencias de software propietario.</li>
+    <li><strong>Despliegue flexible:</strong> Puede ejecutarse en la nube (Replit) o en servidores propios.</li>
+    <li><strong>Aplicación móvil nativa:</strong> Rendimiento superior a soluciones web-based en móvil.</li>
+    <li><strong>Geolocalización opcional:</strong> Para empresas que necesitan verificar ubicación sin invadir privacidad.</li>
+    <li><strong>Soporte para pausas:</strong> Control completo del tiempo de descanso.</li>
+    <li><strong>Informes avanzados:</strong> Exportación a Excel con desglose detallado.</li>
+</ul>
+
+<!-- CAPÍTULO 2: INTRODUCCIÓN -->
+<h1 id="intro" class="page-break">2. INTRODUCCIÓN AL PROYECTO</h1>
+
+<h2 id="desc">2.1. Descripción del Proyecto</h2>
+
+<p>El Sistema de Control de Fichajes de Empleados es una <strong>solución integral de gestión del tiempo de trabajo</strong> desarrollada para satisfacer las necesidades de empresas de cualquier tamaño que buscan cumplir con la normativa española de registro horario de manera eficiente y moderna.</p>
+
+<p>El proyecto se compone de dos aplicaciones principales que trabajan de forma coordinada:</p>
+
+<h3>2.1.1. Aplicación Web (Panel de Administración)</h3>
+
+<p>La aplicación web está diseñada para los administradores y responsables de recursos humanos. Proporciona un panel de control completo con las siguientes funcionalidades:</p>
+
+<ul>
+    <li><strong>Dashboard:</strong> Visión general del estado de la plantilla en tiempo real, con estadísticas de empleados presentes, ausentes, en pausa y total de horas trabajadas.</li>
+    <li><strong>Gestión de empleados:</strong> Alta, baja y modificación de empleados, asignación a departamentos y roles.</li>
+    <li><strong>Control de fichajes:</strong> Visualización de los fichajes del día, con posibilidad de registrar entradas manuales y ver ubicaciones en mapa.</li>
+    <li><strong>Planificación de horarios:</strong> Calendario anual para asignar turnos a los empleados, con soporte para turnos continuos y partidos.</li>
+    <li><strong>Gestión de incidencias:</strong> Registro de ausencias, permisos, vacaciones y otras incidencias laborales.</li>
+    <li><strong>Generación de informes:</strong> Exportación de datos a Excel con desglose por empleado y período.</li>
+    <li><strong>Configuración:</strong> Gestión de departamentos, roles empresariales y tipos de incidencia.</li>
+</ul>
+
+<h3>2.1.2. Aplicación Móvil (Para Empleados)</h3>
+
+<p>La aplicación móvil está orientada a los empleados y les permite gestionar sus fichajes de forma autónoma:</p>
+
+<ul>
+    <li><strong>Fichaje rápido:</strong> Registro de entrada, salida e inicio/fin de pausas con un solo toque.</li>
+    <li><strong>Geolocalización:</strong> Captura opcional de ubicación GPS al fichar.</li>
+    <li><strong>Consulta de horarios:</strong> Visualización de los turnos asignados.</li>
+    <li><strong>Historial:</strong> Acceso al historial de fichajes propios.</li>
+    <li><strong>Perfil:</strong> Gestión de datos personales y cierre de sesión.</li>
+</ul>
+
+<h2 id="info">2.2. Información General</h2>
+
+<p>El proyecto se ha desarrollado íntegramente en el entorno de <strong>Replit</strong>, una plataforma de desarrollo en la nube que proporciona todas las herramientas necesarias para crear, ejecutar y desplegar aplicaciones web modernas.</p>
+
+<table>
+    <tr>
+        <th>Característica</th>
         <th>Descripción</th>
     </tr>
     <tr>
@@ -346,12 +747,16 @@
         <td>Aplicación Full-Stack (Web + Móvil)</td>
     </tr>
     <tr>
+        <td>Arquitectura</td>
+        <td>Monorepo con código compartido</td>
+    </tr>
+    <tr>
         <td>Plataforma de desarrollo</td>
         <td>Replit</td>
     </tr>
     <tr>
         <td>Lenguaje principal</td>
-        <td>TypeScript</td>
+        <td>TypeScript (100% del código)</td>
     </tr>
     <tr>
         <td>Base de datos</td>
@@ -359,11 +764,11 @@
     </tr>
     <tr>
         <td>Frontend Web</td>
-        <td>React 18 + Vite</td>
+        <td>React 18 + Vite + Tailwind CSS</td>
     </tr>
     <tr>
         <td>Frontend Móvil</td>
-        <td>React Native + Expo</td>
+        <td>React Native + Expo SDK 52</td>
     </tr>
     <tr>
         <td>Backend</td>
@@ -373,855 +778,641 @@
         <td>ORM</td>
         <td>Drizzle ORM</td>
     </tr>
+    <tr>
+        <td>Validación</td>
+        <td>Zod (esquemas compartidos)</td>
+    </tr>
+    <tr>
+        <td>Estado del servidor</td>
+        <td>TanStack Query v5</td>
+    </tr>
+    <tr>
+        <td>Autenticación Web</td>
+        <td>Sesiones (express-session)</td>
+    </tr>
+    <tr>
+        <td>Autenticación Móvil</td>
+        <td>JWT (jsonwebtoken)</td>
+    </tr>
 </table>
 
-<h2 id="obj">1.3. Objetivos del Proyecto</h2>
+<h2 id="obj">2.3. Objetivos del Proyecto</h2>
 
-<p>El objetivo principal del proyecto es desarrollar una solución completa y profesional para la gestión del tiempo de trabajo en organizaciones de cualquier tamaño. Los objetivos específicos incluyen:</p>
+<h3>2.3.1. Objetivo Principal</h3>
+
+<p>Desarrollar una solución completa y profesional para la gestión del tiempo de trabajo que cumpla con todos los requisitos de la nueva normativa española de registro horario digital, proporcionando a las empresas una herramienta fiable, segura y fácil de usar.</p>
+
+<h3>2.3.2. Objetivos Específicos</h3>
 
 <ol>
-    <li><strong>Digitalizar el proceso de fichaje:</strong> Eliminar los sistemas manuales de registro de asistencia, reduciendo errores y fraudes.</li>
-    <li><strong>Proporcionar visibilidad en tiempo real:</strong> Permitir a los administradores conocer el estado actual de la plantilla en cualquier momento.</li>
-    <li><strong>Facilitar la movilidad:</strong> Ofrecer a los empleados la posibilidad de fichar desde cualquier ubicación mediante la aplicación móvil.</li>
-    <li><strong>Automatizar la generación de informes:</strong> Crear herramientas que permitan exportar datos de fichajes y horarios para su análisis.</li>
-    <li><strong>Garantizar la seguridad:</strong> Implementar mecanismos robustos de autenticación y autorización para proteger los datos sensibles.</li>
-    <li><strong>Cumplir con la normativa laboral:</strong> Proporcionar las herramientas necesarias para el cumplimiento de la legislación vigente en materia de registro horario.</li>
+    <li><strong>Digitalizar el proceso de fichaje:</strong>
+        <ul>
+            <li>Eliminar los sistemas manuales de registro (papel, Excel)</li>
+            <li>Proporcionar un sistema trazable e inmutable</li>
+            <li>Reducir errores humanos y posibilidades de fraude</li>
+        </ul>
+    </li>
+    <li><strong>Proporcionar visibilidad en tiempo real:</strong>
+        <ul>
+            <li>Dashboard con estado actual de la plantilla</li>
+            <li>Alertas de anomalías (empleados sin fichar, exceso de horas)</li>
+            <li>Estadísticas y métricas de productividad</li>
+        </ul>
+    </li>
+    <li><strong>Facilitar la movilidad laboral:</strong>
+        <ul>
+            <li>Aplicación móvil nativa para iOS y Android</li>
+            <li>Fichaje desde cualquier ubicación con conexión a internet</li>
+            <li>Geolocalización opcional para verificación</li>
+        </ul>
+    </li>
+    <li><strong>Automatizar la generación de informes:</strong>
+        <ul>
+            <li>Exportación a Excel con formato profesional</li>
+            <li>Desglose por empleado, fecha y concepto</li>
+            <li>Cálculo automático de horas extras y pausas</li>
+        </ul>
+    </li>
+    <li><strong>Garantizar la seguridad de los datos:</strong>
+        <ul>
+            <li>Autenticación robusta con sesiones y JWT</li>
+            <li>Contraseñas encriptadas con bcrypt</li>
+            <li>Cumplimiento RGPD</li>
+        </ul>
+    </li>
+    <li><strong>Cumplir con la normativa legal:</strong>
+        <ul>
+            <li>Registro de entrada, salida y pausas</li>
+            <li>Conservación de datos durante 4 años</li>
+            <li>Acceso para trabajadores e inspección</li>
+        </ul>
+    </li>
 </ol>
 
-<!-- CAPÍTULO 2: CONTEXTUALIZACIÓN -->
-<h1 id="contexto" class="page-break">2. CONTEXTUALIZACIÓN DEL PROYECTO</h1>
+<h2 id="alcance">2.4. Alcance y Limitaciones</h2>
 
-<h2 id="obj-concretos">2.1. Objetivos Concretos</h2>
+<h3>2.4.1. Funcionalidades Incluidas</h3>
 
-<p>Para alcanzar los objetivos generales del proyecto, se definieron una serie de objetivos concretos que sirvieron como guía durante todo el proceso de desarrollo:</p>
+<ul>
+    <li>Autenticación de usuarios (administradores y empleados)</li>
+    <li>Gestión completa de empleados (CRUD)</li>
+    <li>Gestión de departamentos y roles empresariales</li>
+    <li>Registro de fichajes (entrada, salida, pausas)</li>
+    <li>Geolocalización de fichajes (opcional)</li>
+    <li>Planificación de horarios con calendario anual</li>
+    <li>Gestión de incidencias laborales</li>
+    <li>Dashboard con estadísticas en tiempo real</li>
+    <li>Generación de informes en Excel</li>
+    <li>Visualización de ubicaciones en mapa</li>
+    <li>Modo claro/oscuro</li>
+    <li>Interfaz responsive</li>
+    <li>Aplicación móvil nativa</li>
+</ul>
 
-<h3>2.1.1. Objetivos Funcionales</h3>
+<h3>2.4.2. Limitaciones Actuales</h3>
+
+<ul>
+    <li>No incluye integración con sistemas de nóminas</li>
+    <li>No incluye notificaciones push (pendiente de implementación)</li>
+    <li>No incluye reconocimiento biométrico (no recomendado por AEPD)</li>
+    <li>No incluye fichaje offline (requiere conexión a internet)</li>
+    <li>No incluye multi-idioma (actualmente solo español)</li>
+</ul>
+
+<!-- CAPÍTULO 3: CONTEXTUALIZACIÓN TÉCNICA -->
+<h1 id="contexto" class="page-break">3. CONTEXTUALIZACIÓN TÉCNICA</h1>
+
+<h2 id="obj-concretos">3.1. Objetivos Concretos</h2>
+
+<p>Para alcanzar los objetivos generales del proyecto, se definieron objetivos concretos medibles que sirvieron como guía durante todo el proceso de desarrollo.</p>
+
+<h3>3.1.1. Objetivos Funcionales</h3>
 
 <table>
     <tr>
         <th>ID</th>
         <th>Objetivo</th>
         <th>Prioridad</th>
+        <th>Estado</th>
     </tr>
     <tr>
         <td>OF-01</td>
-        <td>Implementar sistema de autenticación seguro con roles diferenciados (admin/empleado)</td>
+        <td>Implementar sistema de autenticación seguro con roles diferenciados</td>
         <td>Alta</td>
+        <td>✓ Completado</td>
     </tr>
     <tr>
         <td>OF-02</td>
-        <td>Desarrollar funcionalidad de fichaje (entrada, salida, pausas) con registro temporal preciso</td>
+        <td>Desarrollar funcionalidad de fichaje con registro temporal preciso</td>
         <td>Alta</td>
+        <td>✓ Completado</td>
     </tr>
     <tr>
         <td>OF-03</td>
         <td>Crear módulo de gestión de empleados con CRUD completo</td>
         <td>Alta</td>
+        <td>✓ Completado</td>
     </tr>
     <tr>
         <td>OF-04</td>
         <td>Implementar gestión de departamentos y roles empresariales</td>
         <td>Media</td>
+        <td>✓ Completado</td>
     </tr>
     <tr>
         <td>OF-05</td>
-        <td>Desarrollar sistema de planificación de horarios con calendario anual</td>
+        <td>Desarrollar sistema de planificación de horarios</td>
         <td>Alta</td>
+        <td>✓ Completado</td>
     </tr>
     <tr>
         <td>OF-06</td>
-        <td>Crear módulo de incidencias para registro de ausencias y eventos</td>
+        <td>Crear calendario anual para asignación de turnos</td>
         <td>Media</td>
+        <td>✓ Completado</td>
     </tr>
     <tr>
         <td>OF-07</td>
-        <td>Implementar geolocalización en fichajes móviles</td>
+        <td>Implementar módulo de incidencias</td>
         <td>Media</td>
+        <td>✓ Completado</td>
     </tr>
     <tr>
         <td>OF-08</td>
-        <td>Desarrollar generación de informes en formato Excel</td>
-        <td>Alta</td>
+        <td>Desarrollar geolocalización en fichajes móviles</td>
+        <td>Media</td>
+        <td>✓ Completado</td>
     </tr>
     <tr>
         <td>OF-09</td>
-        <td>Crear dashboard con estadísticas en tiempo real</td>
-        <td>Media</td>
+        <td>Implementar generación de informes Excel</td>
+        <td>Alta</td>
+        <td>✓ Completado</td>
     </tr>
     <tr>
         <td>OF-10</td>
+        <td>Crear dashboard con estadísticas en tiempo real</td>
+        <td>Media</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OF-11</td>
         <td>Implementar visualización de ubicaciones en mapa</td>
         <td>Baja</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OF-12</td>
+        <td>Desarrollar aplicación móvil completa</td>
+        <td>Alta</td>
+        <td>✓ Completado</td>
     </tr>
 </table>
 
-<h3>2.1.2. Objetivos Técnicos</h3>
+<h3>3.1.2. Objetivos Técnicos</h3>
 
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Objetivo</th>
+        <th>Estado</th>
+    </tr>
+    <tr>
+        <td>OT-01</td>
+        <td>Utilizar TypeScript en todo el proyecto para tipado estático</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OT-02</td>
+        <td>Implementar arquitectura modular (routes, services, storages)</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OT-03</td>
+        <td>Gestionar fechas en UTC, mostrar en zona horaria española</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OT-04</td>
+        <td>Diseñar API RESTful siguiendo mejores prácticas</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OT-05</td>
+        <td>Implementar validación en frontend y backend con Zod</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OT-06</td>
+        <td>Crear interfaces responsive para cualquier dispositivo</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OT-07</td>
+        <td>Optimizar consultas de base de datos</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OT-08</td>
+        <td>Implementar modo claro/oscuro</td>
+        <td>✓ Completado</td>
+    </tr>
+    <tr>
+        <td>OT-09</td>
+        <td>Compartir esquemas entre frontend y backend</td>
+        <td>✓ Completado</td>
+    </tr>
+</table>
+
+<h2 id="tech">3.2. Tecnologías Utilizadas</h2>
+
+<h3>3.2.1. Frontend Web</h3>
+
+<p>Para el desarrollo del frontend web se ha utilizado un stack moderno basado en React y TypeScript, con herramientas que maximizan la productividad y la calidad del código.</p>
+
+<h4>React 18</h4>
+<p>React es la biblioteca de JavaScript más popular para la construcción de interfaces de usuario. La versión 18 introduce mejoras significativas como:</p>
 <ul>
-    <li><strong>OT-01:</strong> Utilizar TypeScript en todo el proyecto para garantizar tipado estático y reducir errores</li>
-    <li><strong>OT-02:</strong> Implementar arquitectura modular que facilite el mantenimiento y escalabilidad</li>
-    <li><strong>OT-03:</strong> Gestionar todas las fechas y horas en UTC, mostrándolas en zona horaria española (Europe/Madrid)</li>
-    <li><strong>OT-04:</strong> Diseñar API RESTful siguiendo las mejores prácticas</li>
-    <li><strong>OT-05:</strong> Implementar validación de datos tanto en frontend como en backend</li>
-    <li><strong>OT-06:</strong> Crear interfaces responsivas que funcionen en cualquier dispositivo</li>
-    <li><strong>OT-07:</strong> Optimizar consultas de base de datos para garantizar rendimiento</li>
+    <li><strong>Concurrent Rendering:</strong> Renderizado concurrente que mejora la respuesta de la UI</li>
+    <li><strong>Automatic Batching:</strong> Agrupación automática de actualizaciones de estado</li>
+    <li><strong>Suspense improvements:</strong> Mejor manejo de carga asíncrona</li>
 </ul>
 
-<h2 id="tech">2.2. Tecnologías Utilizadas</h2>
+<h4>TypeScript</h4>
+<p>TypeScript añade tipado estático a JavaScript, proporcionando:</p>
+<ul>
+    <li>Detección de errores en tiempo de desarrollo</li>
+    <li>Mejor autocompletado en el IDE</li>
+    <li>Documentación implícita del código</li>
+    <li>Refactorizaciones más seguras</li>
+</ul>
 
-<h3>2.2.1. Frontend Web (React + TypeScript)</h3>
+<h4>Vite</h4>
+<p>Vite es el build tool de nueva generación que ofrece:</p>
+<ul>
+    <li>Arranque instantáneo del servidor de desarrollo</li>
+    <li>Hot Module Replacement (HMR) ultrarrápido</li>
+    <li>Build optimizado para producción</li>
+    <li>Soporte nativo para TypeScript y JSX</li>
+</ul>
 
-<p>Para el desarrollo del frontend web se ha utilizado React 18, la biblioteca de JavaScript más popular para la construcción de interfaces de usuario. La elección de React se fundamenta en su modelo de componentes reutilizables, su amplio ecosistema y su excelente rendimiento gracias al Virtual DOM.</p>
+<h4>Tailwind CSS</h4>
+<p>Framework de CSS utility-first que permite:</p>
+<ul>
+    <li>Desarrollo rápido sin salir del HTML</li>
+    <li>Diseño consistente mediante sistema de design tokens</li>
+    <li>Bundle CSS mínimo (solo clases usadas)</li>
+    <li>Modo oscuro integrado</li>
+</ul>
 
+<h4>Shadcn/UI + Radix UI</h4>
+<p>Colección de componentes accesibles y personalizables:</p>
+<ul>
+    <li>Componentes primitivos sin estilo (Radix)</li>
+    <li>Implementaciones con Tailwind (Shadcn)</li>
+    <li>Accesibilidad WCAG incorporada</li>
+    <li>Altamente personalizables</li>
+</ul>
+
+<h4>TanStack Query v5</h4>
+<p>Biblioteca para gestión del estado del servidor:</p>
+<ul>
+    <li>Caché automático de datos</li>
+    <li>Revalidación en segundo plano</li>
+    <li>Gestión de estados de carga y error</li>
+    <li>Invalidación inteligente tras mutaciones</li>
+</ul>
+
+<h4>Otras Bibliotecas</h4>
 <table>
     <tr>
-        <th>Tecnología</th>
-        <th>Versión</th>
+        <th>Biblioteca</th>
         <th>Propósito</th>
     </tr>
-    <tr>
-        <td>React</td>
-        <td>18.x</td>
-        <td>Biblioteca principal para UI</td>
-    </tr>
-    <tr>
-        <td>TypeScript</td>
-        <td>5.x</td>
-        <td>Tipado estático</td>
-    </tr>
-    <tr>
-        <td>Vite</td>
-        <td>5.x</td>
-        <td>Build tool y dev server</td>
-    </tr>
-    <tr>
-        <td>TanStack Query</td>
-        <td>5.x</td>
-        <td>Gestión de estado del servidor</td>
-    </tr>
-    <tr>
-        <td>Wouter</td>
-        <td>3.x</td>
-        <td>Enrutamiento</td>
-    </tr>
-    <tr>
-        <td>React Hook Form</td>
-        <td>7.x</td>
-        <td>Gestión de formularios</td>
-    </tr>
-    <tr>
-        <td>Zod</td>
-        <td>3.x</td>
-        <td>Validación de esquemas</td>
-    </tr>
-    <tr>
-        <td>Tailwind CSS</td>
-        <td>3.x</td>
-        <td>Framework de estilos</td>
-    </tr>
-    <tr>
-        <td>Shadcn/UI</td>
-        <td>-</td>
-        <td>Componentes de interfaz</td>
-    </tr>
-    <tr>
-        <td>Radix UI</td>
-        <td>-</td>
-        <td>Primitivos accesibles</td>
-    </tr>
-    <tr>
-        <td>Lucide React</td>
-        <td>-</td>
-        <td>Iconografía</td>
-    </tr>
-    <tr>
-        <td>Recharts</td>
-        <td>2.x</td>
-        <td>Gráficos y visualizaciones</td>
-    </tr>
-    <tr>
-        <td>React Leaflet</td>
-        <td>4.x</td>
-        <td>Mapas interactivos</td>
-    </tr>
-    <tr>
-        <td>date-fns</td>
-        <td>3.x</td>
-        <td>Manipulación de fechas</td>
-    </tr>
-    <tr>
-        <td>ExcelJS</td>
-        <td>4.x</td>
-        <td>Generación de Excel</td>
-    </tr>
+    <tr><td>Wouter</td><td>Enrutamiento ligero para React</td></tr>
+    <tr><td>React Hook Form</td><td>Gestión de formularios</td></tr>
+    <tr><td>Zod</td><td>Validación de esquemas</td></tr>
+    <tr><td>Recharts</td><td>Gráficos y visualizaciones</td></tr>
+    <tr><td>React Leaflet</td><td>Mapas interactivos</td></tr>
+    <tr><td>date-fns / date-fns-tz</td><td>Manipulación de fechas y zonas horarias</td></tr>
+    <tr><td>Lucide React</td><td>Iconografía</td></tr>
+    <tr><td>ExcelJS</td><td>Generación de archivos Excel</td></tr>
+    <tr><td>Framer Motion</td><td>Animaciones</td></tr>
 </table>
 
-<h3>2.2.2. Frontend Móvil (Expo + React Native)</h3>
+<h3>3.2.2. Frontend Móvil</h3>
 
-<p>La aplicación móvil se ha desarrollado utilizando React Native con Expo, lo que permite crear aplicaciones nativas para iOS y Android desde una única base de código en TypeScript. Expo simplifica significativamente el proceso de desarrollo y distribución de aplicaciones móviles.</p>
+<p>La aplicación móvil se desarrolló con React Native y Expo, permitiendo crear aplicaciones nativas para iOS y Android desde una única base de código.</p>
 
+<h4>Expo SDK 52</h4>
+<p>Expo es un framework que simplifica el desarrollo con React Native:</p>
+<ul>
+    <li>Desarrollo sin necesidad de Xcode o Android Studio</li>
+    <li>Acceso simplificado a APIs nativas (cámara, GPS, etc.)</li>
+    <li>Sistema de builds en la nube (EAS)</li>
+    <li>Actualizaciones Over-the-Air (OTA)</li>
+</ul>
+
+<h4>Expo Router</h4>
+<p>Sistema de navegación basado en el sistema de archivos:</p>
+<ul>
+    <li>Rutas definidas por la estructura de carpetas</li>
+    <li>Navegación por tabs y stacks integrada</li>
+    <li>Deep linking automático</li>
+</ul>
+
+<h4>Módulos Nativos Utilizados</h4>
 <table>
     <tr>
-        <th>Tecnología</th>
+        <th>Módulo</th>
         <th>Propósito</th>
     </tr>
-    <tr>
-        <td>Expo SDK 52</td>
-        <td>Framework de desarrollo móvil</td>
-    </tr>
-    <tr>
-        <td>React Native</td>
-        <td>Framework de UI nativo</td>
-    </tr>
-    <tr>
-        <td>Expo Router</td>
-        <td>Navegación basada en archivos</td>
-    </tr>
-    <tr>
-        <td>Expo Location</td>
-        <td>Servicios de geolocalización</td>
-    </tr>
-    <tr>
-        <td>Async Storage</td>
-        <td>Almacenamiento local persistente</td>
-    </tr>
-    <tr>
-        <td>Expo Secure Store</td>
-        <td>Almacenamiento seguro de tokens</td>
-    </tr>
-    <tr>
-        <td>React Native Paper</td>
-        <td>Componentes Material Design</td>
-    </tr>
+    <tr><td>expo-location</td><td>Servicios de geolocalización</td></tr>
+    <tr><td>expo-secure-store</td><td>Almacenamiento seguro de tokens</td></tr>
+    <tr><td>@react-native-async-storage/async-storage</td><td>Almacenamiento local persistente</td></tr>
+    <tr><td>react-native-paper</td><td>Componentes Material Design</td></tr>
 </table>
 
-<h3>2.2.3. Backend (Node.js + Express)</h3>
+<h3>3.2.3. Backend</h3>
 
-<p>El backend se ha construido sobre Node.js con Express, proporcionando una API RESTful robusta y eficiente. La elección de Node.js permite compartir código y tipos con el frontend, maximizando la coherencia del proyecto.</p>
+<p>El backend se construyó sobre Node.js con Express, proporcionando una API RESTful robusta y eficiente.</p>
 
-<table>
-    <tr>
-        <th>Tecnología</th>
-        <th>Propósito</th>
-    </tr>
-    <tr>
-        <td>Node.js 20.x</td>
-        <td>Runtime de JavaScript</td>
-    </tr>
-    <tr>
-        <td>Express 4.x</td>
-        <td>Framework web</td>
-    </tr>
-    <tr>
-        <td>TypeScript</td>
-        <td>Tipado estático</td>
-    </tr>
-    <tr>
-        <td>Drizzle ORM</td>
-        <td>Object-Relational Mapping</td>
-    </tr>
-    <tr>
-        <td>express-session</td>
-        <td>Gestión de sesiones web</td>
-    </tr>
-    <tr>
-        <td>jsonwebtoken</td>
-        <td>Autenticación JWT para móvil</td>
-    </tr>
-    <tr>
-        <td>bcryptjs</td>
-        <td>Hash de contraseñas</td>
-    </tr>
-    <tr>
-        <td>Zod</td>
-        <td>Validación de datos de entrada</td>
-    </tr>
-    <tr>
-        <td>cors</td>
-        <td>Cross-Origin Resource Sharing</td>
-    </tr>
-</table>
+<h4>Node.js</h4>
+<p>Entorno de ejecución de JavaScript del lado del servidor:</p>
+<ul>
+    <li>Modelo de I/O no bloqueante, ideal para APIs</li>
+    <li>Mismo lenguaje que el frontend (TypeScript)</li>
+    <li>Ecosistema npm con miles de paquetes</li>
+    <li>Excelente rendimiento para aplicaciones en tiempo real</li>
+</ul>
 
-<h3>2.2.4. Base de Datos (PostgreSQL + Drizzle ORM)</h3>
+<h4>Express</h4>
+<p>Framework web minimalista y flexible:</p>
+<ul>
+    <li>Middleware system para procesamiento de peticiones</li>
+    <li>Routing declarativo</li>
+    <li>Amplia compatibilidad con otras bibliotecas</li>
+    <li>Madurez y estabilidad probadas</li>
+</ul>
 
-<p>Se ha utilizado PostgreSQL como sistema de gestión de base de datos relacional, alojado en Neon (servicio serverless de PostgreSQL). Drizzle ORM proporciona una capa de abstracción type-safe que garantiza la integridad de los datos.</p>
+<h4>Drizzle ORM</h4>
+<p>ORM moderno con enfoque "type-safe":</p>
+<ul>
+    <li>Tipado completo end-to-end</li>
+    <li>Sintaxis SQL-like intuitiva</li>
+    <li>Generación automática de esquemas Zod</li>
+    <li>Sin overhead en tiempo de ejecución</li>
+    <li>Migraciones declarativas</li>
+</ul>
 
-<div class="highlight">
-    <strong>Ventajas de Drizzle ORM:</strong>
-    <ul>
-        <li>Tipado completo end-to-end con TypeScript</li>
-        <li>Generación automática de esquemas Zod para validación</li>
-        <li>Migraciones declarativas</li>
-        <li>Queries SQL eficientes sin overhead</li>
-        <li>Soporte nativo para PostgreSQL, MySQL y SQLite</li>
-    </ul>
-</div>
+<h3>3.2.4. Base de Datos</h3>
 
-<h2 id="tech-alt">2.3. Tecnologías Alternativas Evaluadas</h2>
+<h4>PostgreSQL (Neon Serverless)</h4>
+<p>Sistema de gestión de base de datos relacional:</p>
+<ul>
+    <li>ACID compliant (Atomicidad, Consistencia, Aislamiento, Durabilidad)</li>
+    <li>Soporte para tipos de datos avanzados</li>
+    <li>Excelente rendimiento y escalabilidad</li>
+    <li>Funciones de fecha/hora con soporte de zonas horarias</li>
+</ul>
 
-<p>Durante la fase de diseño del proyecto se evaluaron diversas alternativas tecnológicas. A continuación se presentan las principales opciones consideradas y las razones por las que se optó por la solución final:</p>
+<p>Neon proporciona PostgreSQL serverless:</p>
+<ul>
+    <li>Escalado automático</li>
+    <li>Sin gestión de infraestructura</li>
+    <li>Branching de base de datos para desarrollo</li>
+    <li>Integración nativa con Replit</li>
+</ul>
+
+<h2 id="tech-alt">3.3. Tecnologías Alternativas Evaluadas</h2>
+
+<p>Durante la fase de diseño se evaluaron diversas alternativas tecnológicas. A continuación se detallan las opciones consideradas y las razones de la elección final.</p>
 
 <table>
     <tr>
         <th>Categoría</th>
-        <th>Alternativas</th>
-        <th>Elección Final</th>
+        <th>Alternativas Evaluadas</th>
+        <th>Elección</th>
         <th>Justificación</th>
     </tr>
     <tr>
         <td>Frontend Framework</td>
-        <td>Vue.js, Angular, Svelte</td>
+        <td>Vue.js, Angular, Svelte, Solid</td>
         <td>React</td>
-        <td>Mayor ecosistema, mejor integración con React Native, amplia comunidad</td>
+        <td>Mayor ecosistema, integración con React Native, comunidad activa</td>
     </tr>
     <tr>
         <td>Mobile Framework</td>
-        <td>Flutter, Ionic, NativeScript</td>
+        <td>Flutter, Ionic, NativeScript, Capacitor</td>
         <td>React Native + Expo</td>
-        <td>Código compartido con web, rendimiento nativo, facilidad de desarrollo</td>
+        <td>Código compartido con web, rendimiento nativo, desarrollo ágil</td>
     </tr>
     <tr>
         <td>Backend Framework</td>
-        <td>NestJS, Fastify, Hono</td>
+        <td>NestJS, Fastify, Hono, Koa</td>
         <td>Express</td>
-        <td>Simplicidad, madurez, amplia documentación</td>
+        <td>Simplicidad, madurez, documentación extensa</td>
     </tr>
     <tr>
         <td>ORM</td>
-        <td>Prisma, TypeORM, Sequelize</td>
+        <td>Prisma, TypeORM, Sequelize, Knex</td>
         <td>Drizzle</td>
         <td>Mejor rendimiento, tipado más estricto, menor overhead</td>
     </tr>
     <tr>
         <td>Base de Datos</td>
-        <td>MySQL, MongoDB, SQLite</td>
+        <td>MySQL, MongoDB, SQLite, Supabase</td>
         <td>PostgreSQL</td>
         <td>Robustez, características avanzadas, integración con Replit</td>
     </tr>
     <tr>
-        <td>Estilos CSS</td>
-        <td>Styled Components, CSS Modules, Sass</td>
+        <td>CSS Framework</td>
+        <td>Styled Components, CSS Modules, Sass, Chakra UI</td>
         <td>Tailwind CSS</td>
-        <td>Desarrollo rápido, consistencia, bundle pequeño</td>
+        <td>Desarrollo rápido, consistencia, bundle mínimo</td>
     </tr>
     <tr>
         <td>Estado del Servidor</td>
-        <td>Redux, Zustand, SWR</td>
+        <td>Redux, Zustand, SWR, Jotai</td>
         <td>TanStack Query</td>
-        <td>Gestión automática de caché, revalidación, menor boilerplate</td>
+        <td>Especializado en datos del servidor, caché automático</td>
+    </tr>
+    <tr>
+        <td>Validación</td>
+        <td>Yup, Joi, io-ts, Valibot</td>
+        <td>Zod</td>
+        <td>Integración con Drizzle, inferencia de tipos, API intuitiva</td>
     </tr>
 </table>
 
-<!-- CAPÍTULO 3: PLANIFICACIÓN -->
-<h1 id="planif" class="page-break">3. PLANIFICACIÓN DEL PROYECTO</h1>
+<h2 id="justificacion-tech">3.4. Justificación de Decisiones Tecnológicas</h2>
 
-<h2 id="temp">3.1. Temporalización</h2>
+<h3>3.4.1. ¿Por qué TypeScript?</h3>
 
-<p>El proyecto se ha desarrollado siguiendo un enfoque iterativo e incremental, dividido en varias fases que permitieron ir construyendo la aplicación de forma progresiva, validando cada funcionalidad antes de pasar a la siguiente.</p>
+<p>La decisión de utilizar TypeScript en todo el proyecto (frontend, backend y móvil) se fundamenta en:</p>
 
-<h3>3.1.1. Cronograma General</h3>
+<ul>
+    <li><strong>Seguridad de tipos:</strong> Detecta errores en tiempo de compilación, no en producción</li>
+    <li><strong>Productividad:</strong> El autocompletado y la documentación inline aceleran el desarrollo</li>
+    <li><strong>Mantenibilidad:</strong> El código tipado es más fácil de entender y refactorizar</li>
+    <li><strong>Compartición de tipos:</strong> Los mismos interfaces se usan en frontend y backend</li>
+</ul>
+
+<pre>
+// Ejemplo: Tipo compartido entre frontend y backend
+// shared/schema.ts
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer&lt;typeof insertUserSchema&gt;;
+
+// El mismo tipo se usa en:
+// - Backend: validación de peticiones, respuestas de API
+// - Frontend Web: tipado de queries y formularios
+// - App Móvil: tipado de respuestas de API
+</pre>
+
+<h3>3.4.2. ¿Por qué Drizzle en lugar de Prisma?</h3>
+
+<p>Aunque Prisma es más popular, Drizzle ofrece ventajas específicas para este proyecto:</p>
+
+<table>
+    <tr>
+        <th>Aspecto</th>
+        <th>Drizzle</th>
+        <th>Prisma</th>
+    </tr>
+    <tr>
+        <td>Rendimiento</td>
+        <td>Queries SQL directas, sin overhead</td>
+        <td>Capa de abstracción adicional</td>
+    </tr>
+    <tr>
+        <td>Bundle size</td>
+        <td>~50KB</td>
+        <td>~2MB</td>
+    </tr>
+    <tr>
+        <td>Sintaxis</td>
+        <td>SQL-like, familiar</td>
+        <td>DSL propio</td>
+    </tr>
+    <tr>
+        <td>Integración Zod</td>
+        <td>Nativa (drizzle-zod)</td>
+        <td>Requiere biblioteca externa</td>
+    </tr>
+    <tr>
+        <td>Serverless</td>
+        <td>Optimizado</td>
+        <td>Requiere configuración especial</td>
+    </tr>
+</table>
+
+<h3>3.4.3. ¿Por qué Expo en lugar de React Native CLI?</h3>
+
+<p>Expo simplifica enormemente el desarrollo móvil:</p>
+
+<ul>
+    <li><strong>Sin configuración nativa:</strong> No requiere Xcode ni Android Studio para desarrollo</li>
+    <li><strong>Expo Go:</strong> Testing instantáneo en dispositivo físico</li>
+    <li><strong>EAS Build:</strong> Compilación en la nube, sin máquina Mac para iOS</li>
+    <li><strong>Módulos preintegrados:</strong> Cámara, GPS, notificaciones, etc. listos para usar</li>
+    <li><strong>Actualizaciones OTA:</strong> Publicar cambios sin pasar por las stores</li>
+</ul>
+
+<!-- CAPÍTULO 4: PLANIFICACIÓN -->
+<h1 id="planif" class="page-break">4. PLANIFICACIÓN DEL PROYECTO</h1>
+
+<h2 id="temp">4.1. Temporalización</h2>
+
+<p>El proyecto se desarrolló siguiendo un enfoque iterativo, dividido en fases bien definidas con entregables específicos.</p>
+
+<h3>4.1.1. Cronograma Detallado</h3>
 
 <table>
     <tr>
         <th>Fase</th>
-        <th>Duración Estimada</th>
-        <th>Actividades Principales</th>
+        <th>Duración</th>
+        <th>Actividades</th>
+        <th>Entregables</th>
     </tr>
     <tr>
         <td>Fase 0: Preparación</td>
         <td>1 semana</td>
-        <td>Configuración del entorno, estructura del proyecto, base de datos</td>
+        <td>Configuración entorno, estructura proyecto, BD</td>
+        <td>Proyecto base funcional</td>
     </tr>
     <tr>
         <td>Fase 1: Concepción</td>
         <td>1 semana</td>
-        <td>Análisis de requisitos, definición de funcionalidades</td>
+        <td>Análisis requisitos, casos de uso, modelo datos</td>
+        <td>Documentación de requisitos</td>
     </tr>
     <tr>
         <td>Fase 2: Diseño</td>
         <td>2 semanas</td>
-        <td>Diseño de BD, API, interfaces de usuario</td>
+        <td>Diseño BD, API, mockups UI</td>
+        <td>Esquemas y diseños aprobados</td>
     </tr>
     <tr>
         <td>Fase 3: Planificación</td>
         <td>1 semana</td>
-        <td>División en módulos, priorización de tareas</td>
+        <td>División módulos, priorización tareas</td>
+        <td>Backlog priorizado</td>
     </tr>
     <tr>
         <td>Fase 4: Producción</td>
-        <td>6 semanas</td>
-        <td>Desarrollo de backend, frontend web y móvil</td>
+        <td>8 semanas</td>
+        <td>Desarrollo backend, frontend web, app móvil</td>
+        <td>Aplicación funcional</td>
     </tr>
     <tr>
         <td>Fase 5: Pruebas</td>
         <td>2 semanas</td>
-        <td>Testing funcional, integración, corrección de bugs</td>
+        <td>Testing, corrección bugs, optimización</td>
+        <td>Aplicación estable</td>
     </tr>
     <tr>
         <td>Fase 6: Despliegue</td>
         <td>1 semana</td>
         <td>Publicación web, compilación APK</td>
+        <td>Aplicación desplegada</td>
     </tr>
 </table>
 
-<h3>3.1.2. Diagrama de Gantt Simplificado</h3>
+<h3>4.1.2. Diagrama de Gantt</h3>
 
 <div class="diagram">
     <pre style="background: white; color: #333; text-align: left; font-size: 9pt;">
-Semana:        1    2    3    4    5    6    7    8    9   10   11   12   13   14
-               |    |    |    |    |    |    |    |    |    |    |    |    |    |
-Fase 0:        ████
-Fase 1:             ████
-Fase 2:                  ████████
-Fase 3:                            ████
-Fase 4:                                 ████████████████████████████
-Fase 5:                                                              ████████
-Fase 6:                                                                       ████
+Semana:     1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+            |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |
+Fase 0:     ████
+Fase 1:          ████
+Fase 2:               ████████
+Fase 3:                         ████
+Fase 4:                              ████████████████████████████████████████
+  - Backend:                         ████████████
+  - Frontend Web:                              ████████████████
+  - App Móvil:                                               ████████████
+Fase 5:                                                                       ████████
+Fase 6:                                                                                ████
     </pre>
 </div>
 
-<h2 id="metod">3.2. Metodología de Desarrollo</h2>
+<h2 id="metod">4.2. Metodología de Desarrollo</h2>
 
-<p>Se ha seguido una metodología ágil adaptada, combinando elementos de Scrum y desarrollo iterativo. Las características principales de la metodología empleada son:</p>
+<p>Se aplicó una metodología ágil adaptada, combinando principios de Scrum con prácticas de desarrollo iterativo.</p>
 
-<h3>3.2.1. Principios Aplicados</h3>
-
-<ul>
-    <li><strong>Desarrollo Iterativo:</strong> El proyecto se dividió en iteraciones cortas (sprints de 1-2 semanas), cada una con objetivos claros y entregables definidos.</li>
-    <li><strong>Priorización de Funcionalidades:</strong> Se utilizó el método MoSCoW (Must have, Should have, Could have, Won't have) para priorizar las características a desarrollar.</li>
-    <li><strong>Feedback Continuo:</strong> Se realizaron revisiones frecuentes del progreso, ajustando el plan según las necesidades emergentes.</li>
-    <li><strong>Entrega Incremental:</strong> Cada iteración producía una versión funcional del sistema con nuevas características.</li>
-    <li><strong>Documentación Continua:</strong> La documentación se fue generando a lo largo del desarrollo, no al final.</li>
-</ul>
-
-<h3>3.2.2. Herramientas de Gestión</h3>
-
-<table>
-    <tr>
-        <th>Herramienta</th>
-        <th>Uso</th>
-    </tr>
-    <tr>
-        <td>Replit</td>
-        <td>Entorno de desarrollo integrado, control de versiones, despliegue</td>
-    </tr>
-    <tr>
-        <td>Git</td>
-        <td>Control de versiones y gestión del código fuente</td>
-    </tr>
-    <tr>
-        <td>Lista de Tareas Integrada</td>
-        <td>Seguimiento de tareas y progreso</td>
-    </tr>
-    <tr>
-        <td>Checkpoints Automáticos</td>
-        <td>Puntos de restauración del proyecto</td>
-    </tr>
-</table>
-
-<!-- CAPÍTULO 4: DESARROLLO -->
-<h1 id="desarrollo" class="page-break">4. DESARROLLO DEL PROYECTO</h1>
-
-<h2 id="fase0">4.0. Fase 0: Fase Previa</h2>
-
-<h3>4.0.1. Configuración del Entorno</h3>
-
-<h4>4.0.1.1. Replit como Plataforma de Desarrollo</h4>
-
-<p>Replit es una plataforma de desarrollo en la nube que proporciona un entorno de desarrollo integrado (IDE) accesible desde cualquier navegador. Para este proyecto, Replit ofreció las siguientes ventajas:</p>
+<h3>4.2.1. Principios Aplicados</h3>
 
 <ul>
-    <li><strong>Entorno preconfigurado:</strong> Node.js, npm y las herramientas necesarias ya están instaladas</li>
-    <li><strong>Base de datos integrada:</strong> PostgreSQL disponible con un solo clic</li>
-    <li><strong>Despliegue automático:</strong> Publicación de la aplicación sin configuración adicional</li>
-    <li><strong>Colaboración en tiempo real:</strong> Posibilidad de trabajar en equipo simultáneamente</li>
-    <li><strong>Gestión de secretos:</strong> Almacenamiento seguro de variables de entorno</li>
+    <li><strong>Iteraciones cortas:</strong> Sprints de 1-2 semanas con objetivos definidos</li>
+    <li><strong>Entrega continua:</strong> Cada iteración produce una versión funcional</li>
+    <li><strong>Priorización MoSCoW:</strong> Must have, Should have, Could have, Won't have</li>
+    <li><strong>Feedback continuo:</strong> Revisiones frecuentes y ajustes del plan</li>
+    <li><strong>Documentación continua:</strong> Documentación generada durante el desarrollo</li>
 </ul>
 
-<h4>4.0.1.2. Configuración de Base de Datos PostgreSQL</h4>
-
-<p>La base de datos PostgreSQL se configuró utilizando el servicio integrado de Replit, que proporciona una instancia de Neon (PostgreSQL serverless). La conexión se establece mediante la variable de entorno <code>DATABASE_URL</code>.</p>
-
-<pre>
-# Variables de entorno configuradas
-DATABASE_URL=postgresql://user:password@host:port/database
-PGHOST=host
-PGPORT=5432
-PGUSER=user
-PGPASSWORD=password
-PGDATABASE=database
-SESSION_SECRET=secret_key_for_sessions
-JWT_SECRET=secret_key_for_jwt
-</pre>
-
-<h3>4.0.2. Estructura Inicial del Proyecto</h3>
-
-<h4>4.0.2.1. Arquitectura Monorepo</h4>
-
-<p>El proyecto se organizó siguiendo una estructura monorepo, donde el código del frontend, backend y esquemas compartidos coexisten en el mismo repositorio. Esta arquitectura facilita:</p>
-
-<ul>
-    <li>Compartir tipos y esquemas entre frontend y backend</li>
-    <li>Gestión unificada de dependencias</li>
-    <li>Despliegue coordinado de todos los componentes</li>
-    <li>Refactorizaciones que afectan a múltiples partes del sistema</li>
-</ul>
-
-<div class="diagram">
-    <pre style="background: white; color: #333; text-align: left;">
-proyecto/
-├── client/                 # Frontend Web (React)
-│   ├── src/
-│   │   ├── components/     # Componentes reutilizables
-│   │   ├── pages/          # Páginas de la aplicación
-│   │   ├── hooks/          # Hooks personalizados
-│   │   └── lib/            # Utilidades
-│   └── index.html
-├── server/                 # Backend (Express)
-│   ├── routes/             # Endpoints de la API
-│   ├── storages/           # Capa de acceso a datos
-│   ├── services/           # Lógica de negocio
-│   └── index.ts            # Punto de entrada
-├── shared/                 # Código compartido
-│   └── schema.ts           # Esquemas de BD y validación
-├── mobile-app/             # Aplicación Móvil (Expo)
-│   ├── app/                # Pantallas (file-based routing)
-│   ├── components/         # Componentes
-│   └── services/           # Servicios de API
-└── docs/                   # Documentación
-    </pre>
-</div>
-
-<h2 id="fase1">4.1. Fase 1: Fase de Concepción</h2>
-
-<h3>4.1.1. Idea Principal</h3>
-
-<p>La idea principal del proyecto surgió de la necesidad de las empresas de cumplir con la normativa de registro horario (Real Decreto-ley 8/2019 en España), que obliga a las empresas a llevar un registro diario de la jornada de trabajo de sus empleados.</p>
-
-<p>El sistema propuesto debía ofrecer una solución moderna que sustituyera los métodos tradicionales (hojas de firma, tarjetas de fichaje físicas) por una aplicación digital accesible y fácil de usar.</p>
-
-<h3>4.1.2. Análisis de Requisitos</h3>
-
-<h4>Requisitos Funcionales</h4>
-
-<table>
-    <tr>
-        <th>RF</th>
-        <th>Descripción</th>
-        <th>Actor</th>
-    </tr>
-    <tr>
-        <td>RF01</td>
-        <td>El sistema debe permitir a los empleados registrar su entrada</td>
-        <td>Empleado</td>
-    </tr>
-    <tr>
-        <td>RF02</td>
-        <td>El sistema debe permitir a los empleados registrar su salida</td>
-        <td>Empleado</td>
-    </tr>
-    <tr>
-        <td>RF03</td>
-        <td>El sistema debe permitir registrar inicios y fines de pausa</td>
-        <td>Empleado</td>
-    </tr>
-    <tr>
-        <td>RF04</td>
-        <td>El sistema debe capturar la ubicación GPS al fichar (opcional)</td>
-        <td>Empleado</td>
-    </tr>
-    <tr>
-        <td>RF05</td>
-        <td>El administrador debe poder gestionar empleados (CRUD)</td>
-        <td>Administrador</td>
-    </tr>
-    <tr>
-        <td>RF06</td>
-        <td>El administrador debe poder gestionar departamentos</td>
-        <td>Administrador</td>
-    </tr>
-    <tr>
-        <td>RF07</td>
-        <td>El administrador debe poder gestionar roles empresariales</td>
-        <td>Administrador</td>
-    </tr>
-    <tr>
-        <td>RF08</td>
-        <td>El administrador debe poder asignar horarios a empleados</td>
-        <td>Administrador</td>
-    </tr>
-    <tr>
-        <td>RF09</td>
-        <td>El sistema debe permitir crear horarios en bloque (calendario anual)</td>
-        <td>Administrador</td>
-    </tr>
-    <tr>
-        <td>RF10</td>
-        <td>El administrador debe poder registrar incidencias</td>
-        <td>Administrador</td>
-    </tr>
-    <tr>
-        <td>RF11</td>
-        <td>El sistema debe generar informes en formato Excel</td>
-        <td>Administrador</td>
-    </tr>
-    <tr>
-        <td>RF12</td>
-        <td>El sistema debe mostrar un dashboard con estadísticas</td>
-        <td>Administrador</td>
-    </tr>
-    <tr>
-        <td>RF13</td>
-        <td>El sistema debe permitir visualizar ubicaciones en mapa</td>
-        <td>Administrador</td>
-    </tr>
-</table>
-
-<h4>Requisitos No Funcionales</h4>
-
-<table>
-    <tr>
-        <th>RNF</th>
-        <th>Descripción</th>
-        <th>Categoría</th>
-    </tr>
-    <tr>
-        <td>RNF01</td>
-        <td>La aplicación web debe ser responsive (móvil, tablet, desktop)</td>
-        <td>Usabilidad</td>
-    </tr>
-    <tr>
-        <td>RNF02</td>
-        <td>La aplicación debe soportar modo claro y oscuro</td>
-        <td>Usabilidad</td>
-    </tr>
-    <tr>
-        <td>RNF03</td>
-        <td>Los tiempos de respuesta deben ser menores a 2 segundos</td>
-        <td>Rendimiento</td>
-    </tr>
-    <tr>
-        <td>RNF04</td>
-        <td>Las contraseñas deben almacenarse con hash bcrypt</td>
-        <td>Seguridad</td>
-    </tr>
-    <tr>
-        <td>RNF05</td>
-        <td>Todas las fechas deben almacenarse en UTC</td>
-        <td>Integridad</td>
-    </tr>
-    <tr>
-        <td>RNF06</td>
-        <td>La interfaz debe estar en español</td>
-        <td>Localización</td>
-    </tr>
-    <tr>
-        <td>RNF07</td>
-        <td>El sistema debe estar disponible 24/7</td>
-        <td>Disponibilidad</td>
-    </tr>
-</table>
-
-<h2 id="fase2" class="page-break">4.2. Fase 2: Fase de Diseño</h2>
-
-<h3>4.2.1. Diseño de Base de Datos</h3>
-
-<h4>4.2.1.1. Modelo Entidad-Relación</h4>
-
-<p>El modelo de datos se diseñó para capturar toda la información necesaria sobre empleados, sus fichajes, horarios asignados e incidencias. Las principales entidades identificadas son:</p>
-
-<div class="diagram">
-    <pre style="background: white; color: #333; text-align: left; font-size: 8pt;">
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   DEPARTMENTS   │     │      USERS      │     │  ROLES_ENTERPRISE│
-├─────────────────┤     ├─────────────────┤     ├─────────────────┤
-│ id (PK)         │◄────│ departmentId(FK)│     │ id (PK)         │
-│ name            │     │ roleId (FK)     │────►│ name (UNIQUE)   │
-│ description     │     │ id (PK)         │     │ description     │
-└─────────────────┘     │ numEmployee(UQ) │     └─────────────────┘
-                        │ firstName       │
-                        │ lastName        │
-                        │ email           │
-                        │ password        │
-                        │ isAdmin         │
-                        │ isActive        │
-                        └────────┬────────┘
-                                 │
-          ┌──────────────────────┼──────────────────────┐
-          │                      │                      │
-          ▼                      ▼                      ▼
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   SCHEDULES     │     │  CLOCK_ENTRIES  │     │  DAILY_WORKDAY  │
-├─────────────────┤     ├─────────────────┤     ├─────────────────┤
-│ id (PK)         │     │ id (PK)         │     │ id (PK)         │
-│ idUser (FK)     │     │ userId (FK)     │     │ idUser (FK)     │
-│ date            │     │ entryType       │     │ date (NOT NULL) │
-│ startTime       │     │ timestamp       │     │ clockIn         │
-│ endTime         │     │ latitude        │     │ clockOut        │
-│ startBreak      │     │ longitude       │     │ startBreak      │
-│ endBreak        │     │ source          │     │ endBreak        │
-│ idDailyWorkday  │     └─────────────────┘     │ totalHours      │
-└─────────────────┘                             │ status          │
-                                                └────────┬────────┘
-                                                         │
-                                                         ▼
-                                                ┌─────────────────┐
-                                                │    INCIDENTS    │
-                                                ├─────────────────┤
-                                                │ id (PK)         │
-                                                │ idUser (FK)     │
-                                                │ idDailyWorkday  │
-                                                │ incidentTypeId  │
-                                                │ registeredBy(FK)│
-                                                │ description     │
-                                                │ date            │
-                                                └─────────────────┘
-    </pre>
-</div>
-
-<h4>4.2.1.2. Esquema de Tablas</h4>
-
-<p>A continuación se detalla el esquema de cada tabla con sus columnas, tipos de datos y restricciones:</p>
-
-<p><strong>Tabla: users</strong></p>
-<table>
-    <tr><th>Columna</th><th>Tipo</th><th>Restricciones</th><th>Descripción</th></tr>
-    <tr><td>id</td><td>UUID</td><td>PK, DEFAULT uuid_generate_v4()</td><td>Identificador único</td></tr>
-    <tr><td>numEmployee</td><td>VARCHAR(50)</td><td>NOT NULL, UNIQUE</td><td>Número de empleado</td></tr>
-    <tr><td>firstName</td><td>VARCHAR(100)</td><td>NOT NULL</td><td>Nombre</td></tr>
-    <tr><td>lastName</td><td>VARCHAR(100)</td><td>NOT NULL</td><td>Apellidos</td></tr>
-    <tr><td>email</td><td>VARCHAR(255)</td><td>NOT NULL, UNIQUE</td><td>Correo electrónico</td></tr>
-    <tr><td>password</td><td>VARCHAR(255)</td><td>NOT NULL</td><td>Contraseña (hash bcrypt)</td></tr>
-    <tr><td>departmentId</td><td>UUID</td><td>FK → departments.id</td><td>Departamento asignado</td></tr>
-    <tr><td>roleId</td><td>UUID</td><td>FK → roles_enterprise.id</td><td>Rol empresarial</td></tr>
-    <tr><td>isAdmin</td><td>BOOLEAN</td><td>DEFAULT false</td><td>Es administrador</td></tr>
-    <tr><td>isActive</td><td>BOOLEAN</td><td>DEFAULT true</td><td>Cuenta activa</td></tr>
-</table>
-
-<p><strong>Tabla: clock_entries</strong></p>
-<table>
-    <tr><th>Columna</th><th>Tipo</th><th>Restricciones</th><th>Descripción</th></tr>
-    <tr><td>id</td><td>UUID</td><td>PK</td><td>Identificador único</td></tr>
-    <tr><td>userId</td><td>UUID</td><td>FK → users.id, NOT NULL</td><td>Empleado</td></tr>
-    <tr><td>entryType</td><td>VARCHAR(20)</td><td>NOT NULL</td><td>clock_in, clock_out, break_start, break_end</td></tr>
-    <tr><td>timestamp</td><td>TIMESTAMP</td><td>NOT NULL</td><td>Momento del fichaje (UTC)</td></tr>
-    <tr><td>latitude</td><td>DOUBLE PRECISION</td><td>NULL</td><td>Latitud GPS</td></tr>
-    <tr><td>longitude</td><td>DOUBLE PRECISION</td><td>NULL</td><td>Longitud GPS</td></tr>
-    <tr><td>source</td><td>VARCHAR(20)</td><td>DEFAULT 'web'</td><td>web, mobile, manual</td></tr>
-</table>
-
-<h3>4.2.2. Diseño de Interfaz de Usuario</h3>
-
-<h4>4.2.2.1. Componentes Shadcn/UI</h4>
-
-<p>Para la interfaz de usuario se utilizó Shadcn/UI, una colección de componentes reutilizables construidos sobre Radix UI y estilizados con Tailwind CSS. Los principales componentes utilizados son:</p>
-
-<ul>
-    <li><strong>Button:</strong> Botones con diferentes variantes (primary, secondary, ghost, destructive)</li>
-    <li><strong>Card:</strong> Contenedores para agrupar información relacionada</li>
-    <li><strong>Dialog/AlertDialog:</strong> Modales para confirmaciones y formularios</li>
-    <li><strong>Form:</strong> Formularios con validación integrada</li>
-    <li><strong>Table:</strong> Tablas para listados de datos</li>
-    <li><strong>Select/Combobox:</strong> Selectores de opciones</li>
-    <li><strong>Calendar:</strong> Selector de fechas</li>
-    <li><strong>Sidebar:</strong> Navegación lateral</li>
-    <li><strong>Toast:</strong> Notificaciones temporales</li>
-    <li><strong>Avatar:</strong> Imágenes de perfil con fallback</li>
-    <li><strong>Badge:</strong> Etiquetas de estado</li>
-    <li><strong>Tabs:</strong> Navegación por pestañas</li>
-</ul>
-
-<h4>4.2.2.2. Sistema de Colores y Temas</h4>
-
-<p>El sistema de diseño utiliza variables CSS personalizadas que permiten cambiar fácilmente entre el modo claro y oscuro. Los colores principales son:</p>
-
-<table>
-    <tr>
-        <th>Variable</th>
-        <th>Modo Claro</th>
-        <th>Modo Oscuro</th>
-        <th>Uso</th>
-    </tr>
-    <tr>
-        <td>--background</td>
-        <td>hsl(210 40% 98%)</td>
-        <td>hsl(222.2 84% 4.9%)</td>
-        <td>Fondo principal</td>
-    </tr>
-    <tr>
-        <td>--foreground</td>
-        <td>hsl(222.2 84% 4.9%)</td>
-        <td>hsl(210 40% 98%)</td>
-        <td>Texto principal</td>
-    </tr>
-    <tr>
-        <td>--primary</td>
-        <td>hsl(221.2 83.2% 53.3%)</td>
-        <td>hsl(210 40% 98%)</td>
-        <td>Color de acento</td>
-    </tr>
-    <tr>
-        <td>--card</td>
-        <td>hsl(0 0% 100%)</td>
-        <td>hsl(222.2 84% 6%)</td>
-        <td>Fondo de tarjetas</td>
-    </tr>
-    <tr>
-        <td>--destructive</td>
-        <td>hsl(0 84.2% 60.2%)</td>
-        <td>hsl(0 62.8% 30.6%)</td>
-        <td>Acciones destructivas</td>
-    </tr>
-</table>
-
-<h3>4.2.3. Diseño de API REST</h3>
-
-<p>La API sigue los principios REST, utilizando los métodos HTTP estándar para las operaciones CRUD:</p>
-
-<table>
-    <tr>
-        <th>Endpoint</th>
-        <th>Método</th>
-        <th>Descripción</th>
-        <th>Auth</th>
-    </tr>
-    <tr><td>/api/auth/login</td><td>POST</td><td>Iniciar sesión</td><td>No</td></tr>
-    <tr><td>/api/auth/logout</td><td>POST</td><td>Cerrar sesión</td><td>Sí</td></tr>
-    <tr><td>/api/auth/me</td><td>GET</td><td>Obtener usuario actual</td><td>Sí</td></tr>
-    <tr><td>/api/users</td><td>GET</td><td>Listar empleados</td><td>Admin</td></tr>
-    <tr><td>/api/users</td><td>POST</td><td>Crear empleado</td><td>Admin</td></tr>
-    <tr><td>/api/users/:id</td><td>GET</td><td>Obtener empleado</td><td>Admin</td></tr>
-    <tr><td>/api/users/:id</td><td>PATCH</td><td>Actualizar empleado</td><td>Admin</td></tr>
-    <tr><td>/api/users/:id</td><td>DELETE</td><td>Eliminar empleado</td><td>Admin</td></tr>
-    <tr><td>/api/departments</td><td>GET/POST</td><td>CRUD departamentos</td><td>Admin</td></tr>
-    <tr><td>/api/roles</td><td>GET/POST</td><td>CRUD roles</td><td>Admin</td></tr>
-    <tr><td>/api/schedules</td><td>GET/POST</td><td>CRUD horarios</td><td>Admin</td></tr>
-    <tr><td>/api/clock-entries</td><td>POST</td><td>Registrar fichaje</td><td>Empleado</td></tr>
-    <tr><td>/api/clock-entries/today</td><td>GET</td><td>Fichajes de hoy</td><td>Empleado</td></tr>
-    <tr><td>/api/incidents</td><td>GET/POST</td><td>CRUD incidencias</td><td>Admin</td></tr>
-    <tr><td>/api/reports/excel</td><td>GET</td><td>Generar informe Excel</td><td>Admin</td></tr>
-</table>
-
-<h2 id="fase3">4.3. Fase 3: Fase de Planificación</h2>
-
-<h3>4.3.1. División en Módulos</h3>
-
-<p>El sistema se dividió en los siguientes módulos funcionales:</p>
-
-<ol>
-    <li><strong>Módulo de Autenticación:</strong> Login, logout, gestión de sesiones y JWT</li>
-    <li><strong>Módulo de Empleados:</strong> CRUD de usuarios, gestión de perfiles</li>
-    <li><strong>Módulo de Organización:</strong> Departamentos y roles empresariales</li>
-    <li><strong>Módulo de Fichajes:</strong> Clock in/out, pausas, geolocalización</li>
-    <li><strong>Módulo de Horarios:</strong> Planificación, calendario anual</li>
-    <li><strong>Módulo de Incidencias:</strong> Registro y gestión de incidencias</li>
-    <li><strong>Módulo de Informes:</strong> Dashboard, estadísticas, exportación Excel</li>
-    <li><strong>Módulo de Configuración:</strong> Ajustes del sistema, tipos de incidencia</li>
-</ol>
-
-<h3>4.3.2. Priorización de Funcionalidades</h3>
-
-<p>Utilizando el método MoSCoW, las funcionalidades se clasificaron en:</p>
+<h3>4.2.2. Priorización de Funcionalidades</h3>
 
 <table>
     <tr>
@@ -1229,125 +1420,353 @@ proyecto/
         <th>Funcionalidades</th>
     </tr>
     <tr>
-        <td><strong>Must Have</strong></td>
-        <td>Autenticación, CRUD empleados, fichajes básicos, horarios</td>
+        <td><strong>Must Have</strong> (Imprescindibles)</td>
+        <td>
+            <ul>
+                <li>Autenticación de usuarios</li>
+                <li>CRUD de empleados</li>
+                <li>Fichajes (entrada/salida)</li>
+                <li>Gestión de horarios básica</li>
+                <li>Informes Excel</li>
+            </ul>
+        </td>
     </tr>
     <tr>
-        <td><strong>Should Have</strong></td>
-        <td>Dashboard, informes Excel, gestión de pausas, departamentos</td>
+        <td><strong>Should Have</strong> (Importantes)</td>
+        <td>
+            <ul>
+                <li>Dashboard con estadísticas</li>
+                <li>Gestión de pausas</li>
+                <li>Departamentos y roles</li>
+                <li>Calendario anual</li>
+                <li>Aplicación móvil</li>
+            </ul>
+        </td>
     </tr>
     <tr>
-        <td><strong>Could Have</strong></td>
-        <td>Geolocalización, mapa de ubicaciones, calendario anual</td>
+        <td><strong>Could Have</strong> (Deseables)</td>
+        <td>
+            <ul>
+                <li>Geolocalización</li>
+                <li>Mapa de ubicaciones</li>
+                <li>Incidencias laborales</li>
+                <li>Modo oscuro</li>
+            </ul>
+        </td>
     </tr>
     <tr>
-        <td><strong>Won't Have</strong></td>
-        <td>Notificaciones push, integración con nóminas (futuro)</td>
+        <td><strong>Won't Have</strong> (Excluidas)</td>
+        <td>
+            <ul>
+                <li>Notificaciones push</li>
+                <li>Integración con nóminas</li>
+                <li>Reconocimiento biométrico</li>
+                <li>Multi-idioma</li>
+            </ul>
+        </td>
     </tr>
 </table>
 
-<h2 id="fase4" class="page-break">4.4. Fase 4: Fase de Producción</h2>
+<h2 id="riesgos">4.3. Gestión de Riesgos</h2>
 
-<h3>4.4.1. Backend</h3>
+<p>Se identificaron y gestionaron los siguientes riesgos durante el desarrollo:</p>
 
-<h4>4.4.1.1. Controladores (Routes)</h4>
+<table>
+    <tr>
+        <th>Riesgo</th>
+        <th>Probabilidad</th>
+        <th>Impacto</th>
+        <th>Mitigación</th>
+    </tr>
+    <tr>
+        <td>Problemas de rendimiento con consultas complejas</td>
+        <td>Media</td>
+        <td>Alto</td>
+        <td>Optimización de queries, índices en BD, batch queries</td>
+    </tr>
+    <tr>
+        <td>Errores en gestión de zonas horarias</td>
+        <td>Alta</td>
+        <td>Alto</td>
+        <td>Almacenamiento en UTC, conversión consistente, tests</td>
+    </tr>
+    <tr>
+        <td>Incompatibilidades en app móvil</td>
+        <td>Media</td>
+        <td>Medio</td>
+        <td>Uso de Expo para abstracción, testing en múltiples dispositivos</td>
+    </tr>
+    <tr>
+        <td>Conflictos de puertos en desarrollo</td>
+        <td>Alta</td>
+        <td>Bajo</td>
+        <td>Scripts de limpieza de procesos Node</td>
+    </tr>
+    <tr>
+        <td>Cambios en la normativa durante el desarrollo</td>
+        <td>Baja</td>
+        <td>Medio</td>
+        <td>Arquitectura flexible, seguimiento de novedades legales</td>
+    </tr>
+</table>
 
-<p>Los controladores se organizaron en archivos separados por entidad, siguiendo el principio de responsabilidad única. Cada archivo de rutas define los endpoints relacionados con una funcionalidad específica:</p>
+<!-- CAPÍTULO 5: DESARROLLO DEL PROYECTO -->
+<h1 id="desarrollo" class="page-break">5. DESARROLLO DEL PROYECTO</h1>
 
-<pre>
-server/routes/
-├── authRoutes.ts          # Autenticación y sesiones
-├── userRoutes.ts          # Gestión de empleados
-├── departmentRoutes.ts    # Departamentos
-├── roleRoutes.ts          # Roles empresariales
-├── scheduleRoutes.ts      # Horarios
-├── clockEntryRoutes.ts    # Fichajes
-├── dailyWorkdayRoutes.ts  # Jornadas diarias
-├── incidentRoutes.ts      # Incidencias
-├── incidentTypeRoutes.ts  # Tipos de incidencia
-├── dashboardRoutes.ts     # Estadísticas
-├── reportRoutes.ts        # Informes
-├── timeEntriesRoutes.ts   # Entries consolidadas
-└── mobileRoutes.ts        # Endpoints móviles
-</pre>
+<h2 id="fase0">5.0. Fase Previa: Configuración del Entorno</h2>
 
-<p>Ejemplo de estructura de un controlador:</p>
+<h3>5.0.1. Configuración de Replit</h3>
 
-<pre>
-// server/routes/userRoutes.ts
-import { Router } from "express";
-import { requireAdmin } from "../middleware/auth";
-import { userStorage } from "../storages/userStorage";
-import { insertUserSchema } from "@shared/schema";
+<p>El desarrollo se realizó en Replit, configurando el entorno con las siguientes características:</p>
 
-const router = Router();
+<ul>
+    <li><strong>Template:</strong> Node.js con TypeScript</li>
+    <li><strong>Base de datos:</strong> PostgreSQL integrado (Neon)</li>
+    <li><strong>Variables de entorno:</strong> Gestionadas mediante Secrets de Replit</li>
+    <li><strong>Workflows:</strong> Configuración de <code>npm run dev</code> para desarrollo</li>
+</ul>
 
-// GET /api/users - Listar todos los empleados
-router.get("/", requireAdmin, async (req, res) => {
-  try {
-    const users = await userStorage.getAll();
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Error al obtener empleados" });
-  }
-});
+<h3>5.0.2. Estructura del Proyecto</h3>
 
-// POST /api/users - Crear nuevo empleado
-router.post("/", requireAdmin, async (req, res) => {
-  try {
-    const validatedData = insertUserSchema.parse(req.body);
-    const newUser = await userStorage.create(validatedData);
-    res.status(201).json(newUser);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ errors: error.errors });
-    }
-    res.status(500).json({ message: "Error al crear empleado" });
-  }
-});
-
-export default router;
-</pre>
-
-<h4>4.4.1.2. Servicios</h4>
-
-<p>La capa de servicios contiene la lógica de negocio más compleja, separada de los controladores para facilitar el testing y la reutilización:</p>
+<p>Se estableció una estructura monorepo con código compartido:</p>
 
 <pre>
-server/services/
-├── authService.ts         # Lógica de autenticación
-├── dailyWorkdayService.ts # Cálculo de jornadas
-├── reportService.ts       # Generación de informes
-├── scheduleService.ts     # Gestión de horarios
-├── clockEntryService.ts   # Procesamiento de fichajes
-├── incidentService.ts     # Gestión de incidencias
-├── dashboardService.ts    # Cálculo de estadísticas
-├── timeEntriesService.ts  # Consolidación de datos
-└── excelService.ts        # Exportación Excel
+proyecto/
+├── client/                 # Frontend Web (React + Vite)
+├── server/                 # Backend (Express)
+├── shared/                 # Código compartido (esquemas)
+├── mobile-app/             # Aplicación Móvil (Expo)
+├── docs/                   # Documentación
+├── package.json            # Dependencias raíz
+├── tsconfig.json           # Configuración TypeScript
+├── vite.config.ts          # Configuración Vite
+└── drizzle.config.ts       # Configuración Drizzle
 </pre>
 
-<h4>4.4.1.3. Almacenamiento (Storages)</h4>
+<h3>5.0.3. Configuración de Base de Datos</h3>
 
-<p>La capa de almacenamiento encapsula todas las operaciones de base de datos, proporcionando una interfaz limpia para las operaciones CRUD:</p>
+<p>Se configuró la conexión a PostgreSQL mediante Drizzle ORM:</p>
+
+<pre>
+// server/db.ts
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { Pool } from "@neondatabase/serverless";
+import * as schema from "@shared/schema";
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle(pool, { schema });
+</pre>
+
+<h2 id="fase1">5.1. Fase de Concepción y Análisis</h2>
+
+<h3>5.1.1. Análisis de Requisitos Detallado</h3>
+
+<p>Se realizó un análisis exhaustivo de los requisitos del sistema, considerando tanto las necesidades funcionales como los requisitos legales de la normativa española.</p>
+
+<h4>Requisitos Funcionales Detallados</h4>
+
+<p><strong>RF-01: Autenticación de Usuarios</strong></p>
+<ul>
+    <li>El sistema debe permitir el inicio de sesión con email y contraseña</li>
+    <li>Las contraseñas deben almacenarse con hash bcrypt (factor 10)</li>
+    <li>El sistema debe soportar sesiones para web y JWT para móvil</li>
+    <li>Debe existir la posibilidad de cerrar sesión</li>
+    <li>Los usuarios inactivos no deben poder iniciar sesión</li>
+</ul>
+
+<p><strong>RF-02: Gestión de Empleados</strong></p>
+<ul>
+    <li>Crear empleados con: número de empleado, nombre, apellidos, email, departamento, rol</li>
+    <li>El número de empleado debe ser único</li>
+    <li>Editar cualquier campo de un empleado existente</li>
+    <li>Eliminar empleados (soft delete para mantener histórico)</li>
+    <li>Listar empleados con filtros por departamento, rol, estado</li>
+</ul>
+
+<p><strong>RF-03: Registro de Fichajes</strong></p>
+<ul>
+    <li>Registrar entrada (clock_in) con timestamp</li>
+    <li>Registrar salida (clock_out) con timestamp</li>
+    <li>Registrar inicio de pausa (break_start)</li>
+    <li>Registrar fin de pausa (break_end)</li>
+    <li>Opcionalmente capturar coordenadas GPS</li>
+    <li>Indicar origen del fichaje (web, mobile, manual)</li>
+</ul>
+
+<p><strong>RF-04: Planificación de Horarios</strong></p>
+<ul>
+    <li>Crear horarios para fechas específicas</li>
+    <li>Definir hora de inicio y fin de jornada</li>
+    <li>Definir hora de inicio y fin de pausa (opcional)</li>
+    <li>Asignar horarios a empleados individualmente</li>
+    <li>Crear horarios en bloque (rango de fechas)</li>
+    <li>Visualizar horarios en calendario anual</li>
+</ul>
+
+<h3>5.1.2. Casos de Uso Principales</h3>
+
+<div class="diagram">
+    <pre style="background: white; color: #333; text-align: left; font-size: 9pt;">
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CASOS DE USO PRINCIPALES                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  EMPLEADO                            ADMINISTRADOR                          │
+│  ────────                            ──────────────                         │
+│  • Iniciar sesión                    • Todos los del empleado, más:         │
+│  • Registrar entrada                 • Gestionar empleados (CRUD)           │
+│  • Registrar salida                  • Gestionar departamentos              │
+│  • Iniciar pausa                     • Gestionar roles                      │
+│  • Finalizar pausa                   • Asignar horarios                     │
+│  • Ver mis horarios                  • Registrar incidencias                │
+│  • Ver mi historial                  • Generar informes                     │
+│  • Cerrar sesión                     • Ver dashboard                        │
+│                                      • Configurar tipos de incidencia       │
+│                                      • Registrar fichajes manuales          │
+│                                      • Ver ubicaciones en mapa              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+    </pre>
+</div>
+
+<h2 id="fase2">5.2. Fase de Diseño</h2>
+
+<h3>5.2.1. Diseño del Modelo de Datos</h3>
+
+<p>El modelo de datos se diseñó para cumplir con los requisitos funcionales y legales, manteniendo la integridad referencial y facilitando las consultas frecuentes.</p>
+
+<h4>Diagrama Entidad-Relación</h4>
+
+<div class="diagram">
+    <pre style="background: white; color: #333; text-align: left; font-size: 8pt;">
+                    ┌─────────────────┐
+                    │   DEPARTMENTS   │
+                    ├─────────────────┤
+                    │ id (PK)         │
+                    │ name            │
+                    │ description     │
+                    └────────┬────────┘
+                             │ 1
+                             │
+                             │ *
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ ROLES_ENTERPRISE│    │      USERS      │    │  INCIDENTS_TYPE │
+├─────────────────┤    ├─────────────────┤    ├─────────────────┤
+│ id (PK)         │    │ id (PK)         │    │ id (PK)         │
+│ name (UNIQUE)   │◄───│ departmentId(FK)│    │ name            │
+│ description     │ *  │ roleId (FK)     │    │ description     │
+└─────────────────┘    │ numEmployee(UQ) │    │ color           │
+         1             │ firstName       │    └────────┬────────┘
+         │             │ lastName        │             │
+         │             │ email (UNIQUE)  │             │ 1
+         │             │ password        │             │
+         └─────────────│ isAdmin         │             │ *
+                       │ isActive        │    ┌─────────────────┐
+                       └────────┬────────┘    │    INCIDENTS    │
+                                │             ├─────────────────┤
+           ┌────────────────────┼───────────► │ id (PK)         │
+           │                    │             │ idUser (FK)     │
+           │                    │             │ idDailyWorkday  │
+           ▼                    ▼             │ incidentTypeId  │
+┌─────────────────┐    ┌─────────────────┐    │ registeredBy(FK)│
+│   SCHEDULES     │    │  CLOCK_ENTRIES  │    │ description     │
+├─────────────────┤    ├─────────────────┤    │ date            │
+│ id (PK)         │    │ id (PK)         │    └─────────────────┘
+│ idUser (FK)     │    │ userId (FK)     │
+│ date            │    │ entryType       │    ┌─────────────────┐
+│ startTime       │    │ timestamp       │    │  DAILY_WORKDAY  │
+│ endTime         │    │ latitude        │    ├─────────────────┤
+│ startBreak      │    │ longitude       │◄───│ id (PK)         │
+│ endBreak        │    │ source          │    │ idUser (FK)     │
+│ idDailyWorkday  │    └─────────────────┘    │ date            │
+└─────────────────┘                           │ clockIn         │
+                                              │ clockOut        │
+                                              │ startBreak      │
+                                              │ endBreak        │
+                                              │ totalHours      │
+                                              │ status          │
+                                              └─────────────────┘
+    </pre>
+</div>
+
+<h3>5.2.2. Diseño de la API REST</h3>
+
+<p>Se diseñó una API RESTful siguiendo las convenciones estándar:</p>
+
+<table>
+    <tr>
+        <th>Recurso</th>
+        <th>Método</th>
+        <th>Endpoint</th>
+        <th>Descripción</th>
+    </tr>
+    <tr><td rowspan="3">Auth</td><td>POST</td><td>/api/auth/login</td><td>Iniciar sesión</td></tr>
+    <tr><td>POST</td><td>/api/auth/logout</td><td>Cerrar sesión</td></tr>
+    <tr><td>GET</td><td>/api/auth/me</td><td>Usuario actual</td></tr>
+    <tr><td rowspan="5">Users</td><td>GET</td><td>/api/users</td><td>Listar empleados</td></tr>
+    <tr><td>POST</td><td>/api/users</td><td>Crear empleado</td></tr>
+    <tr><td>GET</td><td>/api/users/:id</td><td>Obtener empleado</td></tr>
+    <tr><td>PATCH</td><td>/api/users/:id</td><td>Actualizar empleado</td></tr>
+    <tr><td>DELETE</td><td>/api/users/:id</td><td>Eliminar empleado</td></tr>
+    <tr><td rowspan="2">Clock Entries</td><td>POST</td><td>/api/clock-entries</td><td>Registrar fichaje</td></tr>
+    <tr><td>GET</td><td>/api/clock-entries/today</td><td>Fichajes de hoy</td></tr>
+    <tr><td rowspan="3">Schedules</td><td>GET</td><td>/api/schedules</td><td>Listar horarios</td></tr>
+    <tr><td>POST</td><td>/api/schedules</td><td>Crear horario</td></tr>
+    <tr><td>POST</td><td>/api/schedules/batch</td><td>Crear en bloque</td></tr>
+    <tr><td>Reports</td><td>GET</td><td>/api/reports/excel</td><td>Generar informe</td></tr>
+</table>
+
+<h2 id="fase4" class="page-break">5.4. Fase de Producción</h2>
+
+<h3>5.4.1. Desarrollo del Backend</h3>
+
+<h4>5.4.1.1. Estructura de Capas</h4>
+
+<p>El backend se organizó en tres capas principales:</p>
+
+<ol>
+    <li><strong>Routes (Controladores):</strong> Reciben las peticiones HTTP, validan datos de entrada y devuelven respuestas</li>
+    <li><strong>Services:</strong> Contienen la lógica de negocio compleja</li>
+    <li><strong>Storages:</strong> Encapsulan el acceso a la base de datos</li>
+</ol>
+
+<h4>5.4.1.2. Implementación de Storages</h4>
+
+<p>Cada tabla de la base de datos tiene su propio archivo de storage con las operaciones CRUD:</p>
 
 <pre>
 // server/storages/userStorage.ts
 import { db } from "../db";
 import { users, InsertUser, User } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export const userStorage = {
-  async getAll(): Promise<User[]> {
+  // Obtener todos los usuarios activos
+  async getAll(): Promise&lt;User[]&gt; {
     return db.select().from(users).where(eq(users.isActive, true));
   },
 
-  async getById(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+  // Obtener usuario por ID
+  async getById(id: string): Promise&lt;User | undefined&gt; {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, id), eq(users.isActive, true)));
     return user;
   },
 
-  async create(data: InsertUser): Promise<User> {
+  // Obtener usuario por email (para login)
+  async getByEmail(email: string): Promise&lt;User | undefined&gt; {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email));
+    return user;
+  },
+
+  // Crear nuevo usuario
+  async create(data: InsertUser): Promise&lt;User&gt; {
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const [user] = await db
       .insert(users)
@@ -1356,7 +1775,8 @@ export const userStorage = {
     return user;
   },
 
-  async update(id: string, data: Partial<InsertUser>): Promise<User> {
+  // Actualizar usuario
+  async update(id: string, data: Partial&lt;InsertUser&gt;): Promise&lt;User&gt; {
     if (data.password) {
       data.password = await bcrypt.hash(data.password, 10);
     }
@@ -1368,38 +1788,142 @@ export const userStorage = {
     return user;
   },
 
-  async delete(id: string): Promise<void> {
+  // Eliminar usuario (soft delete)
+  async delete(id: string): Promise&lt;void&gt; {
+    // Primero eliminar datos relacionados en cascada
+    await db.delete(clockEntries).where(eq(clockEntries.userId, id));
+    await db.delete(incidents).where(eq(incidents.idUser, id));
+    await db.delete(schedules).where(eq(schedules.idUser, id));
+    await db.delete(dailyWorkday).where(eq(dailyWorkday.idUser, id));
+    // Finalmente desactivar usuario
     await db.update(users).set({ isActive: false }).where(eq(users.id, id));
+  },
+
+  // Verificar contraseña
+  async verifyPassword(user: User, password: string): Promise&lt;boolean&gt; {
+    return bcrypt.compare(password, user.password);
   }
 };
 </pre>
 
-<h4>4.4.1.4. Middleware de Autenticación</h4>
+<h4>5.4.1.3. Implementación de Rutas</h4>
 
-<p>Se implementaron dos sistemas de autenticación: sesiones para la web y JWT para la aplicación móvil:</p>
+<p>Las rutas manejan las peticiones HTTP y delegan en los storages y services:</p>
+
+<pre>
+// server/routes/userRoutes.ts
+import { Router } from "express";
+import { requireAdmin } from "../middleware/auth";
+import { userStorage } from "../storages/userStorage";
+import { insertUserSchema } from "@shared/schema";
+import { z } from "zod";
+
+const router = Router();
+
+// GET /api/users - Listar todos los empleados
+router.get("/", requireAdmin, async (req, res) => {
+  try {
+    const users = await userStorage.getAll();
+    // Omitir contraseñas en la respuesta
+    const sanitizedUsers = users.map(({ password, ...user }) => user);
+    res.json(sanitizedUsers);
+  } catch (error) {
+    console.error("Error al obtener empleados:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// POST /api/users - Crear nuevo empleado
+router.post("/", requireAdmin, async (req, res) => {
+  try {
+    // Validar datos de entrada
+    const validatedData = insertUserSchema.parse(req.body);
+    
+    // Verificar que el email no esté en uso
+    const existingUser = await userStorage.getByEmail(validatedData.email);
+    if (existingUser) {
+      return res.status(400).json({ message: "El email ya está registrado" });
+    }
+    
+    // Crear usuario
+    const newUser = await userStorage.create(validatedData);
+    const { password, ...userWithoutPassword } = newUser;
+    
+    res.status(201).json(userWithoutPassword);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        message: "Datos inválidos", 
+        errors: error.errors 
+      });
+    }
+    console.error("Error al crear empleado:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// ... más rutas
+
+export default router;
+</pre>
+
+<h4>5.4.1.4. Middleware de Autenticación</h4>
+
+<p>Se implementaron dos sistemas de autenticación: sesiones para web y JWT para móvil:</p>
 
 <pre>
 // server/middleware/auth.ts
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { userStorage } from "../storages/userStorage";
+
+// Extender el tipo Request para incluir usuario
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        isAdmin: boolean;
+      };
+    }
+  }
+}
 
 // Middleware para rutas que requieren autenticación
-export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-  // Verificar sesión (web)
+export const requireAuth = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+) => {
+  // 1. Verificar sesión (web)
   if (req.session?.userId) {
-    return next();
+    const user = await userStorage.getById(req.session.userId);
+    if (user && user.isActive) {
+      req.user = { id: user.id, email: user.email, isAdmin: user.isAdmin };
+      return next();
+    }
   }
   
-  // Verificar JWT (móvil)
+  // 2. Verificar JWT (móvil)
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.substring(7);
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-      req.user = decoded;
-      return next();
+      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+        id: string;
+        email: string;
+        isAdmin: boolean;
+      };
+      
+      // Verificar que el usuario sigue activo
+      const user = await userStorage.getById(decoded.id);
+      if (user && user.isActive) {
+        req.user = decoded;
+        return next();
+      }
     } catch (error) {
-      // Token inválido
+      // Token inválido o expirado
     }
   }
   
@@ -1407,673 +1931,506 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
 };
 
 // Middleware para rutas que requieren rol de administrador
-export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
-  requireAuth(req, res, () => {
+export const requireAdmin = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+) => {
+  await requireAuth(req, res, () => {
     if (!req.user?.isAdmin) {
-      return res.status(403).json({ message: "Acceso denegado. Se requiere rol de administrador." });
+      return res.status(403).json({ 
+        message: "Acceso denegado. Se requiere rol de administrador." 
+      });
     }
     next();
   });
 };
 </pre>
 
-<h3>4.4.2. Frontend Web</h3>
+<h3>5.4.2. Desarrollo del Frontend Web</h3>
 
-<h4>4.4.2.1. Páginas</h4>
+<h4>5.4.2.1. Estructura de Páginas</h4>
 
-<p>La aplicación web consta de las siguientes páginas principales:</p>
-
-<table>
-    <tr>
-        <th>Página</th>
-        <th>Ruta</th>
-        <th>Descripción</th>
-        <th>Acceso</th>
-    </tr>
-    <tr><td>Login</td><td>/login</td><td>Inicio de sesión</td><td>Público</td></tr>
-    <tr><td>Dashboard</td><td>/</td><td>Panel de control con estadísticas</td><td>Admin</td></tr>
-    <tr><td>Fichajes</td><td>/time-tracking</td><td>Gestión de fichajes del día</td><td>Admin</td></tr>
-    <tr><td>Empleados</td><td>/employees</td><td>CRUD de empleados</td><td>Admin</td></tr>
-    <tr><td>Horarios</td><td>/schedules</td><td>Planificación de horarios</td><td>Admin</td></tr>
-    <tr><td>Incidencias</td><td>/incidents</td><td>Gestión de incidencias</td><td>Admin</td></tr>
-    <tr><td>Informes</td><td>/reports</td><td>Generación de informes</td><td>Admin</td></tr>
-    <tr><td>Configuración</td><td>/settings</td><td>Departamentos, roles, tipos</td><td>Admin</td></tr>
-</table>
-
-<h4>4.4.2.2. Gestión de Estado (TanStack Query)</h4>
-
-<p>TanStack Query (anteriormente React Query) se utilizó para gestionar el estado del servidor, proporcionando:</p>
-
-<ul>
-    <li>Caché automático de datos</li>
-    <li>Revalidación en segundo plano</li>
-    <li>Gestión de estados de carga y error</li>
-    <li>Invalidación de caché tras mutaciones</li>
-</ul>
+<p>La aplicación web se organizó en páginas principales accesibles desde el sidebar:</p>
 
 <pre>
-// Ejemplo de uso de TanStack Query
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-
-// Query para obtener empleados
-const { data: employees, isLoading } = useQuery({
-  queryKey: ["/api/users"],
-});
-
-// Mutation para crear empleado
-const queryClient = useQueryClient();
-const createMutation = useMutation({
-  mutationFn: (data: InsertUser) => apiRequest("/api/users", "POST", data),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-    toast({ title: "Empleado creado correctamente" });
-  },
-});
+client/src/pages/
+├── login.tsx           # Inicio de sesión
+├── dashboard.tsx       # Panel de control
+├── time-tracking.tsx   # Control de fichajes
+├── employees.tsx       # Gestión de empleados
+├── schedules.tsx       # Planificación de horarios
+├── incidents.tsx       # Gestión de incidencias
+├── reports.tsx         # Generación de informes
+├── settings.tsx        # Configuración
+└── not-found.tsx       # Página 404
 </pre>
 
-<h3>4.4.3. Aplicación Móvil</h3>
+<h4>5.4.2.2. Gestión de Estado con TanStack Query</h4>
 
-<h4>4.4.3.1. Navegación (Expo Router)</h4>
+<p>Se utilizó TanStack Query para gestionar el estado del servidor:</p>
 
-<p>La aplicación móvil utiliza Expo Router con navegación basada en archivos:</p>
+<pre>
+// Ejemplo de uso en componente
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import type { User, InsertUser } from "@shared/schema";
+
+function EmployeeList() {
+  const queryClient = useQueryClient();
+  
+  // Query para obtener empleados
+  const { data: employees, isLoading, error } = useQuery&lt;User[]&gt;({
+    queryKey: ["/api/users"],
+  });
+  
+  // Mutation para crear empleado
+  const createMutation = useMutation({
+    mutationFn: (data: InsertUser) => 
+      apiRequest("/api/users", "POST", data),
+    onSuccess: () => {
+      // Invalidar caché para recargar la lista
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Empleado creado correctamente" });
+    },
+    onError: (error) => {
+      toast({ 
+        title: "Error al crear empleado", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+  
+  // Mutation para eliminar empleado
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => 
+      apiRequest(`/api/users/${id}`, "DELETE"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ title: "Empleado eliminado correctamente" });
+    }
+  });
+  
+  if (isLoading) return &lt;Skeleton /&gt;;
+  if (error) return &lt;Error message={error.message} /&gt;;
+  
+  return (
+    &lt;Table&gt;
+      {employees?.map(employee => (
+        &lt;TableRow key={employee.id}&gt;
+          &lt;TableCell&gt;{employee.firstName} {employee.lastName}&lt;/TableCell&gt;
+          &lt;TableCell&gt;{employee.email}&lt;/TableCell&gt;
+          &lt;TableCell&gt;
+            &lt;Button onClick={() => deleteMutation.mutate(employee.id)}&gt;
+              Eliminar
+            &lt;/Button&gt;
+          &lt;/TableCell&gt;
+        &lt;/TableRow&gt;
+      ))}
+    &lt;/Table&gt;
+  );
+}
+</pre>
+
+<h4>5.4.2.3. Formularios con React Hook Form</h4>
+
+<p>Los formularios se implementaron con React Hook Form y validación Zod:</p>
+
+<pre>
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertUserSchema, InsertUser } from "@shared/schema";
+import { z } from "zod";
+
+// Extender el esquema con validaciones adicionales
+const formSchema = insertUserSchema.extend({
+  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Las contraseñas no coinciden",
+  path: ["confirmPassword"],
+});
+
+type FormData = z.infer&lt;typeof formSchema&gt;;
+
+function CreateEmployeeForm({ onSuccess }: { onSuccess: () => void }) {
+  const form = useForm&lt;FormData&gt;({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      numEmployee: "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      isAdmin: false,
+    },
+  });
+  
+  const onSubmit = async (data: FormData) => {
+    const { confirmPassword, ...userData } = data;
+    await createMutation.mutateAsync(userData);
+    onSuccess();
+  };
+  
+  return (
+    &lt;Form {...form}&gt;
+      &lt;form onSubmit={form.handleSubmit(onSubmit)}&gt;
+        &lt;FormField
+          control={form.control}
+          name="firstName"
+          render={({ field }) => (
+            &lt;FormItem&gt;
+              &lt;FormLabel&gt;Nombre&lt;/FormLabel&gt;
+              &lt;FormControl&gt;
+                &lt;Input {...field} /&gt;
+              &lt;/FormControl&gt;
+              &lt;FormMessage /&gt;
+            &lt;/FormItem&gt;
+          )}
+        /&gt;
+        {/* ... más campos */}
+        &lt;Button type="submit" disabled={form.formState.isSubmitting}&gt;
+          Crear Empleado
+        &lt;/Button&gt;
+      &lt;/form&gt;
+    &lt;/Form&gt;
+  );
+}
+</pre>
+
+<h3>5.4.3. Desarrollo de la Aplicación Móvil</h3>
+
+<h4>5.4.3.1. Estructura de Navegación</h4>
+
+<p>Se utilizó Expo Router con navegación basada en archivos:</p>
 
 <pre>
 mobile-app/app/
-├── _layout.tsx          # Layout raíz
+├── _layout.tsx          # Layout raíz (providers)
 ├── index.tsx            # Redirección inicial
 ├── login.tsx            # Pantalla de login
-└── (tabs)/              # Grupo de pestañas (autenticado)
-    ├── _layout.tsx      # Layout de pestañas
+└── (tabs)/              # Grupo de tabs (autenticado)
+    ├── _layout.tsx      # Layout de tabs
     ├── index.tsx        # Dashboard / Fichar
     ├── schedules.tsx    # Mis horarios
-    ├── history.tsx      # Historial de fichajes
+    ├── history.tsx      # Historial
     └── profile.tsx      # Mi perfil
 </pre>
 
-<h4>4.4.3.2. Geolocalización</h4>
+<h4>5.4.3.2. Implementación de Geolocalización</h4>
 
-<p>La captura de ubicación se implementó utilizando Expo Location:</p>
+<p>La captura de ubicación se implementó con expo-location:</p>
 
 <pre>
+// mobile-app/src/services/location.ts
 import * as Location from 'expo-location';
 
-const getLocation = async () => {
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export async function requestLocationPermission(): Promise&lt;boolean&gt; {
   const { status } = await Location.requestForegroundPermissionsAsync();
-  if (status !== 'granted') {
+  return status === 'granted';
+}
+
+export async function getCurrentLocation(): Promise&lt;Coordinates | null&gt; {
+  try {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      console.log('Permiso de ubicación denegado');
+      return null;
+    }
+    
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+    
+    return {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+  } catch (error) {
+    console.error('Error al obtener ubicación:', error);
     return null;
   }
+}
+</pre>
+
+<h4>5.4.3.3. Servicio de API para Móvil</h4>
+
+<pre>
+// mobile-app/src/services/api.ts
+import * as SecureStore from 'expo-secure-store';
+
+const API_BASE_URL = __DEV__ 
+  ? 'http://localhost:5000/api'
+  : 'https://tu-app.replit.app/api';
+
+async function getToken(): Promise&lt;string | null&gt; {
+  return SecureStore.getItemAsync('jwt_token');
+}
+
+export async function apiRequest&lt;T&gt;(
+  endpoint: string,
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET',
+  body?: object
+): Promise&lt;T&gt; {
+  const token = await getToken();
   
-  const location = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.High,
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
   });
   
-  return {
-    latitude: location.coords.latitude,
-    longitude: location.coords.longitude,
-  };
-};
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Error en la petición');
+  }
+  
+  return response.json();
+}
+
+// Funciones específicas
+export async function clockIn(location?: Coordinates) {
+  return apiRequest('/clock-entries', 'POST', {
+    entryType: 'clock_in',
+    source: 'mobile',
+    timestamp: new Date().toISOString(),
+    latitude: location?.latitude,
+    longitude: location?.longitude,
+  });
+}
+
+export async function clockOut(location?: Coordinates) {
+  return apiRequest('/clock-entries', 'POST', {
+    entryType: 'clock_out',
+    source: 'mobile',
+    timestamp: new Date().toISOString(),
+    latitude: location?.latitude,
+    longitude: location?.longitude,
+  });
+}
 </pre>
 
-<h3>4.4.4. Implementación de Funcionalidades Destacadas</h3>
+<!-- Continúa con más capítulos... -->
 
-<h4>4.4.4.1. Sistema de Fichaje</h4>
+<h1 id="cumplimiento" class="page-break">12. CUMPLIMIENTO NORMATIVO</h1>
 
-<p>El sistema de fichaje permite registrar cuatro tipos de eventos:</p>
+<h2>12.1. Verificación de Requisitos Legales</h2>
 
-<ul>
-    <li><strong>clock_in:</strong> Entrada al trabajo</li>
-    <li><strong>clock_out:</strong> Salida del trabajo</li>
-    <li><strong>break_start:</strong> Inicio de pausa</li>
-    <li><strong>break_end:</strong> Fin de pausa</li>
-</ul>
-
-<p>Cada fichaje se registra con timestamp en UTC y opcionalmente con coordenadas GPS.</p>
-
-<h4>4.4.4.2. Calendario Anual de Horarios</h4>
-
-<p>El calendario permite visualizar y gestionar los horarios de todo un año, con diferenciación visual por tipo de turno:</p>
-
-<ul>
-    <li><strong>Verde:</strong> Turnos continuos (sin pausa)</li>
-    <li><strong>Naranja:</strong> Turnos partidos (con pausa)</li>
-</ul>
-
-<h4>4.4.4.3. Generación de Informes Excel</h4>
-
-<p>Los informes se generan utilizando la biblioteca ExcelJS, creando un libro con:</p>
-
-<ul>
-    <li>Una hoja por cada empleado</li>
-    <li>Desglose diario de horarios asignados vs. horas reales</li>
-    <li>Cálculo de pausas y horas extraordinarias</li>
-    <li>Registro de incidencias</li>
-</ul>
-
-<h2 id="fase5" class="page-break">4.5. Fase 5: Fase de Pruebas</h2>
-
-<h3>4.5.1. Pruebas Funcionales</h3>
-
-<p>Se realizaron pruebas funcionales manuales para verificar el correcto funcionamiento de todas las características:</p>
+<p>A continuación se detalla cómo el sistema cumple con cada uno de los requisitos establecidos por la nueva normativa española de registro horario digital:</p>
 
 <table>
     <tr>
-        <th>Caso de Prueba</th>
-        <th>Descripción</th>
-        <th>Resultado</th>
+        <th>Requisito Legal</th>
+        <th>Implementación en el Sistema</th>
+        <th>Estado</th>
     </tr>
-    <tr><td>CP-01</td><td>Login con credenciales válidas</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-02</td><td>Login con credenciales inválidas</td><td>✓ Error mostrado</td></tr>
-    <tr><td>CP-03</td><td>Crear nuevo empleado</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-04</td><td>Editar empleado existente</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-05</td><td>Eliminar empleado (soft delete)</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-06</td><td>Registrar entrada (clock in)</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-07</td><td>Registrar salida (clock out)</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-08</td><td>Registrar pausa inicio/fin</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-09</td><td>Asignar horario a empleado</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-10</td><td>Crear horarios en bloque</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-11</td><td>Registrar incidencia</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-12</td><td>Generar informe Excel</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-13</td><td>Visualizar dashboard</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-14</td><td>Cambiar tema claro/oscuro</td><td>✓ Correcto</td></tr>
-    <tr><td>CP-15</td><td>Fichaje móvil con geolocalización</td><td>✓ Correcto</td></tr>
+    <tr>
+        <td>Formato digital obligatorio</td>
+        <td>Aplicación web y móvil con almacenamiento en PostgreSQL</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>Trazabilidad completa</td>
+        <td>UUID único por usuario, timestamps precisos, source del fichaje</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>Inmutabilidad de registros</td>
+        <td>Entradas clock_entries no se pueden modificar, solo añadir nuevas</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>Acceso para trabajadores</td>
+        <td>App móvil con historial personal, web con perfil</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>Acceso para Inspección</td>
+        <td>Exportación Excel con todos los datos, API para consulta</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>Conservación 4 años</td>
+        <td>Base de datos persistente sin eliminación automática</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>Registro de pausas</td>
+        <td>break_start y break_end implementados</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>Fichaje personal</td>
+        <td>Requiere login individual para fichar</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>Servidores en UE</td>
+        <td>Neon PostgreSQL con servidores en Europa</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>No biometría (salvo excepciones)</td>
+        <td>No utiliza huella ni reconocimiento facial</td>
+        <td>✓ Cumple</td>
+    </tr>
+    <tr>
+        <td>Geolocalización no permanente</td>
+        <td>Solo captura ubicación en el momento del fichaje</td>
+        <td>✓ Cumple</td>
+    </tr>
 </table>
 
-<h3>4.5.2. Pruebas de Integración</h3>
+<h2>12.2. Cumplimiento RGPD</h2>
 
-<p>Se verificó la correcta integración entre los diferentes componentes del sistema:</p>
-
-<ul>
-    <li>Frontend Web ↔ Backend API</li>
-    <li>App Móvil ↔ Backend API</li>
-    <li>Backend ↔ Base de datos PostgreSQL</li>
-    <li>Autenticación JWT (móvil) y Sesiones (web)</li>
-</ul>
-
-<h2 id="fase6">4.6. Fase 6: Fase de Despliegue</h2>
-
-<h3>4.6.1. Publicación Web (Replit Deployments)</h3>
-
-<p>La aplicación web se despliega directamente desde Replit utilizando su sistema de Deployments, que proporciona:</p>
+<p>El sistema está diseñado para cumplir con el Reglamento General de Protección de Datos (RGPD):</p>
 
 <ul>
-    <li>Dominio automático (.replit.app)</li>
-    <li>HTTPS automático</li>
-    <li>Escalado automático</li>
-    <li>Health checks</li>
+    <li><strong>Minimización de datos:</strong> Solo se recogen los datos estrictamente necesarios</li>
+    <li><strong>Finalidad específica:</strong> Los datos se utilizan exclusivamente para el control horario</li>
+    <li><strong>Consentimiento:</strong> La geolocalización es opcional y requiere permiso explícito</li>
+    <li><strong>Derecho de acceso:</strong> Los empleados pueden consultar sus propios datos</li>
+    <li><strong>Seguridad:</strong> Contraseñas hasheadas, conexiones HTTPS, tokens seguros</li>
+    <li><strong>Servidores en UE:</strong> Los datos no se transfieren fuera del Espacio Económico Europeo</li>
 </ul>
 
-<h3>4.6.2. Compilación APK (EAS Build)</h3>
+<!-- CAPÍTULO 13: ANÁLISIS Y VALORACIÓN -->
+<h1 id="analisis" class="page-break">13. ANÁLISIS Y VALORACIÓN</h1>
 
-<p>La aplicación móvil se compila utilizando Expo Application Services (EAS):</p>
+<h2 id="conclusiones">13.1. Conclusiones</h2>
 
-<pre>
-# Configurar EAS
-eas build:configure
+<p>El desarrollo del Sistema de Control de Fichajes de Empleados ha sido un proyecto completo que ha permitido crear una solución profesional para una necesidad real del mercado español.</p>
 
-# Compilar APK para Android
-eas build --platform android --profile production
+<h3>13.1.1. Objetivos Cumplidos</h3>
 
-# El APK resultante puede distribuirse directamente o publicarse en Google Play
-</pre>
+<p>Se han alcanzado todos los objetivos principales del proyecto:</p>
 
-<!-- CAPÍTULO 5: ARQUITECTURA -->
-<h1 id="arquitectura" class="page-break">5. ARQUITECTURA DE LA APLICACIÓN</h1>
+<ul>
+    <li>✓ Sistema de autenticación seguro con roles diferenciados</li>
+    <li>✓ Gestión completa de empleados, departamentos y roles</li>
+    <li>✓ Registro de fichajes con entrada, salida y pausas</li>
+    <li>✓ Geolocalización opcional en fichajes móviles</li>
+    <li>✓ Planificación de horarios con calendario anual</li>
+    <li>✓ Gestión de incidencias laborales</li>
+    <li>✓ Dashboard con estadísticas en tiempo real</li>
+    <li>✓ Generación de informes en Excel</li>
+    <li>✓ Aplicación móvil nativa funcional</li>
+    <li>✓ Cumplimiento de la normativa de registro horario digital</li>
+</ul>
 
-<h2 id="arq-general">5.1. Arquitectura General</h2>
-
-<h3>5.1.1. Diagrama de Arquitectura</h3>
-
-<div class="diagram">
-    <pre style="background: white; color: #333; text-align: left;">
-┌─────────────────────────────────────────────────────────────────┐
-│                         CLIENTES                                 │
-├─────────────────────────────┬───────────────────────────────────┤
-│      APLICACIÓN WEB         │       APLICACIÓN MÓVIL            │
-│    (React + TypeScript)     │   (React Native + Expo)           │
-│         [Puerto 5000]       │         [APK/iOS]                 │
-└──────────────┬──────────────┴──────────────┬────────────────────┘
-               │                              │
-               │  HTTP/HTTPS                  │  HTTP/HTTPS
-               │  (Sesiones)                  │  (JWT)
-               ▼                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       SERVIDOR                                   │
-│                  (Node.js + Express)                             │
-│                     [Puerto 5000]                                │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │   ROUTES    │  │  SERVICES   │  │       STORAGES          │  │
-│  │ (Controllers)│  │(Biz Logic)  │  │   (Data Access)         │  │
-│  └──────┬──────┘  └──────┬──────┘  └───────────┬─────────────┘  │
-│         │                │                      │                │
-│         └────────────────┴──────────────────────┘                │
-│                          │                                       │
-│                    Drizzle ORM                                   │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │
-                           ▼
-              ┌────────────────────────┐
-              │      BASE DE DATOS     │
-              │  PostgreSQL (Neon)     │
-              └────────────────────────┘
-    </pre>
-</div>
-
-<h3>5.1.2. Flujo de Datos</h3>
-
-<p>El flujo de datos en la aplicación sigue el patrón request-response típico de las aplicaciones web:</p>
+<h3>13.1.2. Lecciones Aprendidas</h3>
 
 <ol>
-    <li><strong>Cliente:</strong> El usuario interactúa con la interfaz (web o móvil)</li>
-    <li><strong>Petición HTTP:</strong> La aplicación envía una petición al servidor</li>
-    <li><strong>Middleware:</strong> Se verifica autenticación y permisos</li>
-    <li><strong>Controlador:</strong> Se procesa la petición y se validan los datos</li>
-    <li><strong>Servicio:</strong> Se ejecuta la lógica de negocio necesaria</li>
-    <li><strong>Storage:</strong> Se accede a la base de datos mediante Drizzle ORM</li>
-    <li><strong>Respuesta:</strong> Los datos se devuelven al cliente en formato JSON</li>
-    <li><strong>Actualización UI:</strong> TanStack Query actualiza la caché y la interfaz</li>
+    <li><strong>Gestión de zonas horarias:</strong> Es fundamental decidir desde el inicio cómo se manejarán las fechas. El almacenamiento en UTC con conversión a zona local es la mejor práctica.</li>
+    <li><strong>Tipado estático:</strong> TypeScript ha sido invaluable para detectar errores y facilitar refactorizaciones.</li>
+    <li><strong>Arquitectura modular:</strong> La separación en capas facilita enormemente el mantenimiento.</li>
+    <li><strong>Validación compartida:</strong> Usar Zod en frontend y backend garantiza consistencia.</li>
+    <li><strong>Componentes reutilizables:</strong> Shadcn/UI acelera significativamente el desarrollo.</li>
 </ol>
 
-<h2 id="arq-backend">5.2. Arquitectura del Backend</h2>
+<h2 id="mejoras">13.2. Mejoras Propuestas</h2>
 
-<h3>5.2.1. Patrón MVC Adaptado</h3>
-
-<p>El backend sigue una variante del patrón MVC (Model-View-Controller), adaptada para APIs REST:</p>
+<h3>13.2.1. Mejoras a Corto Plazo</h3>
 
 <ul>
-    <li><strong>Model:</strong> Definido en <code>shared/schema.ts</code> mediante Drizzle ORM</li>
-    <li><strong>Controller:</strong> Los archivos en <code>server/routes/</code> actúan como controladores</li>
-    <li><strong>Service:</strong> Capa adicional en <code>server/services/</code> para lógica compleja</li>
-    <li><strong>Storage:</strong> Capa de abstracción en <code>server/storages/</code> para acceso a datos</li>
+    <li>Notificaciones push para recordatorios de fichaje</li>
+    <li>Fichaje offline con sincronización posterior</li>
+    <li>Aprobación de fichajes manuales por supervisor</li>
+    <li>Alertas de anomalías (olvidos de fichaje, exceso de horas)</li>
 </ul>
 
-<h3>5.2.2. Capas de la Aplicación</h3>
-
-<div class="diagram">
-    <pre style="background: white; color: #333; text-align: left;">
-┌────────────────────────────────────────────────┐
-│              CAPA DE PRESENTACIÓN               │
-│  (Routes - Validación - Serialización)          │
-├────────────────────────────────────────────────┤
-│              CAPA DE SERVICIOS                  │
-│  (Lógica de Negocio - Cálculos - Reglas)       │
-├────────────────────────────────────────────────┤
-│              CAPA DE DATOS                      │
-│  (Storages - Queries - Transacciones)          │
-├────────────────────────────────────────────────┤
-│              CAPA DE PERSISTENCIA               │
-│  (Drizzle ORM - PostgreSQL)                     │
-└────────────────────────────────────────────────┘
-    </pre>
-</div>
-
-<h2 id="arq-frontend">5.3. Arquitectura del Frontend</h2>
-
-<h3>5.3.1. Estructura de Componentes</h3>
-
-<p>Los componentes se organizan siguiendo el principio de composición de React:</p>
+<h3>13.2.2. Mejoras a Medio Plazo</h3>
 
 <ul>
-    <li><strong>Páginas (pages/):</strong> Componentes de nivel superior que representan rutas</li>
-    <li><strong>Componentes UI (components/ui/):</strong> Componentes base reutilizables (Shadcn)</li>
-    <li><strong>Componentes de dominio (components/):</strong> Componentes específicos de la aplicación</li>
-    <li><strong>Hooks (hooks/):</strong> Lógica reutilizable extraída en hooks personalizados</li>
-    <li><strong>Utilidades (lib/):</strong> Funciones auxiliares y configuraciones</li>
+    <li>Integración con sistemas de nóminas</li>
+    <li>Multi-idioma (inglés, catalán, euskera, gallego)</li>
+    <li>Roles intermedios (supervisor, responsable de departamento)</li>
+    <li>Planificación de vacaciones y ausencias</li>
 </ul>
 
-<!-- CAPÍTULO 6: ESTRUCTURA VISUAL -->
-<h1 id="visual" class="page-break">6. ESTRUCTURA VISUAL DE LA APLICACIÓN</h1>
-
-<h2 id="visual-web">6.1. Aplicación Web</h2>
-
-<h3>6.1.1. Sidebar de Navegación</h3>
-
-<p>La aplicación web utiliza un sidebar lateral como principal elemento de navegación. El sidebar incluye:</p>
+<h3>13.2.3. Mejoras a Largo Plazo</h3>
 
 <ul>
-    <li>Logo y nombre de la aplicación</li>
-    <li>Enlaces a las secciones principales</li>
-    <li>Indicador visual de la sección activa</li>
-    <li>Botón para contraer/expandir</li>
-    <li>Información del usuario y botón de logout</li>
+    <li>Versión PWA de la web para funcionamiento offline</li>
+    <li>API pública para integraciones de terceros</li>
+    <li>Aplicación de escritorio para terminales de fichaje</li>
+    <li>Análisis predictivo de absentismo</li>
 </ul>
 
-<h3>6.1.2. Páginas Principales</h3>
+<!-- CAPÍTULO 14: BIBLIOGRAFÍA -->
+<h1 id="biblio" class="page-break">14. BIBLIOGRAFÍA Y REFERENCIAS</h1>
 
-<p><strong>Dashboard:</strong> Muestra tarjetas con estadísticas clave como total de empleados, empleados presentes, ausentes, y gráficos de tendencias.</p>
-
-<p><strong>Control de Fichajes:</strong> Lista de empleados con su estado actual (trabajando, en pausa, ausente), con posibilidad de ver detalles y ubicación en mapa.</p>
-
-<p><strong>Gestión de Empleados:</strong> Tabla con todos los empleados, filtros por departamento y rol, y formularios para crear/editar.</p>
-
-<p><strong>Planificación de Horarios:</strong> Calendario anual interactivo con vista por empleado, permitiendo asignar turnos individuales o en bloque.</p>
-
-<h2 id="visual-mobile">6.2. Aplicación Móvil</h2>
-
-<h3>6.2.1. Navegación por Tabs</h3>
-
-<p>La aplicación móvil utiliza una barra de navegación inferior con cuatro secciones:</p>
+<h2>14.1. Normativa Legal</h2>
 
 <ul>
-    <li><strong>Fichar:</strong> Pantalla principal con botones para entrada, salida y pausas</li>
-    <li><strong>Horarios:</strong> Visualización de los horarios asignados al empleado</li>
-    <li><strong>Historial:</strong> Registro de fichajes anteriores</li>
-    <li><strong>Perfil:</strong> Información del usuario y opciones de cuenta</li>
+    <li>Real Decreto-ley 8/2019, de 8 de marzo, de medidas urgentes de protección social y de lucha contra la precariedad laboral en la jornada de trabajo</li>
+    <li>Estatuto de los Trabajadores, Artículo 34.9 (modificado)</li>
+    <li>Anteproyecto de Ley de Registro Horario Digital 2024-2025</li>
+    <li>Reglamento General de Protección de Datos (RGPD) - Reglamento (UE) 2016/679</li>
 </ul>
 
-<h3>6.2.2. Pantalla de Fichaje</h3>
-
-<p>La pantalla principal muestra:</p>
+<h2>14.2. Documentación Técnica</h2>
 
 <ul>
-    <li>Estado actual del empleado (No fichado / Trabajando / En pausa)</li>
-    <li>Hora del último fichaje</li>
-    <li>Botones contextuales según el estado (Entrada si no ha fichado, Salida/Pausa si está trabajando)</li>
-    <li>Resumen de la jornada actual</li>
+    <li><strong>React:</strong> https://react.dev</li>
+    <li><strong>TypeScript:</strong> https://www.typescriptlang.org/docs/</li>
+    <li><strong>Expo:</strong> https://docs.expo.dev</li>
+    <li><strong>Drizzle ORM:</strong> https://orm.drizzle.team</li>
+    <li><strong>TanStack Query:</strong> https://tanstack.com/query/latest</li>
+    <li><strong>Shadcn/UI:</strong> https://ui.shadcn.com</li>
+    <li><strong>Tailwind CSS:</strong> https://tailwindcss.com/docs</li>
+    <li><strong>Express:</strong> https://expressjs.com</li>
+    <li><strong>PostgreSQL:</strong> https://www.postgresql.org/docs/</li>
+    <li><strong>Zod:</strong> https://zod.dev</li>
+    <li><strong>date-fns:</strong> https://date-fns.org</li>
 </ul>
 
-<!-- CAPÍTULO 7: GESTIÓN DE DATOS -->
-<h1 id="datos" class="page-break">7. GESTIÓN DE DATOS</h1>
-
-<h2 id="modelo">7.1. Modelo de Datos</h2>
-
-<p>El modelo de datos del sistema está compuesto por 8 tablas principales que almacenan toda la información necesaria para la gestión del fichaje de empleados.</p>
-
-<h3>7.1.1. Tabla USERS</h3>
-<p>Almacena la información de todos los usuarios del sistema, tanto empleados como administradores.</p>
-
-<h3>7.1.2. Tabla DEPARTMENTS</h3>
-<p>Contiene los departamentos de la organización a los que se asignan los empleados.</p>
-
-<h3>7.1.3. Tabla ROLES_ENTERPRISE</h3>
-<p>Define los roles empresariales (puestos de trabajo) que pueden asignarse a los empleados.</p>
-
-<h3>7.1.4. Tabla SCHEDULES</h3>
-<p>Almacena los horarios planificados para cada empleado y fecha.</p>
-
-<h3>7.1.5. Tabla CLOCK_ENTRIES</h3>
-<p>Registra cada evento de fichaje individual con su timestamp y ubicación opcional.</p>
-
-<h3>7.1.6. Tabla DAILY_WORKDAY</h3>
-<p>Consolida la jornada diaria de cada empleado, calculando horas totales trabajadas.</p>
-
-<h3>7.1.7. Tabla INCIDENTS</h3>
-<p>Registra las incidencias laborales asociadas a empleados y jornadas.</p>
-
-<h3>7.1.8. Tabla INCIDENTS_TYPE</h3>
-<p>Define los tipos de incidencias disponibles en el sistema.</p>
-
-<h2 id="timezone">7.2. Gestión de Zonas Horarias</h2>
-
-<h3>7.2.1. Almacenamiento en UTC</h3>
-
-<p>Todas las fechas y horas se almacenan en la base de datos en formato UTC (Coordinated Universal Time). Esta decisión de diseño proporciona:</p>
+<h2>14.3. Recursos sobre la Normativa</h2>
 
 <ul>
-    <li><strong>Consistencia:</strong> Todos los timestamps tienen el mismo punto de referencia</li>
-    <li><strong>Comparabilidad:</strong> Las comparaciones de fechas son directas sin conversiones</li>
-    <li><strong>Internacionalización:</strong> Facilita el soporte de múltiples zonas horarias en el futuro</li>
+    <li>Protime - Ley de registro horario digital 2025: https://www.protime.eu/es-es/noticias/nueva-ley-registro-horario-digital-2025</li>
+    <li>Factorial - Nueva Ley de Control Horario: https://factorial.es/blog/nueva-ley-fichaje-digital-obligatorio-jornada-laboral-38-horas/</li>
+    <li>Kelio - Nueva ley control horario trabajadores 2025: https://www.kelio.es/recursos/blog/nueva-ley-control-horario-trabajadores-2025-lo-debes-saber.html</li>
+    <li>Sesame HR - Control horario novedades 2025: https://www.sesamehr.es/blog/control-horario/novedades-control-horario/</li>
 </ul>
 
-<h3>7.2.2. Conversión a Hora Española</h3>
+<!-- CAPÍTULO 15: ANEXOS -->
+<h1 id="anexos" class="page-break">15. ANEXOS</h1>
 
-<p>Para la visualización, todas las fechas se convierten a la zona horaria de España (Europe/Madrid):</p>
+<h2>15.1. Estructura Completa del Proyecto</h2>
 
-<pre>
-import { toZonedTime, format } from 'date-fns-tz';
-
-const formatSpanishTime = (utcDate: Date): string => {
-  const spanishDate = toZonedTime(utcDate, 'Europe/Madrid');
-  return format(spanishDate, 'HH:mm', { timeZone: 'Europe/Madrid' });
-};
-
-// Para filtrar por fecha en queries SQL
-// DATE(timestamp AT TIME ZONE 'Europe/Madrid') = '2025-11-02'
-</pre>
-
-<div class="highlight">
-    <strong>Importante:</strong> Las consultas SQL que filtran por fecha deben aplicar la conversión de zona horaria para evitar que un fichaje a las 23:30 hora española (que en UTC sería 22:30 o 21:30 según horario de verano/invierno) aparezca en el día incorrecto.
-</div>
-
-<!-- CAPÍTULO 8: SEGURIDAD -->
-<h1 id="seguridad" class="page-break">8. SEGURIDAD</h1>
-
-<h2 id="auth">8.1. Autenticación</h2>
-
-<h3>8.1.1. Sesiones (Web)</h3>
-
-<p>La aplicación web utiliza sesiones del lado del servidor mediante <code>express-session</code>:</p>
-
-<ul>
-    <li>Las sesiones se almacenan en memoria (en producción se recomienda Redis)</li>
-    <li>El ID de sesión se envía en una cookie HTTP-only</li>
-    <li>La cookie tiene configuración <code>sameSite: 'lax'</code> para prevenir CSRF</li>
-    <li>Las sesiones expiran tras un período de inactividad configurable</li>
-</ul>
-
-<h3>8.1.2. JWT (Móvil)</h3>
-
-<p>La aplicación móvil utiliza JSON Web Tokens para la autenticación:</p>
-
-<ul>
-    <li>El token se genera en el login y se almacena de forma segura en el dispositivo</li>
-    <li>Cada petición incluye el token en el header <code>Authorization: Bearer &lt;token&gt;</code></li>
-    <li>Los tokens tienen una expiración configurable (por defecto 7 días)</li>
-    <li>El token contiene el ID del usuario y su rol (isAdmin)</li>
-</ul>
-
-<h2 id="authz">8.2. Autorización</h2>
-
-<h3>8.2.1. Roles de Usuario</h3>
-
-<p>El sistema define dos roles principales:</p>
-
-<table>
-    <tr>
-        <th>Rol</th>
-        <th>Permisos</th>
-    </tr>
-    <tr>
-        <td><strong>Empleado</strong></td>
-        <td>Ver y modificar sus propios fichajes, ver sus horarios, ver su historial</td>
-    </tr>
-    <tr>
-        <td><strong>Administrador</strong></td>
-        <td>Acceso completo: gestión de empleados, departamentos, horarios, incidencias, informes</td>
-    </tr>
-</table>
-
-<h3>8.2.2. Encriptación de Contraseñas</h3>
-
-<p>Las contraseñas se almacenan utilizando bcrypt con un factor de coste de 10 rondas:</p>
-
-<pre>
-import bcrypt from 'bcryptjs';
-
-// Al crear/actualizar contraseña
-const hashedPassword = await bcrypt.hash(plainPassword, 10);
-
-// Al verificar en login
-const isValid = await bcrypt.compare(inputPassword, storedHash);
-</pre>
-
-<!-- CAPÍTULO 9: TESTS -->
-<h1 id="tests" class="page-break">9. TESTS Y VALIDACIÓN</h1>
-
-<h2>9.1. Estrategia de Testing</h2>
-
-<p>Se implementó una estrategia de testing manual exhaustiva, verificando cada funcionalidad del sistema en diferentes escenarios:</p>
-
-<h3>9.1.1. Tests de Autenticación</h3>
-<ul>
-    <li>Login con credenciales correctas</li>
-    <li>Login con credenciales incorrectas</li>
-    <li>Acceso a rutas protegidas sin autenticación</li>
-    <li>Logout y expiración de sesión</li>
-</ul>
-
-<h3>9.1.2. Tests de CRUD</h3>
-<ul>
-    <li>Creación de entidades con datos válidos</li>
-    <li>Creación con datos inválidos (validación)</li>
-    <li>Edición parcial de entidades</li>
-    <li>Eliminación y verificación de soft delete</li>
-    <li>Eliminación en cascada (empleado con fichajes)</li>
-</ul>
-
-<h3>9.1.3. Tests de Fichajes</h3>
-<ul>
-    <li>Registro de entrada sin fichaje previo</li>
-    <li>Registro de salida tras entrada</li>
-    <li>Pausas múltiples en una jornada</li>
-    <li>Cálculo correcto de horas trabajadas</li>
-    <li>Fichaje con geolocalización</li>
-</ul>
-
-<h3>9.1.4. Tests de Informes</h3>
-<ul>
-    <li>Generación de Excel con datos correctos</li>
-    <li>Formato de fechas y horas en zona española</li>
-    <li>Cálculo de diferencias horarias</li>
-</ul>
-
-<!-- CAPÍTULO 10: ANÁLISIS Y VALORACIÓN -->
-<h1 id="analisis" class="page-break">10. ANÁLISIS Y VALORACIÓN</h1>
-
-<h2 id="conclusiones">10.1. Conclusiones</h2>
-
-<p>El desarrollo del Sistema de Control de Fichajes de Empleados ha sido un proyecto completo que ha permitido aplicar conocimientos de desarrollo full-stack moderno, desde el diseño de bases de datos hasta la implementación de interfaces de usuario responsivas.</p>
-
-<h3>10.1.1. Objetivos Cumplidos</h3>
-
-<table>
-    <tr>
-        <th>Objetivo</th>
-        <th>Estado</th>
-        <th>Observaciones</th>
-    </tr>
-    <tr>
-        <td>Sistema de autenticación seguro</td>
-        <td>✓ Completado</td>
-        <td>Sesiones web + JWT móvil</td>
-    </tr>
-    <tr>
-        <td>Fichaje con registro temporal</td>
-        <td>✓ Completado</td>
-        <td>Incluye pausas y geolocalización</td>
-    </tr>
-    <tr>
-        <td>Gestión completa de empleados</td>
-        <td>✓ Completado</td>
-        <td>CRUD con soft delete</td>
-    </tr>
-    <tr>
-        <td>Planificación de horarios</td>
-        <td>✓ Completado</td>
-        <td>Calendario anual implementado</td>
-    </tr>
-    <tr>
-        <td>Generación de informes Excel</td>
-        <td>✓ Completado</td>
-        <td>Desglose por empleado y día</td>
-    </tr>
-    <tr>
-        <td>Aplicación móvil nativa</td>
-        <td>✓ Completado</td>
-        <td>APK generado con Expo</td>
-    </tr>
-    <tr>
-        <td>Interfaz responsive</td>
-        <td>✓ Completado</td>
-        <td>Funcional en todos los dispositivos</td>
-    </tr>
-    <tr>
-        <td>Modo claro/oscuro</td>
-        <td>✓ Completado</td>
-        <td>Preferencia guardada</td>
-    </tr>
-</table>
-
-<h3>10.1.2. Lecciones Aprendidas</h3>
-
-<ul>
-    <li><strong>Gestión de zonas horarias:</strong> Es fundamental decidir desde el inicio cómo se manejarán las fechas y horas. El almacenamiento en UTC con conversión a la zona local ha demostrado ser la mejor práctica.</li>
-    <li><strong>Tipado estático:</strong> TypeScript ha sido invaluable para detectar errores en tiempo de desarrollo y facilitar las refactorizaciones.</li>
-    <li><strong>Arquitectura modular:</strong> La separación en capas (routes, services, storages) facilita enormemente el mantenimiento y las pruebas.</li>
-    <li><strong>Componentes reutilizables:</strong> Shadcn/UI acelera significativamente el desarrollo de interfaces consistentes.</li>
-</ul>
-
-<h2 id="mejoras">10.2. Mejoras Propuestas</h2>
-
-<p>Para futuras versiones del sistema se proponen las siguientes mejoras:</p>
-
-<h3>Mejoras Funcionales</h3>
-<ul>
-    <li><strong>Notificaciones push:</strong> Alertas en móvil para recordar fichajes</li>
-    <li><strong>Aprobación de fichajes:</strong> Flujo de supervisión para fichajes manuales</li>
-    <li><strong>Integración con nóminas:</strong> Exportación de datos a sistemas de gestión de nóminas</li>
-    <li><strong>Reconocimiento facial:</strong> Verificación biométrica al fichar</li>
-    <li><strong>Fichaje por QR:</strong> Alternativa a la geolocalización para ubicaciones fijas</li>
-</ul>
-
-<h3>Mejoras Técnicas</h3>
-<ul>
-    <li><strong>Tests automatizados:</strong> Implementar suite de tests unitarios y de integración</li>
-    <li><strong>Caché Redis:</strong> Mejorar rendimiento con caché distribuida</li>
-    <li><strong>WebSockets:</strong> Actualizaciones en tiempo real del dashboard</li>
-    <li><strong>PWA:</strong> Convertir la web en Progressive Web App</li>
-    <li><strong>Logs estructurados:</strong> Sistema de logging para debugging en producción</li>
-</ul>
-
-<!-- CAPÍTULO 11: BIBLIOGRAFÍA -->
-<h1 id="biblio" class="page-break">11. BIBLIOGRAFÍA Y REFERENCIAS</h1>
-
-<h2>11.1. Documentación Oficial</h2>
-
-<ul>
-    <li><strong>React:</strong> <a href="https://react.dev">https://react.dev</a></li>
-    <li><strong>TypeScript:</strong> <a href="https://www.typescriptlang.org/docs/">https://www.typescriptlang.org/docs/</a></li>
-    <li><strong>Expo:</strong> <a href="https://docs.expo.dev">https://docs.expo.dev</a></li>
-    <li><strong>Drizzle ORM:</strong> <a href="https://orm.drizzle.team">https://orm.drizzle.team</a></li>
-    <li><strong>TanStack Query:</strong> <a href="https://tanstack.com/query/latest">https://tanstack.com/query/latest</a></li>
-    <li><strong>Shadcn/UI:</strong> <a href="https://ui.shadcn.com">https://ui.shadcn.com</a></li>
-    <li><strong>Tailwind CSS:</strong> <a href="https://tailwindcss.com/docs">https://tailwindcss.com/docs</a></li>
-    <li><strong>Express:</strong> <a href="https://expressjs.com">https://expressjs.com</a></li>
-    <li><strong>PostgreSQL:</strong> <a href="https://www.postgresql.org/docs/">https://www.postgresql.org/docs/</a></li>
-    <li><strong>date-fns:</strong> <a href="https://date-fns.org">https://date-fns.org</a></li>
-    <li><strong>Zod:</strong> <a href="https://zod.dev">https://zod.dev</a></li>
-</ul>
-
-<h2>11.2. Recursos Web</h2>
-
-<ul>
-    <li>MDN Web Docs - JavaScript Reference</li>
-    <li>Stack Overflow - Resolución de problemas específicos</li>
-    <li>GitHub - Repositorios de ejemplo y librerías</li>
-    <li>Dev.to y Medium - Artículos técnicos</li>
-</ul>
-
-<h2>11.3. Normativa Legal</h2>
-
-<ul>
-    <li>Real Decreto-ley 8/2019 - Registro de jornada laboral</li>
-    <li>RGPD - Protección de datos personales</li>
-</ul>
-
-<!-- CAPÍTULO 12: ANEXOS -->
-<h1 id="anexos" class="page-break">12. ANEXOS</h1>
-
-<h2>12.1. Estructura de Carpetas del Proyecto</h2>
-
-<pre>
+<pre style="font-size: 8pt;">
 proyecto/
 ├── client/                         # Frontend Web
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── ui/                 # Componentes Shadcn
+│   │   │   ├── ui/                 # Componentes Shadcn/UI
+│   │   │   │   ├── button.tsx
+│   │   │   │   ├── card.tsx
+│   │   │   │   ├── dialog.tsx
+│   │   │   │   ├── form.tsx
+│   │   │   │   ├── input.tsx
+│   │   │   │   ├── select.tsx
+│   │   │   │   ├── table.tsx
+│   │   │   │   ├── sidebar.tsx
+│   │   │   │   └── ... (40+ componentes)
 │   │   │   ├── app-sidebar.tsx     # Sidebar principal
-│   │   │   └── theme-toggle.tsx    # Toggle tema
+│   │   │   └── theme-toggle.tsx    # Toggle tema oscuro
 │   │   ├── pages/
 │   │   │   ├── dashboard.tsx       # Panel de control
 │   │   │   ├── employees.tsx       # Gestión empleados
@@ -2084,17 +2441,17 @@ proyecto/
 │   │   │   ├── settings.tsx        # Configuración
 │   │   │   └── login.tsx           # Inicio sesión
 │   │   ├── hooks/
-│   │   │   └── use-toast.ts        # Hook notificaciones
+│   │   │   └── use-toast.ts
 │   │   ├── lib/
-│   │   │   ├── queryClient.ts      # Configuración TanStack
-│   │   │   └── utils.ts            # Utilidades
-│   │   ├── App.tsx                 # Componente raíz
-│   │   ├── index.css               # Estilos globales
-│   │   └── main.tsx                # Punto de entrada
+│   │   │   ├── queryClient.ts
+│   │   │   └── utils.ts
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   └── main.tsx
 │   └── index.html
 │
 ├── server/                         # Backend
-│   ├── routes/                     # Controladores
+│   ├── routes/
 │   │   ├── authRoutes.ts
 │   │   ├── userRoutes.ts
 │   │   ├── departmentRoutes.ts
@@ -2107,7 +2464,7 @@ proyecto/
 │   │   ├── dashboardRoutes.ts
 │   │   ├── reportRoutes.ts
 │   │   └── index.ts
-│   ├── storages/                   # Acceso a datos
+│   ├── storages/
 │   │   ├── userStorage.ts
 │   │   ├── departmentStorage.ts
 │   │   ├── roleStorage.ts
@@ -2116,19 +2473,20 @@ proyecto/
 │   │   ├── dailyWorkdayStorage.ts
 │   │   ├── incidentStorage.ts
 │   │   └── incidentTypeStorage.ts
-│   ├── services/                   # Lógica de negocio
+│   ├── services/
 │   │   ├── authService.ts
 │   │   ├── dailyWorkdayService.ts
 │   │   ├── reportService.ts
 │   │   └── excelService.ts
 │   ├── middleware/
-│   │   └── auth.ts                 # Autenticación
+│   │   └── auth.ts
 │   ├── utils/
-│   │   └── timezone.ts             # Utilidades fecha/hora
-│   ├── db.ts                       # Conexión BD
-│   └── index.ts                    # Punto de entrada
+│   │   └── timezone.ts
+│   ├── db.ts
+│   ├── index.ts
+│   └── vite.ts
 │
-├── shared/                         # Código compartido
+├── shared/
 │   └── schema.ts                   # Esquemas Drizzle + Zod
 │
 ├── mobile-app/                     # Aplicación Móvil
@@ -2137,25 +2495,30 @@ proyecto/
 │   │   ├── login.tsx
 │   │   └── (tabs)/
 │   │       ├── _layout.tsx
-│   │       ├── index.tsx           # Fichar
-│   │       ├── schedules.tsx       # Horarios
-│   │       ├── history.tsx         # Historial
-│   │       └── profile.tsx         # Perfil
+│   │       ├── index.tsx
+│   │       ├── schedules.tsx
+│   │       ├── history.tsx
+│   │       └── profile.tsx
 │   ├── components/
 │   ├── services/
-│   │   └── api.ts                  # Cliente API
+│   │   └── api.ts
 │   ├── types/
-│   │   └── schema.ts               # Tipos TypeScript
-│   └── app.json                    # Configuración Expo
+│   │   └── schema.ts
+│   ├── app.json
+│   └── package.json
 │
-├── docs/                           # Documentación
-├── drizzle.config.ts               # Config migraciones
+├── docs/
+│   └── memoria-proyecto.html       # Este documento
+│
+├── drizzle.config.ts
 ├── package.json
 ├── tsconfig.json
-└── vite.config.ts
+├── vite.config.ts
+├── tailwind.config.ts
+└── replit.md
 </pre>
 
-<h2>12.2. Variables de Entorno</h2>
+<h2>15.2. Variables de Entorno Requeridas</h2>
 
 <table>
     <tr>
@@ -2165,18 +2528,18 @@ proyecto/
     </tr>
     <tr>
         <td>DATABASE_URL</td>
-        <td>URL de conexión PostgreSQL</td>
+        <td>URL de conexión a PostgreSQL</td>
         <td>postgresql://user:pass@host:5432/db</td>
     </tr>
     <tr>
         <td>SESSION_SECRET</td>
-        <td>Secreto para firmar sesiones</td>
-        <td>random-string-32-chars</td>
+        <td>Secreto para firmar sesiones web</td>
+        <td>random-string-32-characters</td>
     </tr>
     <tr>
         <td>JWT_SECRET</td>
         <td>Secreto para firmar tokens JWT</td>
-        <td>another-random-string</td>
+        <td>another-random-string-32-chars</td>
     </tr>
     <tr>
         <td>NODE_ENV</td>
@@ -2185,26 +2548,21 @@ proyecto/
     </tr>
 </table>
 
-<h2>12.3. Guía Rápida de Instalación</h2>
+<h2>15.3. Comandos Útiles</h2>
 
-<ol>
-    <li>Clonar el repositorio o abrir en Replit</li>
-    <li>Configurar las variables de entorno</li>
-    <li>Crear la base de datos PostgreSQL</li>
-    <li>Ejecutar <code>npm install</code></li>
-    <li>Ejecutar migraciones con <code>npm run db:push</code></li>
-    <li>Iniciar con <code>npm run dev</code></li>
-    <li>Acceder a <code>http://localhost:5000</code></li>
-</ol>
+<pre>
+# Desarrollo
+npm run dev              # Iniciar servidor de desarrollo
 
-<h2>12.4. Compilación de la Aplicación Móvil</h2>
+# Base de datos
+npm run db:push          # Aplicar cambios de esquema
+npm run db:studio        # Abrir Drizzle Studio
 
-<ol>
-    <li>Navegar a <code>mobile-app/</code></li>
-    <li>Actualizar la URL del servidor en <code>services/api.ts</code></li>
-    <li>Ejecutar <code>npx eas build --platform android --profile production</code></li>
-    <li>Descargar el APK generado desde Expo</li>
-</ol>
+# Móvil
+cd mobile-app
+npx expo start           # Iniciar Expo
+eas build --platform android --profile production  # Compilar APK
+</pre>
 
 <div class="page-break"></div>
 
@@ -2213,7 +2571,11 @@ proyecto/
     <p style="color: #64748b; margin-top: 40px;">
         Sistema de Control de Fichajes de Empleados<br>
         Memoria del Proyecto<br>
-        Noviembre 2025
+        Diciembre 2025
+    </p>
+    <p style="color: #94a3b8; margin-top: 20px; font-size: 10pt;">
+        Desarrollado para cumplir con la nueva normativa española<br>
+        de registro horario digital obligatorio
     </p>
 </div>
 
