@@ -1071,24 +1071,29 @@
         <tr><td>Fase 6: Despliegue</td><td>1 semana</td><td>Publicación web, compilación APK</td><td>Aplicación desplegada</td></tr>
     </table>
 
-    <h3>4.1.2. Diagrama de Gantt</h3>
+    <h3>4.1.2. Planificación Temporal (Diagrama de Gantt)</h3>
     
-    <div class="diagram">
-        <pre>
-Semana:     1    2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
-            |    |    |    |    |    |    |    |    |    |    |    |    |    |    |    |
-Fase 0:     ████
-Fase 1:          ████
-Fase 2:               ████████
-Fase 3:                         ████
-Fase 4:                              ████████████████████████████████████████
-  Backend:                           ████████████
-  Frontend Web:                                ████████████████
-  App Móvil:                                                 ████████████
-Fase 5:                                                                       ████████
-Fase 6:                                                                                ████
-        </pre>
-    </div>
+    <table>
+        <tr>
+            <th>Fase</th>
+            <th>Semana Inicio</th>
+            <th>Semana Fin</th>
+            <th>Duración</th>
+            <th>Dependencias</th>
+        </tr>
+        <tr><td>Fase 0: Preparación</td><td>1</td><td>1</td><td>1 semana</td><td>-</td></tr>
+        <tr><td>Fase 1: Concepción</td><td>2</td><td>2</td><td>1 semana</td><td>Fase 0</td></tr>
+        <tr><td>Fase 2: Diseño</td><td>3</td><td>4</td><td>2 semanas</td><td>Fase 1</td></tr>
+        <tr><td>Fase 3: Planificación</td><td>5</td><td>5</td><td>1 semana</td><td>Fase 2</td></tr>
+        <tr><td>Fase 4: Producción</td><td>6</td><td>13</td><td>8 semanas</td><td>Fase 3</td></tr>
+        <tr><td style="padding-left: 20px;">- Backend</td><td>6</td><td>8</td><td>3 semanas</td><td>Fase 3</td></tr>
+        <tr><td style="padding-left: 20px;">- Frontend Web</td><td>8</td><td>11</td><td>4 semanas</td><td>Backend (parcial)</td></tr>
+        <tr><td style="padding-left: 20px;">- App Móvil</td><td>11</td><td>13</td><td>3 semanas</td><td>Backend</td></tr>
+        <tr><td>Fase 5: Pruebas</td><td>14</td><td>15</td><td>2 semanas</td><td>Fase 4</td></tr>
+        <tr><td>Fase 6: Despliegue</td><td>16</td><td>16</td><td>1 semana</td><td>Fase 5</td></tr>
+    </table>
+    
+    <p style="margin-top: 10px;"><strong>Duración total del proyecto:</strong> 16 semanas (4 meses)</p>
 
     <h2>4.2. Metodología de Desarrollo</h2>
     
@@ -1212,71 +1217,73 @@ export const db = drizzle(pool, { schema });
 
     <h3>5.1.2. Casos de Uso Principales</h3>
     
-    <div class="diagram">
-        <pre>
-┌───────────────────────────────────────────────────────────────────────────┐
-│                       CASOS DE USO PRINCIPALES                            │
-├───────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  EMPLEADO                          ADMINISTRADOR                          │
-│  ────────                          ──────────────                         │
-│  • Iniciar sesión                  • Todos los del empleado, más:         │
-│  • Registrar entrada               • Gestionar empleados (CRUD)           │
-│  • Registrar salida                • Gestionar departamentos              │
-│  • Iniciar pausa                   • Gestionar roles                      │
-│  • Finalizar pausa                 • Asignar horarios                     │
-│  • Ver mis horarios                • Registrar incidencias                │
-│  • Ver mi historial                • Generar informes                     │
-│  • Cerrar sesión                   • Ver dashboard                        │
-│                                                                           │
-└───────────────────────────────────────────────────────────────────────────┘
-        </pre>
-    </div>
+    <table>
+        <tr>
+            <th>Actor</th>
+            <th>Caso de Uso</th>
+            <th>Descripción</th>
+            <th>Prioridad</th>
+        </tr>
+        <tr><td rowspan="8"><strong>Empleado</strong></td><td>CU-01: Iniciar sesión</td><td>Autenticarse con email y contraseña</td><td>Alta</td></tr>
+        <tr><td>CU-02: Registrar entrada</td><td>Fichar entrada al trabajo</td><td>Alta</td></tr>
+        <tr><td>CU-03: Registrar salida</td><td>Fichar salida del trabajo</td><td>Alta</td></tr>
+        <tr><td>CU-04: Iniciar pausa</td><td>Registrar inicio de descanso</td><td>Alta</td></tr>
+        <tr><td>CU-05: Finalizar pausa</td><td>Registrar fin de descanso</td><td>Alta</td></tr>
+        <tr><td>CU-06: Ver mis horarios</td><td>Consultar turnos asignados</td><td>Media</td></tr>
+        <tr><td>CU-07: Ver mi historial</td><td>Consultar fichajes anteriores</td><td>Media</td></tr>
+        <tr><td>CU-08: Cerrar sesión</td><td>Finalizar sesión activa</td><td>Alta</td></tr>
+        <tr><td rowspan="8"><strong>Administrador</strong></td><td>CU-09: Gestionar empleados</td><td>CRUD completo de empleados</td><td>Alta</td></tr>
+        <tr><td>CU-10: Gestionar departamentos</td><td>CRUD de departamentos</td><td>Media</td></tr>
+        <tr><td>CU-11: Gestionar roles</td><td>CRUD de roles empresariales</td><td>Media</td></tr>
+        <tr><td>CU-12: Asignar horarios</td><td>Planificar turnos de trabajo</td><td>Alta</td></tr>
+        <tr><td>CU-13: Registrar incidencias</td><td>Documentar ausencias y permisos</td><td>Media</td></tr>
+        <tr><td>CU-14: Generar informes</td><td>Exportar datos a Excel</td><td>Alta</td></tr>
+        <tr><td>CU-15: Ver dashboard</td><td>Visualizar estadísticas en tiempo real</td><td>Media</td></tr>
+        <tr><td>CU-16: Fichaje manual</td><td>Registrar fichajes de empleados</td><td>Media</td></tr>
+    </table>
+    
+    <p style="margin-top: 10px;"><em>Nota: El Administrador hereda todos los casos de uso del Empleado.</em></p>
 
     <h2>5.2. Fase de Diseño</h2>
     
     <h3>5.2.1. Diseño del Modelo de Datos</h3>
     
-    <div class="diagram">
-        <pre>
-                  ┌─────────────────┐
-                  │   DEPARTMENTS   │
-                  ├─────────────────┤
-                  │ id (PK)         │
-                  │ name            │
-                  │ description     │
-                  └────────┬────────┘
-                           │ 1:N
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│ ROLES_ENTERPRISE│  │      USERS      │  │  INCIDENTS_TYPE │
-├─────────────────┤  ├─────────────────┤  ├─────────────────┤
-│ id (PK)         │  │ id (PK)         │  │ id (PK)         │
-│ name (UNIQUE)   │◄─│ departmentId(FK)│  │ name            │
-│ description     │  │ roleId (FK)     │  │ description     │
-└─────────────────┘  │ numEmployee(UQ) │  │ color           │
-                     │ firstName       │  └────────┬────────┘
-                     │ lastName        │           │
-                     │ email (UNIQUE)  │  ┌─────────────────┐
-                     │ password        │  │    INCIDENTS    │
-                     │ isAdmin         │  ├─────────────────┤
-                     └────────┬────────┘  │ id (PK)         │
-                              │           │ idUser (FK)     │
-         ┌────────────────────┼──────────►│ incidentTypeId  │
-         │                    │           │ description     │
-         ▼                    ▼           │ date            │
-┌─────────────────┐  ┌─────────────────┐  └─────────────────┘
-│   SCHEDULES     │  │  CLOCK_ENTRIES  │  ┌─────────────────┐
-├─────────────────┤  ├─────────────────┤  │  DAILY_WORKDAY  │
-│ id (PK)         │  │ id (PK)         │  ├─────────────────┤
-│ idUser (FK)     │  │ userId (FK)     │  │ id (PK)         │
-│ date            │  │ entryType       │  │ idUser (FK)     │
-│ startTime       │  │ timestamp       │  │ date            │
-│ endTime         │  │ latitude        │  │ clockIn         │
-│ startBreak      │  │ longitude       │  │ clockOut        │
-│ endBreak        │  │ source          │  │ totalHours      │
-└─────────────────┘  └─────────────────┘  └─────────────────┘
-        </pre>
-    </div>
+    <p><strong>Entidades Principales del Sistema:</strong></p>
+    
+    <table>
+        <tr>
+            <th>Entidad</th>
+            <th>Descripción</th>
+            <th>Campos Principales</th>
+            <th>Restricciones</th>
+        </tr>
+        <tr><td><strong>users</strong></td><td>Empleados del sistema</td><td>id, numEmployee, firstName, lastName, email, password, isAdmin, departmentId, roleId</td><td>numEmployee UNIQUE, email UNIQUE</td></tr>
+        <tr><td><strong>departments</strong></td><td>Departamentos de la empresa</td><td>id, name, description</td><td>name UNIQUE</td></tr>
+        <tr><td><strong>roles_enterprise</strong></td><td>Roles empresariales</td><td>id, name, description</td><td>name UNIQUE</td></tr>
+        <tr><td><strong>clock_entries</strong></td><td>Eventos de fichaje</td><td>id, userId, entryType, timestamp, latitude, longitude, source</td><td>userId FK → users</td></tr>
+        <tr><td><strong>daily_workday</strong></td><td>Resumen diario de jornada</td><td>id, idUser, date, clockIn, clockOut, totalHours</td><td>idUser+date UNIQUE</td></tr>
+        <tr><td><strong>schedules</strong></td><td>Horarios planificados</td><td>id, idUser, date, startTime, endTime, startBreak, endBreak</td><td>idUser FK → users</td></tr>
+        <tr><td><strong>incidents</strong></td><td>Incidencias laborales</td><td>id, idUser, incidentTypeId, date, description</td><td>idUser FK → users</td></tr>
+        <tr><td><strong>incidents_type</strong></td><td>Tipos de incidencia</td><td>id, name, description, color</td><td>-</td></tr>
+    </table>
+    
+    <p style="margin-top: 15px;"><strong>Relaciones entre Entidades:</strong></p>
+    
+    <table>
+        <tr>
+            <th>Relación</th>
+            <th>Tipo</th>
+            <th>Descripción</th>
+            <th>On Delete</th>
+        </tr>
+        <tr><td>users → departments</td><td>N:1</td><td>Cada empleado pertenece a un departamento</td><td>SET NULL</td></tr>
+        <tr><td>users → roles_enterprise</td><td>N:1</td><td>Cada empleado tiene un rol empresarial</td><td>SET NULL</td></tr>
+        <tr><td>clock_entries → users</td><td>N:1</td><td>Cada fichaje pertenece a un empleado</td><td>CASCADE</td></tr>
+        <tr><td>daily_workday → users</td><td>N:1</td><td>Cada jornada pertenece a un empleado</td><td>CASCADE</td></tr>
+        <tr><td>schedules → users</td><td>N:1</td><td>Cada horario se asigna a un empleado</td><td>CASCADE</td></tr>
+        <tr><td>incidents → users</td><td>N:1</td><td>Cada incidencia afecta a un empleado</td><td>CASCADE</td></tr>
+        <tr><td>incidents → incidents_type</td><td>N:1</td><td>Cada incidencia tiene un tipo</td><td>SET NULL</td></tr>
+    </table>
 
     <h3>5.2.2. Diseño de la API REST</h3>
     
@@ -1485,40 +1492,40 @@ export async function getCurrentLocation() {
     
     <h2>6.1. Arquitectura General del Sistema</h2>
     
-    <div class="diagram">
-        <pre>
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        ARQUITECTURA DEL SISTEMA                              │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│   ┌─────────────┐        ┌─────────────┐        ┌─────────────┐            │
-│   │   Cliente   │        │   Cliente   │        │   Cliente   │            │
-│   │     Web     │        │    Móvil    │        │    Admin    │            │
-│   │  (React)    │        │(React Native│        │   (Web)     │            │
-│   └──────┬──────┘        └──────┬──────┘        └──────┬──────┘            │
-│          │                      │                      │                    │
-│          └──────────────────────┼──────────────────────┘                    │
-│                                 │                                           │
-│                         ┌───────▼───────┐                                   │
-│                         │   API REST    │                                   │
-│                         │  (Express)    │                                   │
-│                         └───────┬───────┘                                   │
-│                                 │                                           │
-│              ┌──────────────────┼──────────────────┐                       │
-│              │                  │                  │                        │
-│       ┌──────▼──────┐    ┌──────▼──────┐    ┌──────▼──────┐               │
-│       │   Routes    │    │  Services   │    │  Storages   │               │
-│       │ (Endpoints) │    │  (Lógica)   │    │    (BD)     │               │
-│       └─────────────┘    └─────────────┘    └──────┬──────┘               │
-│                                                     │                       │
-│                                              ┌──────▼──────┐               │
-│                                              │ PostgreSQL  │               │
-│                                              │  (Neon)     │               │
-│                                              └─────────────┘               │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-        </pre>
-    </div>
+    <p>El sistema sigue una arquitectura cliente-servidor con separación clara de responsabilidades:</p>
+    
+    <p><strong>Capas del Sistema:</strong></p>
+    
+    <table>
+        <tr>
+            <th>Capa</th>
+            <th>Componentes</th>
+            <th>Tecnología</th>
+            <th>Responsabilidad</th>
+        </tr>
+        <tr><td><strong>Presentación (Clientes)</strong></td><td>Web Admin, Web Empleado, App Móvil</td><td>React, React Native</td><td>Interfaz de usuario, interacción</td></tr>
+        <tr><td><strong>API</strong></td><td>API REST</td><td>Express.js</td><td>Endpoints HTTP, autenticación</td></tr>
+        <tr><td><strong>Lógica de Negocio</strong></td><td>Routes, Services</td><td>TypeScript</td><td>Validación, cálculos, reglas</td></tr>
+        <tr><td><strong>Acceso a Datos</strong></td><td>Storages</td><td>Drizzle ORM</td><td>CRUD, transacciones</td></tr>
+        <tr><td><strong>Persistencia</strong></td><td>Base de Datos</td><td>PostgreSQL (Neon)</td><td>Almacenamiento de datos</td></tr>
+    </table>
+    
+    <p style="margin-top: 15px;"><strong>Flujo de Comunicación:</strong></p>
+    
+    <table>
+        <tr>
+            <th>Paso</th>
+            <th>Origen</th>
+            <th>Destino</th>
+            <th>Protocolo</th>
+            <th>Autenticación</th>
+        </tr>
+        <tr><td>1</td><td>Cliente Web</td><td>API REST</td><td>HTTPS</td><td>Sesiones (cookies)</td></tr>
+        <tr><td>2</td><td>App Móvil</td><td>API REST</td><td>HTTPS</td><td>JWT (Bearer token)</td></tr>
+        <tr><td>3</td><td>Routes</td><td>Services</td><td>Interno</td><td>-</td></tr>
+        <tr><td>4</td><td>Services</td><td>Storages</td><td>Interno</td><td>-</td></tr>
+        <tr><td>5</td><td>Storages</td><td>PostgreSQL</td><td>TCP/SSL</td><td>Connection string</td></tr>
+    </table>
 
     <h2>6.2. Arquitectura del Backend</h2>
     
