@@ -81,12 +81,12 @@ export async function createClockEntry(
 
   // 🔹 Solo actualizar timeEntry y dailyWorkday si es CLOCK OUT
   if (entryType === "clock_out") {
-    // Obtener todos los clockEntries del usuario para esta fecha
+    // Obtener todos los clockEntries del usuario para esta fecha (convertir UTC a hora española)
     const userClockEntries = await db
       .select()
       .from(clockEntries)
       .where(
-        sql`${clockEntries.idUser} = ${employeeId} AND DATE(${clockEntries.timestamp}) = ${eventDate}`,
+        sql`${clockEntries.idUser} = ${employeeId} AND DATE(${clockEntries.timestamp} AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Madrid') = ${eventDate}`,
       )
       .orderBy(clockEntries.timestamp);
 
@@ -113,12 +113,12 @@ export async function createClockEntry(
 export async function getClockEntriesByDate(
   date: string,
 ): Promise<ClockEntry[]> {
-  // Usar timezone española para extraer la fecha correctamente de timestamps UTC
+  // Convertir timestamp UTC a hora española antes de extraer la fecha
   return await db
     .select()
     .from(clockEntries)
     .where(
-      sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'Europe/Madrid') = ${date}`,
+      sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Madrid') = ${date}`,
     )
     .orderBy(clockEntries.timestamp);
 }
@@ -128,14 +128,14 @@ export async function getClockEntriesUserByRange(
   startDate: string,
   endDate: string,
 ): Promise<ClockEntry[]> {
-  // Usar timezone española para extraer la fecha correctamente de timestamps UTC
+  // Convertir timestamp UTC a hora española antes de extraer la fecha
   return await db
     .select()
     .from(clockEntries)
     .where(
       and(
-        sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'Europe/Madrid') >= ${startDate}`,
-        sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'Europe/Madrid') <= ${endDate}`,
+        sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Madrid') >= ${startDate}`,
+        sql`DATE(${clockEntries.timestamp} AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/Madrid') <= ${endDate}`,
         eq(clockEntries.idUser, idUser),
       ),
     )
